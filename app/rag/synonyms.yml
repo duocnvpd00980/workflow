@@ -1,0 +1,34 @@
+# Query expansion — thêm/sửa từ đồng nghĩa tại đây, không cần đụng code
+# Cấu trúc: canonical_term: [variant1, variant2, ...]
+
+thưởng tháng 13:
+  - tiền thưởng cuối năm
+  - bonus tết
+  - lương tháng 13
+  - thưởng tết
+
+nghỉ phép năm:
+  - annual leave
+  - phép năm
+  - ngày phép hưởng lương
+
+nghỉ phép:
+  - ngày phép
+  - leave
+  - day off
+  - xin nghỉ
+
+public code:
+  - public mã nguồn
+  - đăng github
+  - upload source
+  - chia sẻ code
+
+lương:
+  - tiền công
+  - thu nhập
+
+bảo mật:
+  - security
+  - an ninh
+  - confidential

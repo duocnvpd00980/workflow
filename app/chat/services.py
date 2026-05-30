@@ -7,16 +7,18 @@ import traceback
 import uuid
 from typing import AsyncGenerator
 
+from app.chat.main import _safe_get_snapshot
+from app.chat.streaming import stream_guarded
 from langgraph.types import Command
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.sql import func
 
-from app.container import get_ctx
+from app.core.container import get_ctx
 from app.chat.models import Conversation, Message
-from app.nodes.mainboard import get_mainboard
-from app.core.guards import stream_guarded, safe_get_snapshot
+from app.graph import main_v7
+
 
 logger = logging.getLogger(__name__)
 
@@ -162,7 +164,7 @@ async def _run_stream(
             elif event_type == "done":
                 break
 
-        snapshot = await safe_get_snapshot(board, thread_id)
+        snapshot = await _safe_get_snapshot(board, thread_id)
         result = _snapshot_to_result(snapshot, pipeline_error,
                                      session_id=session_id, msg_id=msg_id,
                                      conversation_id=conversation_id)

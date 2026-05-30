@@ -1,26 +1,22 @@
-# chat/router.py
 from __future__ import annotations
 
 import json
 import logging
 import uuid
 
-from app.chat.schemas import RestoreRequest, ResumeRequest, StreamRequest
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.container import get_ctx, Services
 from app.db import get_db
+from app.chat.service import ChatService
+from app.chat.schemas import RestoreRequest, ResumeRequest, StreamRequest
 from .models import Conversation, Message
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
-
-
+_chat = ChatService()
 
 
 # ── Helpers ───────────────────────────────────────────────
@@ -47,7 +43,6 @@ def _sse_error(msg: str) -> str:
 async def stream_message(
     payload: StreamRequest,
     db: AsyncSession = Depends(get_db),
-    svc: Services = Depends(get_ctx),
 ):
     msg_id = payload.msg_id.strip() or str(uuid.uuid4())
     conversation_id = str(payload.conversation_id)
@@ -56,7 +51,6 @@ async def stream_message(
     if not conv:
         raise HTTPException(404, "Conversation not found.")
 
-    # Đặt title lần đầu (không block stream)
     if not conv.title:
         conv.title = _title(payload.message)
         await db.commit()
@@ -64,7 +58,7 @@ async def stream_message(
     async def event_stream():
         yield "event: heartbeat\ndata: {}\n\n"
         try:
-            async for chunk in svc.chat.stream_graph(
+            async for chunk in _chat.stream_graph(
                 payload.message,
                 payload.session_id,
                 msg_id=msg_id,
@@ -79,14 +73,11 @@ async def stream_message(
 
 
 @router.post("/resume")
-async def resume_message(
-    payload: ResumeRequest,
-    svc: Services = Depends(get_ctx),
-):
+async def resume_message(payload: ResumeRequest):
     async def event_stream():
         yield "event: heartbeat\ndata: {}\n\n"
         try:
-            async for chunk in svc.chat.resume_graph(
+            async for chunk in _chat.resume_graph(
                 session_id=payload.session_id,
                 action=payload.action,
                 feedback=payload.feedback,
@@ -102,29 +93,18 @@ async def resume_message(
 
 
 @router.post("/restore")
-async def restore_chat(
-    payload: RestoreRequest,
-    svc: Services = Depends(get_ctx),
-):
+async def restore_chat(payload: RestoreRequest):
     session_id = payload.session_id.strip()
     conversation_id = str(payload.conversation_id)
 
-    result = await svc.chat.restore_session(session_id, conversation_id=conversation_id)
+    result = await _chat.restore_session(session_id, conversation_id=conversation_id)
 
     if isinstance(result, list):
-        return {
-            "type": "messages",
-            "messages": result,
-            "conversation_id": conversation_id,
-            "session_id": session_id,
-        }
+        return {"type": "messages", "messages": result,
+                "conversation_id": conversation_id, "session_id": session_id}
 
-    return {
-        "type": "html",
-        "html": result or "",
-        "msg_id": payload.msg_id,
-        "session_id": session_id,
-    }
+    return {"type": "html", "html": result or "",
+            "msg_id": payload.msg_id, "session_id": session_id}
 
 
 # ── Conversations CRUD ────────────────────────────────────
@@ -142,10 +122,8 @@ async def conversation_list(db: AsyncSession = Depends(get_db)):
     rows = await db.execute(
         select(Conversation).order_by(Conversation.last_message_at.desc())
     )
-    return [
-        {"id": str(c.id), "title": c.title, "last_message_at": c.last_message_at}
-        for c in rows.scalars()
-    ]
+    return [{"id": str(c.id), "title": c.title, "last_message_at": c.last_message_at}
+            for c in rows.scalars()]
 
 
 @router.get("/conversations/{conversation_id}")
@@ -164,16 +142,9 @@ async def conversation_load(
     )
     return {
         "conversation_id": str(conv.id),
-        "messages": [
-            {
-                "id": str(m.id),
-                "role": m.role,
-                "content": m.content,
-                "html": m.html,
-                "created_at": m.created_at,
-            }
-            for m in rows.scalars()
-        ],
+        "messages": [{"id": str(m.id), "role": m.role, "content": m.content,
+                      "html": m.html, "created_at": m.created_at}
+                     for m in rows.scalars()],
     }
 
 

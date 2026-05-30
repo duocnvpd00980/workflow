@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.container import get_ctx, Services
+from app.core.deps import get_llm, Services
 from app.db import get_db
 from app.rag.schemas import DocOut, SearchOut, UploadOut
 from .models import DocumentSource
@@ -46,7 +46,7 @@ async def upload(
     title: str = Form(...),
     file: UploadFile = ...,
     db: AsyncSession = Depends(get_db),
-    svc: Services = Depends(get_ctx),
+    svc: Services = Depends(get_llm),
 ):
     if not title.strip():
         raise HTTPException(400, "Tiêu đề trống.")
@@ -96,7 +96,7 @@ async def upload(
 async def search(
     query: str = Form(...),
     top_k: int = Form(3),
-    svc: Services = Depends(get_ctx),
+    svc: Services = Depends(get_llm),
 ):
     if not query.strip():
         return SearchOut(query="", results=[], source="empty")

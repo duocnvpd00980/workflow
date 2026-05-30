@@ -34,7 +34,7 @@ class ModelRegistry:
 
     def llm(self, key="default")         -> LLMEngine:    return self._get(self._llm,   key, "default")
     def embed(self, key="default_embed") -> EmbedEngine:  return self._get(self._embed, key, "default_embed")
-    def lc(self, key="default")          -> BaseChatModel: return self.llm(key).lc()
+    def get_llm(self, key="default")     -> BaseChatModel: return self.llm(key).lc()  # ← đổi tên
 
 
 def build_registry() -> ModelRegistry:

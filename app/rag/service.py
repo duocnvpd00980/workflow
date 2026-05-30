@@ -9,6 +9,10 @@ import faiss
 import numpy as np
 from fastembed import TextEmbedding
 from rank_bm25 import BM25Okapi
+import yaml
+from pathlib import Path
+from app.rag.schemas import Doc, Chunk, Result
+
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("rag")
@@ -32,46 +36,22 @@ async def _aembed(embed_model: TextEmbedding, text: str) -> np.ndarray:
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(None, lambda: list(embed_model.embed([text]))[0])
 
+def _load_synonyms() -> dict:
+    path = Path(__file__).parent / "synonyms.yml"
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    # Đảm bảo value luôn là list
+    return {k: v if isinstance(v, list) else [v] for k, v in data.items()}
 
-# ── Data classes ──────────────────────────────────────────────────────────────
-
-
-@dataclass
-class Doc:
-    text: str
-    metadata: dict = field(default_factory=dict)
-
-
-@dataclass
-class Chunk:
-    score: float
-    text: str
-    meta: dict
-
-
-@dataclass
-class Result:
-    query: str
-    chunks: List[Chunk]
-    source: str
 
 
 # ── Synonyms ──────────────────────────────────────────────────────────────────
 
-SYNONYMS = {
-    "thưởng tháng 13": [
-        "tiền thưởng cuối năm",
-        "bonus tết",
-        "lương tháng 13",
-        "thưởng tết",
-    ],
-    "nghỉ phép năm": ["annual leave", "phép năm", "ngày phép hưởng lương"],
-    "nghỉ phép": ["ngày phép", "leave", "day off", "xin nghỉ"],
-    "public code": ["public mã nguồn", "đăng github", "upload source", "chia sẻ code"],
-    "lương": ["tiền công", "thu nhập"],
-    "bảo mật": ["security", "an ninh", "confidential"],
-}
 
+
+SYNONYMS = _load_synonyms()
 _reverse = {v.lower(): k for k, vs in SYNONYMS.items() for v in vs}
 _reverse.update({k.lower(): k for k in SYNONYMS})
 _reverse = dict(sorted(_reverse.items(), key=lambda x: len(x[0]), reverse=True))

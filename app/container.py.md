@@ -4,6 +4,7 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from langchain_core.language_models import BaseChatModel
 from typing import TYPE_CHECKING, AsyncGenerator
 
 from fastapi import FastAPI
@@ -18,9 +19,12 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Services:
-    registry: ModelRegistry
+    _models: ModelRegistry
     rag: RAG | None
     loader: DocumentLoader | None
+
+    def llm(self, key="default") -> BaseChatModel:
+        return self._models.get_llm(key)
 
     @property
     def rag_ok(self) -> bool:
@@ -50,7 +54,7 @@ async def _bootstrap() -> Services:
     except Exception:
         logger.exception("[Services] DocumentLoader init failed")
 
-    return Services(registry=build_registry(), rag=rag, loader=loader)
+    return Services(_models=build_registry(), rag=rag, loader=loader)
 
 
 @asynccontextmanager

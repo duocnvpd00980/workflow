@@ -58,7 +58,7 @@ from langchain_core.runnables import RunnableConfig
 from app.core.main_bus import MainBus
 from app.core.registry  import BusRegistry
 from app.core.protocol  import StandardFrame, BodyFrame
-from app.container import get_ctx
+from app.core.deps import get_llm
 from .your_node_service import YourNodeService
 
 service_module = YourNodeService()

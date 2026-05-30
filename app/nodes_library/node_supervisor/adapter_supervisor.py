@@ -11,7 +11,7 @@ from langchain_core.runnables import RunnableConfig
 from app.core.main_bus import MainBus
 from app.core.registry  import BusRegistry
 from app.core.protocol  import StandardFrame, BodyFrame
-from app.container import get_ctx
+from app.core.deps import get_llm
 
 from .supervisor_service import SupervisorService
 
@@ -98,7 +98,7 @@ async def node_supervisor(
     # =========================================================================
     # STEP 2 — CONTEXT EXTRACTION & DEPENDENCY INJECTION
     # =========================================================================
-    ctx = await get_ctx()
+    ctx = await get_llm()
     llm_engine = ctx.llm_factory.get_model("default")
 
     # --- Trích xuất lịch sử hội thoại ----------------------------------------
