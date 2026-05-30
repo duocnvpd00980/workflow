@@ -6,6 +6,23 @@ from langgraph.graph.message import add_messages
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from app.core.config import get_settings
 
+
+settings = get_settings()
+
+def get_llm():
+    if settings.is_dev:
+        from langchain_ollama import ChatOllama
+        return ChatOllama(
+            model=settings.ollama_model,
+            base_url=settings.ollama_base_url,
+        )
+    else:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        return ChatGoogleGenerativeAI(
+            model=settings.gemini_model,
+            google_api_key=settings.google_api_key,
+        )
+    
 settings = get_settings()
 
 SYSTEM_PROMPT = "Bạn là AI assistant thông minh và hữu ích. Trả lời rõ ràng, súc tích."
