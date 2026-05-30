@@ -1,0 +1,27 @@
+
+smalltalk:
+  keywords:
+    - "xin chào"
+    - "chào"
+    - "hello"
+    - "hi"
+
+  regex:
+    - "\\bhey\\b"
+
+rag_knowledge:
+  keywords:
+    - "nghỉ phép"
+    - "giờ làm việc"
+    - "thưởng tháng 13"
+    - "source code"
+    - "github"
+
+  regex:
+    - "\\bhợp\\s*đồng\\b"
+    - "\\bquy\\s*định\\b"
+    - "\\bchính\\s*sách\\b"
+
+general_chat:
+  keywords: []
+  regex: []

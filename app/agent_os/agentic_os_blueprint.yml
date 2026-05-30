@@ -1,0 +1,303 @@
+# =============================================================================
+# MARKETING CREW - AGENTIC OS ARCHITECTURE CONFIGURATION & DETAILED REGISTRY
+# =============================================================================
+version: "1.0.0"
+project_name: "agent_os_os"
+environment: "production"
+
+infrastructure:
+  framework: "langgraph"
+  state_management: "MainBus"
+  registry_provider: "BusRegistry"
+
+loop_protection:
+  max_tool_iterations: 3
+  max_rework_iterations: 2
+  node_timeout_seconds: 60
+
+retry_policy:
+  max_attempts: 2
+  backoff_factor: 1.5
+  retry_on: "agent_os.system.shields.shield_faults.PipelineError"
+
+model_pricing:
+  default:
+    input_per_1k: 0.0005
+    output_per_1k: 0.0015
+  gpt-4o:
+    input_per_1k: 0.005
+    output_per_1k: 0.015
+  claude-3-5-sonnet:
+    input_per_1k: 0.003
+    output_per_1k: 0.015
+  gemini-2.5-flash:
+    input_per_1k: 0.000075
+    output_per_1k: 0.0003
+
+# =============================================================================
+# ROOT NODE REGISTRY (MÔ TẢ CHI TIẾT TỪNG LINH KIỆN TRÊN MAINBOARD)
+# =============================================================================
+nodes:
+
+  # ---------------------------------------------------------------------------
+  # NHÓM 1: TẦNG BẢO VỆ CỔNG VÀO & KIỂM SOÁT TẢI (INGRESS & PROTECTION)
+  # Nhiệm vụ: Đảm bảo an toàn hạ tầng, chống spam, ngắt mạch khi quá tải và sàng lọc nội dung độc hại trước khi đưa vào hệ thống AI.
+  # ---------------------------------------------------------------------------
+  node_reg_rate_limiter:
+    Chức năng: "Kiểm soát dòng tải đầu vào, giới hạn số lượng request từ một user/IP trong một khoảng thời gian để chặn đứng spam/DDoS hệ thống trước khi chạm vào LLM đắt tiền."
+    triggers: "Kích hoạt đầu tiên ngay khi nhận tín hiệu từ cổng __start__."
+    outputs: "Chuyển tiếp State sạch sang Circuit Breaker."
+    tech_stack: "Token Bucket Algorithm, Redis, Thư viện limits."
+    Từ_khóa_và_Thư_viện: "Token Bucket, Leaky Bucket, limits, Redis Rate Limiting, LangGraph Control Flow"
+
+  node_reg_circuit_breaker:
+    Chức năng: "Cầu chì hạ tầng, tự động ngắt luồng và trả về thông báo lỗi nhanh (Fast-fail) nếu phát hiện API downstream hoặc DB phía sau sập liên tục, bảo vệ bộ nhớ hệ thống."
+    triggers: "Nhận tín hiệu sau khi Rate Limiter xác thực an toàn."
+    outputs: "Chuyển tiếp sang Gatekeeper."
+    tech_stack: "Circuit Breaker Pattern, Thư viện pybreaker."
+    Từ_khóa_và_Thư_viện: "Circuit Breaker Pattern, pybreaker, Fault Tolerance, Resilience4j philosophy"
+
+  node_reg_gatekeeper:
+    Chức năng: "Bộ gác cổng an toàn, kiểm tra dữ liệu đầu vào có vi phạm chính sách bảo mật, prompt injection, hoặc chứa nội dung độc hại rác nhạy cảm không."
+    triggers: "Nhận dữ liệu từ mạch Circuit Breaker."
+    outputs: "Nếu vi phạm bẻ mạch sang Dead Letter Queue (DLQ). Nếu an toàn đẩy sang Intent Classifier."
+    tech_stack: "Guardrails AI, NeMo-guardrails, Llama Guard."
+    Từ_khóa_và_Thư_viện: "Guardrails AI, neMo-guardrails, Llama Guard, Content Moderation API"
+
+  node_reg_dead_letter_queue:
+    Chức năng: "Trạm xử lý sự cố tổng, nơi hứng, phân tích và lưu trữ vết các Request bị lỗi, bị từ chối hoặc crash giữa chừng để phục vụ Debug/Retry bảo trì."
+    triggers: "Nhận tín hiệu từ Gatekeeper, Policy Engine, Router hoặc Interrupt Sync khi có sự cố hệ thống."
+    outputs: "Phóng tín hiệu trực tiếp về Finalizer để đóng luồng báo lỗi an toàn."
+    tech_stack: "Dead Letter Queue Pattern, Error Handling Middleware."
+    Từ_khóa_và_Thư_viện: "Dead Letter Queue Pattern, Error Handling Middleware, Exception Tracker"
+
+
+  # ---------------------------------------------------------------------------
+  # NHÓM 2: TẦNG PHÂN TÍCH Ý ĐỊNH & LẬP KẾ HOẠCH (BRAIN & POLICY)
+  # Nhiệm vụ: Định tuyến chiến lược toàn bộ hệ thống bằng cách phân tích yêu cầu của người dùng.
+  # ---------------------------------------------------------------------------
+  node_reg_intent_classifier:
+    Chức năng: "Phân loại ý định, đọc Prompt của người dùng để định vị nhóm tác vụ yêu cầu (Chat, Hỏi đáp tài liệu, hay Tạo nội dung Marketing)."
+    triggers: "Nhận State sạch từ Gatekeeper thông qua."
+    outputs: "Trích xuất cấu trúc Intent Object đẩy sang Policy Engine."
+    tech_stack: "Intent Classification, Semantic Router, Instructor Structured JSON."
+    Từ_khóa_và_Thư_viện: "Intent Classification, Zero-shot Classification, Instructor Structured JSON, Semantic Router"
+
+  node_reg_policy_engine:
+    Chức năng: "Đóng vai trò bộ não lập lịch / Planner, đưa ra quyết định chiến lược sẽ bật/tắt các rơ-le Agent nào hoặc rẽ nhánh luồng (Chat/QA/Marketing) dựa trên ý định."
+    triggers: "Nhận kết quả phân tích từ Intent Classifier."
+    outputs: "Bật cờ Boolean (run_ads, run_email, run_blog) vào vùng nhớ POE. Rẽ nhánh sang Lightweight Chat, Response Resolver hoặc Seed."
+    tech_stack: "ReAct Pattern, AI Planner, Rule-based Engine."
+    Từ_khóa_và_Thư_viện: "AI Planner, ReAct Pattern, Decision Making Layer, Rule-based Engine"
+
+
+  # ---------------------------------------------------------------------------
+  # NHÓM 3: TẦNG BỘ NHỚ ĐỆM & TRI THỨC NỀN (MEMORY & KNOWLEDGE INJECTION)
+  # Nhiệm vụ: Cung cấp đầy đủ vũ khí, dữ liệu lịch sử và tri thức chuyên ngành cho các Agent trước khi ra trận.
+  # ---------------------------------------------------------------------------
+  node_reg_seed:
+    Chức năng: "Hạt giống khởi tạo, thiết lập trạng thái ban đầu, dọn dẹp biến rác và chuẩn bị bộ nhớ đệm cho phiên làm việc mới của Agent."
+    triggers: "Được kích hoạt bởi Policy Engine khi đi vào mạch Marketing chuyên sâu."
+    outputs: "Chuyển tiếp sang Memory Context."
+    tech_stack: "State Initialization, Context Hydration Factory."
+    Từ_khóa_và_Thư_viện: "State Initialization, Context Hydration, Seed Factory"
+
+  node_reg_memory_context:
+    Chức năng: "Nạp ngữ cảnh bối cảnh lịch sử, trích xuất và tóm tắt lịch sử chat/hội thoại cũ (Short-term/Long-term Memory) của người dùng từ Database lên Bus."
+    triggers: "Nhận luồng điện từ Node Seed."
+    outputs: "Chuyển tiếp sang Cache Memory."
+    tech_stack: "Conversational Memory Management, LangGraph State."
+    Từ_khóa_và_Thư_viện: "Conversational Memory, Short-term Memory, Long-term Memory, LangGraph State Management"
+
+  node_reg_cache_memory:
+    Chức năng: "Bộ nhớ đệm hiệu năng, lưu trữ các kết quả LLM trùng lặp để trả về ngay lập tức, tiết kiệm chi phí token và thời gian gọi API."
+    triggers: "Nhận tín hiệu từ Memory Context."
+    outputs: "Nếu trúng Cache văng thẳng về đích. Nếu trượt Cache đi tiếp sang Knowledge."
+    tech_stack: "Semantic Caching, Redis Cache, gptcache."
+    Từ_khóa_và_Thư_viện: "Semantic Caching, Redis Cache, gptcache"
+
+  node_reg_knowledge:
+    Chức năng: "Kho tri thức chuyên ngành, nạp thêm các tài liệu doanh nghiệp, tài liệu hướng dẫn (Guideline) cố định phục vụ làm giàu ngữ cảnh cho Agent."
+    triggers: "Kích hoạt sau khi hệ thống tra cứu trượt mạch tại Cache Memory."
+    outputs: "Chuyển dữ liệu ngữ cảnh đã nạp sang bộ định tuyến Router."
+    tech_stack: "Static Knowledge Base, Context Injection."
+    Từ_khóa_và_Thư_viện: "Document Store, Static Knowledge Base, Context Injection"
+
+
+  # ---------------------------------------------------------------------------
+  # NHÓM 4: TẦNG ĐỊNH TUYẾN & RƠ-LE ĐIỀU HƯỚNG (ROUTING LAYER)
+  # Nhiệm vụ: Phân phối dòng chảy dữ liệu đến đúng đích thực thi đơn kênh hoặc đa kênh.
+  # ---------------------------------------------------------------------------
+  node_reg_router:
+    Chức năng: "Bộ định tuyến thô, định tuyến luồng dữ liệu ở mức vĩ mô (Đẩy thẳng sang Ads, Email độc lập, hoặc đẩy vào bộ rẽ nhánh phức tạp)."
+    triggers: "Nhận Context hoàn chỉnh từ Node Knowledge."
+    outputs: "Phát tín hiệu trực tiếp sang Ads, Email nếu chạy đơn luồng, hoặc đẩy vào Dynamic Agent Router nếu chạy đa kênh."
+    tech_stack: "Conditional Edges (LangGraph), Control Flow Router."
+    Từ_khóa_và_Thư_viện: "Conditional Edges (LangGraph), Dynamic Routing, Control Flow Router"
+
+  node_reg_dynamic_agent_Router:
+    Chức năng: "Rơ-le định tuyến động (DAR), mạch kỹ thuật số thực hiện bóc tách các switch Boolean từ bộ não Policy Engine để kích hoạt song song đa luồng Agent (Ads + Email + Blog) cùng lúc."
+    triggers: "Nhận lệnh điều phối từ bộ định tuyến Router."
+    outputs: "Cấp nguồn thực thi đồng thời cho node_reg_ads, node_reg_email, hoặc node_reg_blog_plan."
+    tech_stack: "Dynamic Fan-out Pattern, Orchestration Routing."
+    Từ_khóa_và_Thư_viện: "Parallel Execution (LangGraph), Dynamic Fan-out Pattern, Orchestration Router"
+
+
+  # ---------------------------------------------------------------------------
+  # NHÓM 5: TẦNG THỰC THI AGENT & VÒNG LẶP SỬA LỖI (EXECUTION & LOOPS)
+  # Nhiệm vụ: Các Agent chuyên môn thực hiện tác vụ sáng tạo nội dung, chạy công cụ và tự động sửa lỗi.
+  # ---------------------------------------------------------------------------
+  node_reg_ads:
+    Chức năng: "Agent Sáng tạo Quảng cáo, viết sao sao nội dung ad copies chuẩn performance marketing tối ưu tỷ lệ click (Sử dụng cấu trúc cô lập 3 file)."
+    triggers: "Kích hoạt khi cờ run_ads = True phát ra từ DAR."
+    outputs: "Trả về dữ liệu Ad nội dung sạch kèm Token Usage gửi sang Interrupt Sync."
+    tech_stack: "Copywriting Agent, Instructor, LiteLLM."
+    Từ_khóa_và_Thư_viện: "Copywriting Agent, Structured Output, Instructor, LiteLLM"
+
+  node_reg_email:
+    Chức năng: "Agent Sáng tạo Email, viết email nuôi dưỡng, chuyển đổi khách hàng tiềm năng theo đúng ngữ cảnh đầu vào."
+    triggers: "Kích hoạt khi cờ run_email = True phát ra từ DAR."
+    outputs: "Trả về dữ liệu Email nội dung kèm Token Usage gửi sang Interrupt Sync."
+    tech_stack: "Cold Email Generation, Structured Pydantic Output."
+    Từ_khóa_và_Thư_viện: "Cold Email Agent, Email Marketing Copy, Structured Pydantic Output"
+
+  node_reg_blog_plan:
+    Chức năng: "Agent Lập kế hoạch Bài viết, lập cấu trúc dàn ý (Outline) chi tiết và nghiên cứu từ khóa SEO cho bài viết Blog."
+    triggers: "Kích hoạt khi cờ run_blog = True phát ra từ DAR."
+    outputs: "Chuyển giao toàn bộ khung dàn ý bài viết sang cho Blog Writer."
+    tech_stack: "SEO Content Planner, Keyword Research Agent."
+    Từ_khóa_và_Thư_viện: "Content Planner, SEO Keyword Research Agent"
+
+  node_reg_blog_writer:
+    Chức năng: "Agent Viết Bài Blog, triển khai viết bài viết chi tiết dựa trên dàn ý, có khả năng gọi tool ngoài và chịu sự kiểm duyệt sửa lỗi từ Validator."
+    triggers: "Nhận dàn ý từ Blog Plan hoặc nhận lệnh phản hồi sửa đổi ngược lại từ Node Validator."
+    outputs: "Đẩy bài viết thô hoàn tất sang cho Blog Edited hoặc kết nối với Tool Results."
+    tech_stack: "Long-form Content Generation, Agentic Tool Loop."
+    Từ_khóa_và_Thư_viện: "Long-form Content Generation, Agentic Writing, Tool Calling"
+
+  node_reg_tool_results:
+    Chức năng: "Bộ tiếp nhận kết quả Tool, xử lý và trả về dữ liệu kết quả từ các công cụ ngoại vi (Ví dụ: Tìm kiếm Google, cào dữ liệu web) cho Blog Writer."
+    triggers: "Được kích hoạt khi Blog Writer phát tín hiệu gọi Tool bên ngoài."
+    outputs: "Quay ngược tín hiệu dữ liệu ngữ cảnh trả về cho chính Blog Writer."
+    tech_stack: "ToolNode (LangGraph), Tool Output Parser."
+    Từ_khóa_và_Thư_viện: "ToolNode (LangGraph), Tool Output Parser, External API Integrator"
+
+  node_reg_blog_edited:
+    Chức năng: "Agent Biên tập & Tối ưu, tinh chỉnh văn phong, kiểm tra sửa lỗi chính tả và chèn mật độ từ khóa SEO chuẩn chỉnh từ bản thô."
+    triggers: "Nhận bài viết thô hoàn tất từ Blog Writer chuyển giao."
+    outputs: "Chuyển giao bài viết đã biên tập sang bộ kiểm định Validator."
+    tech_stack: "Copyeditor Agent, SEO Optimization Framework."
+    Từ_khóa_và_Thư_viện: "Copyeditor Agent, SEO Optimization Framework"
+
+  node_reg_validator:
+    Chức năng: "Bộ kiểm định chất lượng (Gate Kiểm Duyệt), đóng vai trò QA đánh giá xem bài viết đạt chuẩn không. Nếu lỗi bắt viết lại tại Writer để tạo vòng lặp tự sửa lỗi."
+    triggers: "Nhận sản phẩm bài viết hoàn chỉnh từ Blog Edited."
+    outputs: "Bắt viết lại tại Blog Writer kèm lý do lỗi, hoặc cho phép thông qua sang Interrupt Sync."
+    tech_stack: "Agent-in-the-loop Validation, Self-Correction Loop."
+    Từ_khóa_và_Thư_viện: "Human-in-the-loop / Agent-in-the-loop Validation, Quality Assurance Gate, Self-Correction Loop"
+
+
+  # ---------------------------------------------------------------------------
+  # NHÓM 6: TẦNG TRA CỨU NHANH & CHAT NHẸ (LIGHTWEIGHT CHAT & QA)
+  # Nhiệm vụ: Xử lý các tác vụ không thuộc mạch Marketing chuyên sâu để tối ưu chi phí và độ trễ.
+  # ---------------------------------------------------------------------------
+  node_reg_lightweight_chat:
+    Chức năng: "Mạch Chat thông thường, xử lý các câu chào hỏi, hội thoại xã giao đơn giản (Chit-chat) nhanh chóng mà không cần gọi đến các Agent Marketing đắt đỏ."
+    triggers: "Bộ não Policy Engine chuyển hướng lối tắt khi Intent xác định là xã giao."
+    outputs: "Phóng thẳng dữ liệu phản hồi đích về cho Finalizer."
+    tech_stack: "Small Talk Handler, Low-latency LLM Config."
+    Từ_khóa_và_Thư_viện: "Small Talk Handler, Low-latency Chat, Cost-efficient LLM call"
+
+  node_reg_response_resolver:
+    Chức năng: "Bộ phân giải câu hỏi, định hướng và biến đổi câu hỏi của user xem cần tra cứu nhắm vào vùng tài liệu/kho tri thức nào."
+    triggers: "Policy Engine chuyển hướng khi nhận diện Intent thuộc nhóm hỏi đáp (QA)."
+    outputs: "Kích hoạt mạch QA Retriever hoặc mạch QA Response."
+    tech_stack: "Query Transformation, Vector Space Router."
+    Từ_khóa_và_Thư_viện: "Query Transformation, Question Router"
+
+  node_reg_qa_retriever:
+    Chức năng: "Bộ truy xuất dữ liệu RAG, thực hiện tìm kiếm ngữ nghĩa và bốc tách các đoạn văn bản có liên quan nhất từ Vector Database."
+    triggers: "Nhận lệnh định hướng phân giải từ Response Resolver."
+    outputs: "Đẩy toàn bộ các đoạn văn bản bốc được sang cho QA Response."
+    tech_stack: "Vector DB (Chroma/Qdrant/Pinecone), Similarity Search."
+    Từ_khóa_và_Thư_viện: "RAG (Retrieval-Augmented Generation), Vector DB (Chroma, Qdrant, Pinecone), Similarity Search"
+
+  node_reg_qa_response:
+    Chức năng: "Bộ tổng hợp câu trả lời RAG, nhận ngữ cảnh văn bản thô từ bộ Retriever để viết câu trả lời chính xác, đáng tin cậy và có dẫn nguồn minh bạch."
+    triggers: "Nhận bối cảnh từ QA Retriever hoặc lệnh trực tiếp từ Response Resolver."
+    outputs: "Đẩy cấu trúc câu trả lời hoàn thiện về cho Finalizer."
+    tech_stack: "Context-grounded Generation, Fact-checking Agent."
+    Từ_khóa_và_Thư_viện: "Context-grounded Generation, Fact-checking LLM, Citations Handler"
+
+
+  # ---------------------------------------------------------------------------
+  # NHÓM 7: TẦNG ĐỒNG BỘ, TỔNG HỢP VÀ LƯU TRỮ (AGGREGATION & PERSISTENCE)
+  # Nhiệm vụ: Gom góp tín hiệu từ các nhánh song song, cắt gọt tối ưu bộ nhớ và ghi dữ liệu vào hệ thống.
+  # ---------------------------------------------------------------------------
+  node_reg_interrupt_sync:
+    Chức năng: "Bộ đồng bộ ngắt mạch, nơi hội quân thu thập dữ liệu của các nhánh chạy song song (Ads, Email, Blog) đổ về; tích hợp cơ chế cổng dừng duyệt tay (Human Review)."
+    triggers: "Nhận tín hiệu kết thúc từ các Node vệ tinh Ads, Email hoặc Validator hoàn tất."
+    outputs: "Nếu phát sinh lỗi đẩy vào DLQ. Nếu đồng bộ thành công gom toàn bộ payload đưa sang Aggregator."
+    tech_stack: "Synchronization Barrier, LangGraph Interrupt, Wait/Resume Pattern."
+    Từ_khóa_và_Thư_viện: "LangGraph Interrupt, Synchronization Barrier, Wait/Resume Pattern"
+
+  node_reg_aggregator:
+    Chức năng: "Bộ tổng hợp dữ liệu, đóng gói và gom tất cả các sản phẩm nội dung đơn lẻ từ nhiều Agent vệ tinh thành một báo cáo chiến dịch duy nhất."
+    triggers: "Nhận dòng dữ liệu sạch đồng bộ từ Interrupt Sync."
+    outputs: "Chuyển giao gói dữ liệu tổng hợp sang Clipped Context."
+    tech_stack: "Data Aggregator, Payload Merger."
+    Từ_khóa_và_Thư_viện: "Data Aggregator, Payload Merger"
+
+  node_reg_clipped_context:
+    Chức năng: "Bộ cắt gọt ngữ cảnh, rà soát Bus và xén bớt dữ liệu trùng lặp để tối ưu hóa kích thước cửa sổ Token bộ nhớ cho các bước xử lý sau."
+    triggers: "Nhận gói dữ liệu thô từ Aggregator."
+    outputs: "Chuyển dữ liệu đã tối ưu hóa dung lượng sang Final Result."
+    tech_stack: "Context Trimming, Token Window Management."
+    Từ_khóa_và_Thư_viện: "Context Trimming, Token Window Management, Token Counter"
+
+  node_reg_final_result:
+    Chức năng: "Bộ định hình kết quả cuối, chuẩn hóa cấu trúc định dạng toàn bộ Schema dữ liệu đầu ra tối hậu theo đúng giao thức cam kết hệ thống."
+    triggers: "Nhận dữ liệu đã cắt gọt dung lượng từ Clipped Context."
+    outputs: "Đẩy kết quả sạch cấu trúc sang Persistence Engine."
+    tech_stack: "Final Response Factory, Output Formatting."
+    Từ_khóa_và_Thư_viện: "Final Response Factory, Output Formatting"
+
+  node_reg_persistence_engine:
+    Chức năng: "Bộ lưu trữ DB, thực thi các câu lệnh I/O để ghi lưu toàn bộ kết quả sạch, chiến dịch và trạng thái Bus xuống Database hệ thống bền vững (Django/PostgreSQL)."
+    triggers: "Nhận cấu hình dữ liệu chuẩn hóa từ Final Result."
+    outputs: "Phát tín hiệu lưu trữ hoàn tất database sang cho Finalizer."
+    tech_stack: "Database Persistence, Django ORM, Write-heavy Handler."
+    Từ_khóa_và_Thư_viện: "Database Persistence, ORM (Django/SQLAlchemy), Write-heavy Handler"
+
+
+  # ---------------------------------------------------------------------------
+  # NHÓM 8: TẦNG KẾT THÚC, UI & KIỂM TOÁN (OUTFLOW & AUDITING)
+  # Nhiệm vụ: Chọn giao diện hiển thị phù hợp, ghi nhật ký bảo mật hệ thống và kết thúc chu kỳ mạch.
+  # ---------------------------------------------------------------------------
+  node_reg_finalizer:
+    Chức năng: "Trạm tập kết cuối cùng, điểm hội quân chung của cả 3 luồng mạch (Chat nhẹ, QA RAG, và Mạch Marketing) trước khi đóng luồng request."
+    triggers: "Nhận tín hiệu kết thúc từ các ngõ Lightweight Chat, QA Response hoặc Persistence Engine."
+    outputs: "Chuyển tiếp luồng hạ cánh sang UI Selector."
+    tech_stack: "Final Convergence Node, Workflow Ingestion."
+    Từ_khóa_và_Thư_viện: "Final Convergence Node, Workflow Ingestion"
+
+  node_reg_ui_selector:
+    Chức năng: "Bộ lựa chọn giao diện, quyết định kiểu khối giao diện hiển thị phù hợp nhất ở phía Client (Dạng Chatbot, dạng Form điền, hay bảng Dashboard)."
+    triggers: "Nhận tín hiệu hạ cánh từ Finalizer."
+    outputs: "Đẩy cấu hình giao diện hiển thị kèm payload kết quả sang Audit Logger."
+    tech_stack: "Dynamic UI Rendering, Component Selector."
+    Từ_khóa_và_Thư_viện: "Dynamic UI Rendering, Component Selector"
+
+  node_reg_audit_logger:
+    Chức năng: "Nhật ký kiểm toán bảo mật, ghi lại toàn bộ vết lịch sử định tuyến và hành vi của các Node phục vụ mục đích tuân thủ bảo an hệ thống."
+    triggers: "Nhận tín hiệu sau khi UI Selector xác định cấu hình xong giao diện."
+    outputs: "Đẩy luồng giám sát sang Node Observer."
+    tech_stack: "Audit Trail, Structured Logging, Security Compliance."
+    Từ_khóa_và_Thư_viện: "Audit Trail, Structured Logging, Security Compliance Logger"
+
+  node_reg_observer:
+    Chức năng: "Mắt thần giám sát, Node chốt chặn cuối cùng thu thập tổng số liệu Telemetry tổng thể (Tổng thời gian chạy toàn mạch, tổng tiền chi phí USD tiêu thụ) trước khi ra cổng."
+    triggers: "Kích hoạt ngay sau khi Audit Logger hoàn tất ghi chép nhật ký hệ thống."
+    outputs: "Phóng tín hiệu trực tiếp kết thúc hoàn toàn luồng đồ thị tại cổng kết quả cuối cùng __end__."
+    tech_stack: "System Observer, Telemetry Aggregator, LangSmith Analytics."
+    Từ_khóa_và_Thư_viện: "System Observer, Telemetry Aggregator, LangSmith Analytics"

@@ -1,0 +1,49 @@
+[
+    {
+        "query": "Nghỉ thai sản bao lâu?",
+        "expected": "hr_003",
+        "got": [
+            "hr_003"
+        ],
+        "source": "fusion",
+        "is_hit": true
+    },
+    {
+        "query": "Mật khẩu cần gì?",
+        "expected": "it_002",
+        "got": [
+            "it_002"
+        ],
+        "source": "fusion",
+        "is_hit": true
+    },
+    {
+        "query": "Có được dùng email công ty đăng ký Shopee không?",
+        "expected": "it_004",
+        "got": [
+            "it_004"
+        ],
+        "source": "fusion",
+        "is_hit": true
+    },
+    {
+        "query": "Nghỉ việc có phải trả thiết bị không?",
+        "expected": "hr_008",
+        "got": [
+            "hr_008",
+            "hr_001"
+        ],
+        "source": "fusion",
+        "is_hit": true
+    },
+    {
+        "query": "Remote work mỗi tuần mấy ngày?",
+        "expected": "hr_010",
+        "got": [
+            "hr_011",
+            "hr_010"
+        ],
+        "source": "fusion",
+        "is_hit": true
+    }
+]
