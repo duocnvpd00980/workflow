@@ -1,246 +1,120 @@
-# chat/models.py
-
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
+from typing import Optional
 
-from django.conf import settings
-from django.db import models
-from django.utils import timezone
-
-
-class ConversationQuerySet(models.QuerySet):
-    def active(self):
-        return self.filter(is_archived=False)
-
-    def for_user(self, user):
-        return self.filter(user=user)
+from sqlalchemy import (
+    UUID, Boolean, DateTime, ForeignKey,
+    Index, Integer, String, Text, UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
 
 
-class Conversation(models.Model):
-    """
-    One conversation/thread per chat session.
+class Base(DeclarativeBase):
+    pass
 
-    LangGraph thread_id:
-        conv_<conversation.id>
 
-    Example:
-        conv_0c5a89d2-0e22-4f9d-a7c7-f9c26b4d4e91
-    """
-
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False,
+# ── Conversation ──────────────────────────────────────────
+class Conversation(Base):
+    __tablename__ = "conversation"
+    __table_args__ = (
+        Index("ix_conv_last_msg", "last_message_at"),
+        Index("ix_conv_created",  "created_at"),
     )
 
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="chat_conversations",
-    )
+    id:              Mapped[uuid.UUID]     = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    title:           Mapped[str]           = mapped_column(String(255), default="")
+    system_prompt:   Mapped[str]           = mapped_column(Text, default="")
+    is_archived:     Mapped[bool]          = mapped_column(Boolean, default=False)
+    metadata_:       Mapped[dict]          = mapped_column("metadata", JSONB, default=dict)
+    created_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
+    updated_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+    last_message_at: Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
 
-    title = models.CharField(
-        max_length=255,
-        blank=True,
-        default="",
-    )
-
-    system_prompt = models.TextField(
-        blank=True,
-        default="",
-    )
-
-    is_archived = models.BooleanField(
-        default=False,
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True,
-    )
-
-    last_message_at = models.DateTimeField(
-        default=timezone.now,
-    )
-
-    metadata = models.JSONField(
-        default=dict,
-        blank=True,
-    )
-
-    objects = ConversationQuerySet.as_manager()
-
-    class Meta:
-        ordering = ["-last_message_at"]
-        indexes = [
-            models.Index(fields=["user", "-last_message_at"]),
-            models.Index(fields=["created_at"]),
-        ]
-
-    def __str__(self):
-        return self.title or f"Conversation {self.id}"
+    messages: Mapped[list[Message]]           = relationship(back_populates="conversation", cascade="all, delete-orphan")
+    memories: Mapped[list[ConversationMemory]]= relationship(back_populates="conversation", cascade="all, delete-orphan")
 
     @property
     def thread_id(self) -> str:
         return f"conv_{self.id}"
 
-    def touch(self):
-        self.last_message_at = timezone.now()
-        self.save(update_fields=["last_message_at", "updated_at"])
+    def __repr__(self) -> str:
+        return self.title or f"Conversation {self.id}"
 
 
-class Message(models.Model):
-    """
-    Immutable message timeline.
-
-    UI should render from this table,
-    NOT from LangGraph snapshots.
-    """
-
-    class Role(models.TextChoices):
-        USER = "user", "User"
-        ASSISTANT = "assistant", "Assistant"
-        SYSTEM = "system", "System"
-        TOOL = "tool", "Tool"
-
-    class Status(models.TextChoices):
-        PENDING = "pending", "Pending"
-        STREAMING = "streaming", "Streaming"
-        COMPLETED = "completed", "Completed"
-        ERROR = "error", "Error"
-        INTERRUPTED = "interrupted", "Interrupted"
-
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False,
+# ── Message ───────────────────────────────────────────────
+class Message(Base):
+    __tablename__ = "message"
+    __table_args__ = (
+        Index("ix_msg_conv_created", "conversation_id", "created_at"),
+        Index("ix_msg_role",         "role"),
+        Index("ix_msg_status",       "status"),
     )
 
-    conversation = models.ForeignKey(
-        Conversation,
-        on_delete=models.CASCADE,
-        related_name="messages",
-    )
+    id:              Mapped[uuid.UUID]     = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    conversation_id: Mapped[uuid.UUID]     = mapped_column(ForeignKey("conversation.id", ondelete="CASCADE"))
+    role:            Mapped[str]           = mapped_column(String(20))
+    status:          Mapped[str]           = mapped_column(String(20), default="completed")
+    content:         Mapped[str]           = mapped_column(Text, default="")
+    html:            Mapped[str]           = mapped_column(Text, default="")
+    node_name:       Mapped[str]           = mapped_column(String(100), default="")
+    token_input:     Mapped[int]           = mapped_column(Integer, default=0)
+    token_output:    Mapped[int]           = mapped_column(Integer, default=0)
+    model_name:      Mapped[str]           = mapped_column(String(100), default="")
+    error_message:   Mapped[str]           = mapped_column(Text, default="")
+    metadata_:       Mapped[dict]          = mapped_column("metadata", JSONB, default=dict)
+    created_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
+    updated_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    role = models.CharField(
-        max_length=20,
-        choices=Role.choices,
-    )
+    conversation: Mapped[Conversation] = relationship(back_populates="messages")
 
-    status = models.CharField(
-        max_length=20,
-        choices=Status.choices,
-        default=Status.COMPLETED,
-    )
-
-    content = models.TextField(
-        blank=True,
-        default="",
-    )
-
-    html = models.TextField(
-        blank=True,
-        default="",
-    )
-
-    node_name = models.CharField(
-        max_length=100,
-        blank=True,
-        default="",
-    )
-
-    token_input = models.PositiveIntegerField(
-        default=0,
-    )
-
-    token_output = models.PositiveIntegerField(
-        default=0,
-    )
-
-    model_name = models.CharField(
-        max_length=100,
-        blank=True,
-        default="",
-    )
-
-    error_message = models.TextField(
-        blank=True,
-        default="",
-    )
-
-    metadata = models.JSONField(
-        default=dict,
-        blank=True,
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True,
-    )
-
-    class Meta:
-        ordering = ["created_at"]
-        indexes = [
-            models.Index(fields=["conversation", "created_at"]),
-            models.Index(fields=["role"]),
-            models.Index(fields=["status"]),
-        ]
-
-    def __str__(self):
+    def __repr__(self) -> str:
         return f"{self.role} • {self.created_at:%Y-%m-%d %H:%M:%S}"
 
 
-class ConversationMemory(models.Model):
-    """
-    Optional long-term memory layer.
-
-    Useful for:
-    - user preferences
-    - summaries
-    - extracted facts
-    - embeddings
-    """
-
-    id = models.UUIDField(
-        primary_key=True,
-        default=uuid.uuid4,
-        editable=False,
+# ── ConversationMemory ────────────────────────────────────
+class ConversationMemory(Base):
+    __tablename__ = "conversation_memory"
+    __table_args__ = (
+        UniqueConstraint("conversation_id", "key"),
+        Index("ix_memory_conv_key", "conversation_id", "key"),
     )
 
-    conversation = models.ForeignKey(
-        Conversation,
-        on_delete=models.CASCADE,
-        related_name="memories",
-    )
+    id:              Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
+    conversation_id: Mapped[uuid.UUID]  = mapped_column(ForeignKey("conversation.id", ondelete="CASCADE"))
+    key:             Mapped[str]        = mapped_column(String(255))
+    value:           Mapped[dict]       = mapped_column(JSONB, default=dict)
+    created_at:      Mapped[datetime]   = mapped_column(DateTime, server_default=func.now())
+    updated_at:      Mapped[datetime]   = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
-    key = models.CharField(
-        max_length=255,
-    )
+    conversation: Mapped[Conversation] = relationship(back_populates="memories")
 
-    value = models.JSONField(
-        default=dict,
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True,
-    )
-
-    class Meta:
-        unique_together = ("conversation", "key")
-        indexes = [
-            models.Index(fields=["conversation", "key"]),
-        ]
-
-    def __str__(self):
+    def __repr__(self) -> str:
         return self.key
+
+
+# ── DocumentSource ────────────────────────────────────────
+class DocumentSource(Base):
+    __tablename__ = "document_source"
+    __table_args__ = (
+        Index("ix_doc_status",     "status"),
+        Index("ix_doc_created_at", "created_at"),
+    )
+
+    id:            Mapped[int]              = mapped_column(Integer, primary_key=True)
+    title:         Mapped[str]              = mapped_column(String(512))
+    file_path:     Mapped[Optional[str]]    = mapped_column(String(1024), nullable=True)
+    status:        Mapped[str]              = mapped_column(String(32), default="pending")
+    chunk_count:   Mapped[int]              = mapped_column(Integer, default=0)
+    error_message: Mapped[Optional[str]]    = mapped_column(Text, nullable=True)
+    processed_at:  Mapped[Optional[datetime]]= mapped_column(DateTime, nullable=True)
+    created_at:    Mapped[datetime]         = mapped_column(DateTime, server_default=func.now())
+    updated_at:    Mapped[datetime]         = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    @property
+    def extension(self) -> str:
+        from pathlib import Path
+        return Path(self.file_path).suffix.lstrip(".") if self.file_path else "unknown"
