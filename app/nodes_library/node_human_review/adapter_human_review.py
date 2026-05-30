@@ -5,9 +5,9 @@ import logging
 from langchain_core.runnables import RunnableConfig
 from langgraph.types import interrupt
 
-from agent_os.system.bus.main_bus import MainBus
-from agent_os.system.bus.registry import BusRegistry
-from agent_os.system.bus.protocol import StandardFrame, BodyFrame
+from app.core.main_bus import MainBus
+from app.core.registry  import BusRegistry
+from app.core.protocol  import StandardFrame, BodyFrame
 
 log = logging.getLogger(__name__)
 

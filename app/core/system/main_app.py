@@ -4,9 +4,9 @@ import logging
 import traceback  # Thêm vào để debug chi tiết
 
 from langchain_core.callbacks import AsyncCallbackHandler
-from agent_os.system.breach import Breach
-from agent_os.system.law import Law
-from agent_os.system.watchdog import run_guarded
+from .breach import Breach
+from .law import Law
+from .watchdog import run_guarded
 
 log = logging.getLogger("agent_os")
 

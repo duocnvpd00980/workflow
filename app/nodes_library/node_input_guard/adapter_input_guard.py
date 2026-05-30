@@ -7,15 +7,15 @@ BUSINESS INTENT
 =======================================================================
 """
 
-from agent_os.nodes_library.node_input_guard.input_guard_protocol import (
+from app.nodes_library.node_input_guard.input_guard_protocol import (
     InputGuardOutput,
 )
-from agent_os.nodes_library.node_input_guard.input_guard_service import (
+from app.nodes_library.node_input_guard.input_guard_service import (
     InputGuardService,
 )
-from agent_os.system.bus.main_bus import MainBus
-from agent_os.system.bus.protocol import BodyFrame, StandardFrame
-from agent_os.system.bus.registry import BusRegistry
+from app.core.main_bus import MainBus
+from app.core.protocol  import BodyFrame, StandardFrame
+from app.core.registry  import BusRegistry
 
 
 async def node_input_guard(state: MainBus):

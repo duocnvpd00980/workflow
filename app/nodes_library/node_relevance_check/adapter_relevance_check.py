@@ -1,7 +1,7 @@
 from langchain_core.runnables import RunnableConfig
-from agent_os.system.bus.main_bus import MainBus
-from agent_os.system.bus.registry import BusRegistry
-from agent_os.system.bus.protocol import StandardFrame, BodyFrame
+from app.core.main_bus import MainBus
+from app.core.registry  import BusRegistry
+from app.core.protocol  import StandardFrame, BodyFrame
 
 # Threshold cho RRF score (khác cosine similarity).
 # RRF score = kết hợp thứ hạng BM25 + FAISS, range điển hình 0.01-0.05.

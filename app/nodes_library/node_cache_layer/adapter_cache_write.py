@@ -4,9 +4,9 @@ import logging
 
 from langchain_core.runnables import RunnableConfig
 
-from agent_os.system.bus.main_bus import MainBus
-from agent_os.system.bus.protocol import BodyFrame, StandardFrame
-from agent_os.system.bus.registry import BusRegistry
+from app.core.main_bus import MainBus
+from app.core.protocol  import BodyFrame, StandardFrame
+from app.core.registry  import BusRegistry
 
 from .cache_layer_service import CacheLayerService
 

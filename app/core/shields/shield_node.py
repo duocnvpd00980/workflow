@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Any, Callable
 from langgraph.errors import GraphInterrupt
 from langgraph.types import RetryPolicy
-from agent_os.system.shields.run_shielded import shielded
+from .run_shielded import shielded
 
 
 def _abort(node_id: str, reason: str) -> dict:

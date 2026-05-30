@@ -4,7 +4,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 from pydantic import BaseModel
-from app.core.config import get_settings
+from app.config import get_settings
 
 _S = get_settings()
 _OLLAMA = _S.ollama_base_url

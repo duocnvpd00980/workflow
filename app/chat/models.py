@@ -8,7 +8,7 @@ from sqlalchemy import (
     UUID, Boolean, DateTime, ForeignKey,
     Index, Integer, String, Text, UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -29,7 +29,7 @@ class Conversation(Base):
     title:           Mapped[str]           = mapped_column(String(255), default="")
     system_prompt:   Mapped[str]           = mapped_column(Text, default="")
     is_archived:     Mapped[bool]          = mapped_column(Boolean, default=False)
-    metadata_:       Mapped[dict]          = mapped_column("metadata", JSONB, default=dict)
+    metadata_:       Mapped[dict]          = mapped_column("metadata", JSON, default=dict)
     created_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
     updated_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
     last_message_at: Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
@@ -65,7 +65,7 @@ class Message(Base):
     token_output:    Mapped[int]           = mapped_column(Integer, default=0)
     model_name:      Mapped[str]           = mapped_column(String(100), default="")
     error_message:   Mapped[str]           = mapped_column(Text, default="")
-    metadata_:       Mapped[dict]          = mapped_column("metadata", JSONB, default=dict)
+    metadata_:       Mapped[dict]          = mapped_column("metadata", JSON, default=dict)
     created_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now())
     updated_at:      Mapped[datetime]      = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
@@ -86,7 +86,7 @@ class ConversationMemory(Base):
     id:              Mapped[uuid.UUID]  = mapped_column(UUID, primary_key=True, default=uuid.uuid4)
     conversation_id: Mapped[uuid.UUID]  = mapped_column(ForeignKey("conversation.id", ondelete="CASCADE"))
     key:             Mapped[str]        = mapped_column(String(255))
-    value:           Mapped[dict]       = mapped_column(JSONB, default=dict)
+    value:           Mapped[dict]       = mapped_column(JSON, default=dict)
     created_at:      Mapped[datetime]   = mapped_column(DateTime, server_default=func.now())
     updated_at:      Mapped[datetime]   = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 

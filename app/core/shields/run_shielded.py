@@ -20,17 +20,17 @@ from langchain_core.runnables import (
     RunnableConfig,
 )
 
-from agent_os.system.bus.protocol import (
+from app.core.protocol import (
     StandardFrame,
     Telemetry,
 )
 
-from agent_os.system.shields.shield_faults import (
+from .shield_faults import (
     PipelineError,
     ShieldFault,
 )
 
-from agent_os.system.shields.shield_runtime import (
+from .shield_runtime import (
     ShieldRuntime,
 )
 

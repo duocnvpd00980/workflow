@@ -1,8 +1,8 @@
 from __future__ import annotations
 from langchain_core.runnables import RunnableConfig
-from agent_os.system.bus.main_bus import MainBus
-from agent_os.system.bus.registry import BusRegistry
-from agent_os.system.bus.protocol import StandardFrame, BodyFrame
+from app.core.main_bus import MainBus
+from app.core.registry  import BusRegistry
+from app.core.protocol  import StandardFrame, BodyFrame
 from .cache_layer_service import CacheLayerService
 
 _cache = CacheLayerService(ttl_hours=24, max_entries=10000)

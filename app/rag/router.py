@@ -2,29 +2,43 @@
 from __future__ import annotations
 
 import logging
+import tempfile
 import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.container import get_ctx, Services
-from app.db.database import get_db
-from app.db.models import DocumentSource
+from app.container import get_ctx, Services
+from app.db import get_db
+from app.rag.schemas import DocOut, SearchOut, UploadOut
+from .models import DocumentSource
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/rag", tags=["rag"])
 
 
-# ── Endpoints ─────────────────────────────────────────────
 @router.get("/", response_model=list[DocOut])
 async def list_docs(db: AsyncSession = Depends(get_db)):
-    docs = await db.execute(select(DocumentSource).order_by(DocumentSource.created_at.desc()).limit(100))
-    return [DocOut(
-        id=d.id, title=d.title, status=d.status,
-        chunk_count=d.chunk_count,
-        file_size=f"{d.file_size // 1024} KB" if d.file_size else None,
-        created_at=d.created_at.isoformat(),
-    ) for d in docs.scalars()]
+    rows = await db.execute(
+        select(DocumentSource).order_by(DocumentSource.created_at.desc()).limit(100)
+    )
+    return [
+        DocOut(
+            id=d.id,
+            title=d.title,
+            status=d.status,
+            chunk_count=d.chunk_count,
+            file_size=(
+                f"{Path(d.file_path).stat().st_size // 1024} KB"
+                if d.file_path and Path(d.file_path).exists()
+                else None
+            ),
+            created_at=d.created_at.isoformat(),
+        )
+        for d in rows.scalars()
+    ]
 
 
 @router.post("/upload/", response_model=UploadOut, status_code=201)
@@ -37,27 +51,42 @@ async def upload(
     if not title.strip():
         raise HTTPException(400, "Tiêu đề trống.")
 
+    suffix = Path(file.filename).suffix if file.filename else ""
+    content = await file.read()
+
     doc = DocumentSource(title=title.strip(), status="processing")
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
 
-    safe_name = f"{uuid.uuid4().hex}_{file.filename}"
-    content = await file.read()
-
+    # Lưu tạm ra disk rồi gọi load_file
     try:
-        docs = svc.loader.load_bytes(content, filename=safe_name)
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=suffix, prefix=f"{uuid.uuid4().hex}_"
+        ) as tmp:
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        docs = svc.loader.load_file(tmp_path)
+        Path(tmp_path).unlink(missing_ok=True)  # xóa file tạm
+
         if not docs:
             raise ValueError("Không trích xuất được nội dung.")
 
         await svc.rag.add(docs[0].text, **docs[0].metadata)
 
-        doc.status, doc.chunk_count = "completed", len(docs)
+        doc.status = "completed"
+        doc.chunk_count = len(docs)
         await db.commit()
-        return UploadOut(id=doc.id, title=doc.title, status="completed", message="Đã ingest thành công.")
+        return UploadOut(
+            id=doc.id, title=doc.title,
+            status="completed", message="Đã ingest thành công.",
+        )
 
     except Exception as e:
-        doc.status, doc.error_message = "failed", str(e)
+        Path(tmp_path).unlink(missing_ok=True) if "tmp_path" in locals() else None
+        doc.status = "failed"
+        doc.error_message = str(e)
         await db.commit()
         logger.error("[upload] %s: %s", doc.id, e)
         raise HTTPException(400, f"Lỗi: {e}")
@@ -75,7 +104,10 @@ async def search(
     result = await svc.rag.search(query.strip(), top_k=top_k)
     return SearchOut(
         query=result.query,
-        results=[{"text": c.text, "score": c.score, "meta": c.meta} for c in result.chunks],
+        results=[
+            {"text": c.text, "score": c.score, "meta": c.meta}
+            for c in result.chunks
+        ],
         source=result.source,
     )
 

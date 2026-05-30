@@ -13,8 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.sql import func
 
-from app.core.container import get_ctx
-from app.db.models import Conversation, Message
+from app.container import get_ctx
+from app.chat.models import Conversation, Message
 from app.nodes.mainboard import get_mainboard
 from app.core.guards import stream_guarded, safe_get_snapshot
 

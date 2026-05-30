@@ -1,7 +1,7 @@
 from langchain_core.tools import tool
 import logging
 
-from agent_os.tools.web_search import web_search_tool
+from app.tools.web_search import web_search_tool
 
 log = logging.getLogger(__name__)
 

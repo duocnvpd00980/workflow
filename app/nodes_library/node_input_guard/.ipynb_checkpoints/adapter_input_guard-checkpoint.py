@@ -1,11 +1,11 @@
 from langchain_core.runnables import RunnableConfig
 
 
-from agent_os.nodes_library.node_input_guard.input_guard_service import InputGuardService
-from agent_os.system.bus.main_bus import MainBus
-from agent_os.system.bus.registry import BusRegistry
+from app.nodes_library.node_input_guard.input_guard_service import InputGuardService
+from app.core.main_bus import MainBus
+from app.core.registry  import BusRegistry
 
-from agent_os.system.bus.protocol import (
+from app.core.protocol  import (
     StandardFrame,
     BodyFrame,
 )

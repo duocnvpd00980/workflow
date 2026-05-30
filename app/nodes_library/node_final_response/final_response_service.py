@@ -22,7 +22,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from agent_os.system.bus.protocol import BodyFrame
+from app.core.protocol  import BodyFrame
 from .final_response_protocol import (
     ComponentId,
     COMPONENT_REGISTRY,

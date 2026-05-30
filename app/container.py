@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, AsyncGenerator
 from fastapi import FastAPI
 
 if TYPE_CHECKING:
-    from agent_os.rag.rag_service import RAG
-    from agent_os.rag.document_loader_service import DocumentLoader
-    from agent_os.system.runtime.runtime_engine import ModelRegistry
+    from app.rag.service import RAG
+    from app.rag.loader import DocumentLoader
+    from app.core.llm_engine import ModelRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +36,9 @@ def get_ctx() -> Services:
 
 
 async def _bootstrap() -> Services:
-    from agent_os.system.runtime.runtime_engine import build_runtime
-    from agent_os.rag.rag_service import RAG
-    from agent_os.rag.document_loader_service import DocumentLoader
+    from app.core.llm_engine import build_registry
+    from app.rag.service import RAG
+    from app.rag.loader import DocumentLoader
 
     rag, loader = None, None
     try:
@@ -50,7 +50,7 @@ async def _bootstrap() -> Services:
     except Exception:
         logger.exception("[Services] DocumentLoader init failed")
 
-    return Services(registry=build_runtime()["registry"], rag=rag, loader=loader)
+    return Services(registry=build_registry(), rag=rag, loader=loader)
 
 
 @asynccontextmanager

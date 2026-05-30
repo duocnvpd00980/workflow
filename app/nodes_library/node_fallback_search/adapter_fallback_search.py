@@ -1,10 +1,10 @@
 from __future__ import annotations
 import logging
 from langchain_core.runnables import RunnableConfig
-from agent_os.system.bus.main_bus import MainBus
-from agent_os.system.bus.registry import BusRegistry
-from agent_os.system.bus.protocol import StandardFrame, BodyFrame
-from agent_os.tools.tools_registry import web_search_tool
+from app.core.main_bus import MainBus
+from app.core.registry  import BusRegistry
+from app.core.protocol  import StandardFrame, BodyFrame
+from app.tools.tools_registry import web_search_tool
 
 log = logging.getLogger(__name__)
 
