@@ -10,7 +10,8 @@ from .cache_memory_service import CacheMemoryService
 service = CacheMemoryService()
 
 
-from .cache_memory_protocol import CacheMemoryOutput # Import schema mới
+from .cache_memory_protocol import CacheMemoryOutput  # Import schema mới
+
 
 async def node_CACHE_MEMORY(
     state: MainBus,
@@ -22,9 +23,7 @@ async def node_CACHE_MEMORY(
 
     # KHỞI TẠO CHUẨN: Gán tên thuộc tính rõ ràng
     output_data = CacheMemoryOutput(
-        cache_key=cache_key,
-        cache_hit=cached is not None,
-        cached_data=cached
+        cache_key=cache_key, cache_hit=cached is not None, cached_data=cached
     )
 
     # Emit object thay vì dict

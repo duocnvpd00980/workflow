@@ -14,14 +14,11 @@ class RetrievedChunk(BaseModel):
 
 
 class KnowledgeRetrieverOutput(BaseModel):
-
     success: bool = True
 
     query: str = ""
 
-    retrieved_chunks: List[RetrievedChunk] = Field(
-        default_factory=list
-    )
+    retrieved_chunks: List[RetrievedChunk] = Field(default_factory=list)
 
     total_chunks: int = 0
 

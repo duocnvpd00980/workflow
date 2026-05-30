@@ -3,7 +3,7 @@
 CERTIFIED PROTOCOL WORKFLOW: node_shared_state
 =======================================================================
 BUSINESS INTENT
-  Đồng bộ và lưu trữ nội dung đã qua kiểm duyệt của con người vào kho trạng 
+  Đồng bộ và lưu trữ nội dung đã qua kiểm duyệt của con người vào kho trạng
   thái dùng chung, đảm bảo tính nhất quán dữ liệu trước khi kết thúc luồng.
 
 UPSTREAM DEPENDENCY
@@ -18,11 +18,13 @@ WORKFLOW PIPELINE
 =======================================================================
 """
 
-
-
 # Giả lập hàm get_ctx theo tiêu chuẩn Article 1.2
-from agent_os.nodes_library.node_shared_state.shared_state_protocol import SharedStateOutput
-from agent_os.nodes_library.node_shared_state.shared_state_service import SharedStateService
+from agent_os.nodes_library.node_shared_state.shared_state_protocol import (
+    SharedStateOutput,
+)
+from agent_os.nodes_library.node_shared_state.shared_state_service import (
+    SharedStateService,
+)
 from agent_os.system.bus.main_bus import MainBus
 from agent_os.system.bus.protocol import BodyFrame, StandardFrame
 from agent_os.system.bus.registry import BusRegistry
@@ -31,7 +33,9 @@ from agent_os.system.bus.registry import BusRegistry
 async def get_ctx():
     class MockCtx:
         pass
+
     return MockCtx()
+
 
 async def node_shared_state(state: MainBus) -> BodyFrame:
     # ───────────────────────────────────────────────────────────────────
@@ -44,8 +48,8 @@ async def node_shared_state(state: MainBus) -> BodyFrame:
             payload=BodyFrame(
                 status="FAILED",
                 text="Lỗi đồng bộ: Không tìm thấy dữ liệu phê duyệt hợp lệ từ bước kiểm duyệt con người.",
-                error="UPSTREAM_HUMAN_REVIEW_INVALID"
-            )
+                error="UPSTREAM_HUMAN_REVIEW_INVALID",
+            ),
         )
 
     # ───────────────────────────────────────────────────────────────────
@@ -72,8 +76,8 @@ async def node_shared_state(state: MainBus) -> BodyFrame:
             payload=BodyFrame(
                 status="FAILED",
                 text="Đồng bộ trạng thái thất bại do dữ liệu rỗng.",
-                error="STATE_SYNC_EMPTY_PAYLOAD"
-            )
+                error="STATE_SYNC_EMPTY_PAYLOAD",
+            ),
         )
 
     # Ghi nhận thành công, chuyển tiếp văn bản sang node_final_response để xuất xưởng
@@ -83,9 +87,6 @@ async def node_shared_state(state: MainBus) -> BodyFrame:
             status="SUCCESS",
             text=domain_result.persisted_text,
             records=[],
-            state={
-                "synced": True,
-                "updated_keys": domain_result.updated_keys
-            }
-        )
+            state={"synced": True, "updated_keys": domain_result.updated_keys},
+        ),
     )

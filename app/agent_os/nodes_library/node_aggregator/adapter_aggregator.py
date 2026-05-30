@@ -1,6 +1,6 @@
 # ruff: noqa: E501
 from langchain_core.runnables import RunnableConfig
-from types import SimpleNamespace # Thêm để tạo mock object
+from types import SimpleNamespace  # Thêm để tạo mock object
 
 from agent_os.system.bus.main_bus import MainBus
 from agent_os.system.bus.registry import BusRegistry
@@ -54,12 +54,12 @@ async def node_aggregator(
     # =========================================================================
     # STEP 2 — CONTEXT EXTRACTION & DI
     # =========================================================================
-    ctx        = await get_ctx()
+    ctx = await get_ctx()
     # llm_engine = ctx.llm_factory.get_model("default") # Không dùng tới khi mock
 
-    original_query   = state.input_guard.payload.text if state.input_guard else ""
-    agent_output     = evaluator.payload.text
-    user_profile     = _safe_extract_user_profile(state)
+    original_query = state.input_guard.payload.text if state.input_guard else ""
+    agent_output = evaluator.payload.text
+    user_profile = _safe_extract_user_profile(state)
 
     # =========================================================================
     # STEP 3 — PURE DOMAIN EXECUTION (MOCKED)
@@ -69,13 +69,15 @@ async def node_aggregator(
         result = SimpleNamespace(
             final_response=f"Dựa trên yêu cầu của bạn: '{original_query}', kết quả là: {agent_output}",
             summary_of_changes="MOCKED_AGGREGATOR_SUCCESS",
-            metadata={"mocked": True, "status": "bypassed_llm"}
+            metadata={"mocked": True, "status": "bypassed_llm"},
         )
         execution_error = None
 
     except Exception as exc:
-        result          = None
-        execution_error = f"[node_aggregator] Service Error: {type(exc).__name__}: {exc}"
+        result = None
+        execution_error = (
+            f"[node_aggregator] Service Error: {type(exc).__name__}: {exc}"
+        )
 
     # =========================================================================
     # STEP 4 — STATUS NORMALIZATION & BUS EMIT
@@ -106,6 +108,7 @@ async def node_aggregator(
 # =============================================================================
 # PRIVATE HELPERS
 # =============================================================================
+
 
 def _safe_extract_user_profile(state: MainBus) -> dict:
     for slot in ("shared_state", "input_guard"):

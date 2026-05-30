@@ -20,12 +20,8 @@ class InputGuardService:
             match = pattern.search(raw_query)
             if match:
                 return InputGuardOutput(
-                    is_safe=False,
-                    blocked_keyword=match.group(0),
-                    sanitized_text=""
+                    is_safe=False, blocked_keyword=match.group(0), sanitized_text=""
                 )
         return InputGuardOutput(
-            is_safe=True,
-            blocked_keyword=None,
-            sanitized_text=raw_query.strip()
+            is_safe=True, blocked_keyword=None, sanitized_text=raw_query.strip()
         )

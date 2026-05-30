@@ -6,18 +6,23 @@ from typing import List, Dict, Any
 
 
 class HypotheticalDocOutput(BaseModel):
-    hypothetical_text: str = Field(default="Thông tin liên quan đến quy định và chính sách công ty.")
+    hypothetical_text: str = Field(
+        default="Thông tin liên quan đến quy định và chính sách công ty."
+    )
     model_config = ConfigDict(extra="allow")
-    
+
+
 class KnowledgeRequest(BaseModel):
     query: str = Field(..., description="Câu hỏi gốc từ người dùng")
     top_k: int = Field(default=3, description="Số lượng chunk cần lấy")
+
 
 class KnowledgeChunk(BaseModel):
     score: float
     text: str
     parent_text: str
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
 
 class KnowledgeResult(BaseModel):
     query: str

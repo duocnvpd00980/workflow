@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field
 
 
 class ShieldTelemetry(BaseModel):
-
     shield_name: str
 
     model: str

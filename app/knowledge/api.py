@@ -24,6 +24,7 @@ _rag = RAG()
 
 # ── Schemas ─────────────────────────────────────────────────────────────────
 
+
 class DocOut(BaseModel):
     id: int
     title: str
@@ -32,14 +33,17 @@ class DocOut(BaseModel):
     file_size: Optional[str] = None
     created_at: str
 
+
 class UploadOut(BaseModel):
     id: int
     title: str
     status: str
     message: str
 
+
 class ErrorOut(BaseModel):
     detail: str
+
 
 class SearchOut(BaseModel):
     query: str
@@ -49,10 +53,13 @@ class SearchOut(BaseModel):
 
 # ── Endpoints ───────────────────────────────────────────────────────────────
 
+
 @router.get("/", response=List[DocOut], auth=None)
 async def list_docs(request):
     # Sử dụng sync_to_async cho các truy vấn DB trong view async
-    docs = await sync_to_async(list)(DocumentSource.objects.order_by("-created_at")[:100])
+    docs = await sync_to_async(list)(
+        DocumentSource.objects.order_by("-created_at")[:100]
+    )
     return [
         DocOut(
             id=d.id,
@@ -73,14 +80,16 @@ async def upload(request, title: str = Form(...), file: UploadedFile = File(...)
 
     # 1. Tạo object (chưa lưu DB)
     doc = DocumentSource(title=title.strip(), status="processing")
-    
+
     # 2. Lưu record vào DB trước để lấy ID (Bắt buộc dùng sync_to_async)
     await sync_to_async(doc.save)()
-    
+
     # 3. Lưu file (Thao tác này gọi lại .save() của record, cũng là DB)
     safe_filename = f"{uuid.uuid4().hex}_{file.name}"
-    await sync_to_async(doc.file.save)(safe_filename, file, save=False) # save=False để tránh trùng lặp
-    
+    await sync_to_async(doc.file.save)(
+        safe_filename, file, save=False
+    )  # save=False để tránh trùng lặp
+
     try:
         # Ingest (thao tác đọc file local không cần sync_to_async)
         docs = _loader.load_file(doc.file.path)
@@ -118,7 +127,9 @@ async def search(request, query: str = Form(...), top_k: int = Form(3)):
     result = await _rag.search(query.strip(), top_k=top_k)
     return SearchOut(
         query=result.query,
-        results=[{"text": c.text, "score": c.score, "meta": c.meta} for c in result.chunks],
+        results=[
+            {"text": c.text, "score": c.score, "meta": c.meta} for c in result.chunks
+        ],
         source=result.source,
     )
 

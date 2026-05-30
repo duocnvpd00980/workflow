@@ -22,11 +22,11 @@ class Watchdog:
     """
 
     def __init__(self, law: Law = DEFAULT_LAW):
-        self._law        = law
-        self._t0         = time.monotonic()
+        self._law = law
+        self._t0 = time.monotonic()
         self._iterations = 0
-        self._errors     = 0
-        self._timer:     asyncio.Task | None = None
+        self._errors = 0
+        self._timer: asyncio.Task | None = None
 
     # ── Public API ────────────────────────────────────────
     def tick(self) -> None:

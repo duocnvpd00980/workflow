@@ -18,10 +18,11 @@ logger = logging.getLogger(__name__)
 @dataclass
 class LoadedDocument:
     """Thay thế llama_index.Document — chỉ cần text + metadata."""
+
     text: str
     metadata: Dict = field(default_factory=dict)
 
-    
+
 class DocumentLoader:
     """
     Dịch vụ tải tài liệu chuẩn hóa cho RAG ZERO v2.1.
@@ -59,10 +60,12 @@ class DocumentLoader:
             except Exception as exc:
                 last_exc = exc
                 if attempt < self._max_retries - 1:
-                    sleep(2 ** attempt)  # exponential backoff: 1s, 2s, 4s
+                    sleep(2**attempt)  # exponential backoff: 1s, 2s, 4s
                 continue
         else:
-            raise ValueError(f"Không thể tải URL sau {self._max_retries} lần thử: {url}") from last_exc
+            raise ValueError(
+                f"Không thể tải URL sau {self._max_retries} lần thử: {url}"
+            ) from last_exc
 
         extracted = trafilatura.extract(
             downloaded,
@@ -100,7 +103,7 @@ class DocumentLoader:
             from pypdf import PdfReader
         except ImportError:
             raise ImportError("Cài đặt pypdf: pip install pypdf")
-        
+
         reader = PdfReader(str(path))
         texts = []
         for page in reader.pages:
@@ -115,7 +118,7 @@ class DocumentLoader:
             from docx import Document
         except ImportError:
             raise ImportError("Cài đặt python-docx: pip install python-docx")
-        
+
         doc = Document(str(path))
         return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
 
@@ -125,7 +128,7 @@ class DocumentLoader:
             from openpyxl import load_workbook
         except ImportError:
             raise ImportError("Cài đặt openpyxl: pip install openpyxl")
-        
+
         wb = load_workbook(str(path), data_only=True)
         texts = []
         for sheet in wb.worksheets:
@@ -181,16 +184,18 @@ class DocumentLoader:
         if not cleaned:
             raise ValueError(f"Không trích xuất được nội dung từ: {file_path.name}")
 
-        return [LoadedDocument(
-            text=cleaned,
-            metadata={
-                "file_name": file_path.name,
-                "file_extension": file_path.suffix.lower().lstrip("."),
-                "file_size_bytes": file_path.stat().st_size,
-                "absolute_path": str(file_path.resolve()),
-                "document_type": "file",
-            },
-        )]
+        return [
+            LoadedDocument(
+                text=cleaned,
+                metadata={
+                    "file_name": file_path.name,
+                    "file_extension": file_path.suffix.lower().lstrip("."),
+                    "file_size_bytes": file_path.stat().st_size,
+                    "absolute_path": str(file_path.resolve()),
+                    "document_type": "file",
+                },
+            )
+        ]
 
     # ── Directory Loading ─────────────────────────────────────────────────────
 
@@ -202,7 +207,10 @@ class DocumentLoader:
 
     def _iter_files(self, dir_path: Path) -> Iterator[Path]:
         for file_path in dir_path.rglob("*"):
-            if file_path.is_file() and file_path.suffix.lower() in self.SUPPORTED_EXTENSIONS:
+            if (
+                file_path.is_file()
+                and file_path.suffix.lower() in self.SUPPORTED_EXTENSIONS
+            ):
                 yield file_path
 
     def load_directory(self, path: str) -> List[LoadedDocument]:
@@ -212,24 +220,26 @@ class DocumentLoader:
             raise NotADirectoryError(f"Không phải thư mục: {path}")
 
         processed_docs: List[LoadedDocument] = []
-        
+
         for file_path in self._iter_files(dir_path):
             try:
                 self._check_file_size(file_path)
                 raw_text = self._read_file_by_type(file_path)
                 cleaned = self._clean_text(raw_text)
-                
+
                 if cleaned:
-                    processed_docs.append(LoadedDocument(
-                        text=cleaned,
-                        metadata={
-                            "file_name": file_path.name,
-                            "file_extension": file_path.suffix.lower().lstrip("."),
-                            "file_size_bytes": file_path.stat().st_size,
-                            "absolute_path": str(file_path.resolve()),
-                            "document_type": "file",
-                        },
-                    ))
+                    processed_docs.append(
+                        LoadedDocument(
+                            text=cleaned,
+                            metadata={
+                                "file_name": file_path.name,
+                                "file_extension": file_path.suffix.lower().lstrip("."),
+                                "file_size_bytes": file_path.stat().st_size,
+                                "absolute_path": str(file_path.resolve()),
+                                "document_type": "file",
+                            },
+                        )
+                    )
             except Exception as exc:
                 logger.warning("Bỏ qua file lỗi %s: %s", file_path, exc)
                 continue

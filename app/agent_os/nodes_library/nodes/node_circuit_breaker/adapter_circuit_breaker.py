@@ -7,73 +7,35 @@ from agent_os.system.bus.protocol import (
 )
 
 
-async def node_CIRCUIT_BREAKER(
-    state: MainBus
-) -> dict:
+async def node_CIRCUIT_BREAKER(state: MainBus) -> dict:
 
     mock_cb_data = {
-
         "is_open": False,
-
         "failure_count": 0,
-
         "threshold": 5,
-
         "blocked_node": None,
-
-        "internal_debug_log":
-        "All systems nominal",
+        "internal_debug_log": "All systems nominal",
     }
 
     return StandardFrame.emit(
-
         registry_key=BusRegistry.CB,
-
         payload=BodyFrame(
-
-            status=(
-
-                "FAILED"
-
-                if mock_cb_data["is_open"]
-
-                else "SUCCESS"
-            ),
-
-            text=
-            "Circuit breaker evaluation completed",
-
+            status=("FAILED" if mock_cb_data["is_open"] else "SUCCESS"),
+            text="Circuit breaker evaluation completed",
             state={
-
-                "is_open":
-                mock_cb_data["is_open"],
-
-                "blocked_node":
-                mock_cb_data["blocked_node"],
+                "is_open": mock_cb_data["is_open"],
+                "blocked_node": mock_cb_data["blocked_node"],
             },
-
             metrics={
-
-                "failure_count":
-                mock_cb_data["failure_count"],
-
-                "threshold":
-                mock_cb_data["threshold"],
+                "failure_count": mock_cb_data["failure_count"],
+                "threshold": mock_cb_data["threshold"],
             },
-
             context={
-
-                "debug_log":
-                mock_cb_data["internal_debug_log"],
+                "debug_log": mock_cb_data["internal_debug_log"],
             },
-
             error=(
-
-                "Circuit breaker is OPEN. "
-                "System is blocked."
-
+                "Circuit breaker is OPEN. System is blocked."
                 if mock_cb_data["is_open"]
-
                 else None
             ),
         ),

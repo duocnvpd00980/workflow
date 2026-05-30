@@ -1,9 +1,11 @@
 from agent_os.nodes_library.node_blog_editor.blog_editor_protocol import WriterOutput
+
 # WriterParser tạm thời không dùng vì ta dùng khởi tạo trực tiếp để lọc rác nhanh
 from agent_os.system.bus.main_bus import MainBus
 from agent_os.system.bus.registry import BusRegistry
 from agent_os.system.bus.protocol import StandardFrame
 from langchain_core.runnables import RunnableConfig
+
 
 async def node_BLOG_EDITOR(state: MainBus, config: RunnableConfig) -> dict:
     """
@@ -23,7 +25,7 @@ async def node_BLOG_EDITOR(state: MainBus, config: RunnableConfig) -> dict:
         "draft_content": "Đây là nội dung bài blog chuẩn SEO về bất động sản Đà Nẵng...",
         "pending_tool": False,
         "tool_query": None,
-        "garbage_data": "Thông tin thừa này sẽ bị loại bỏ bởi ConfigDict"
+        "garbage_data": "Thông tin thừa này sẽ bị loại bỏ bởi ConfigDict",
     }
 
     # 2. Ép kiểu và lọc rác qua WriterOutput
@@ -32,7 +34,4 @@ async def node_BLOG_EDITOR(state: MainBus, config: RunnableConfig) -> dict:
 
     # 3. Trả về: Đóng gói vào StandardFrame và dump dictionary
     # BusRegistry.BW tương ứng với reg_blog_writer/editor
-    return StandardFrame.emit(
-        BusRegistry.BW, 
-        safe_output.model_dump()
-    )
+    return StandardFrame.emit(BusRegistry.BW, safe_output.model_dump())

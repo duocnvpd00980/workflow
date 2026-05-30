@@ -4,12 +4,13 @@ from agent_os.system.bus.main_bus import MainBus
 from agent_os.system.bus.registry import BusRegistry
 from agent_os.system.bus.protocol import StandardFrame
 
+
 async def node_BLOG_PLANNER(state: MainBus, config: RunnableConfig) -> dict:
     """
     NODE BLOG PLANNER: Lập kế hoạch nội dung bài viết.
     Tạm thời comment nghiệp vụ, trả về dữ liệu mẫu để thông luồng.
     """
-    
+
     # --- LOGIC NGHIỆP VỤ (TẠM COMMENT) ---
     # services = config["configurable"].get("services")
     # engine = services["llm_factory"].get_model("qwen2.5")
@@ -25,10 +26,10 @@ async def node_BLOG_PLANNER(state: MainBus, config: RunnableConfig) -> dict:
             "Mở đầu: Xu hướng thị trường",
             "Nội dung 1: Các phân khúc tiềm năng",
             "Nội dung 2: Rủi ro và cách phòng tránh",
-            "Kết luận"
+            "Kết luận",
         ],
         "estimated_word_count": 1500,
-        "research_required": False
+        "research_required": False,
     }
 
     # 2. Ép kiểu và lọc rác tự động bằng Pydantic
@@ -36,7 +37,4 @@ async def node_BLOG_PLANNER(state: MainBus, config: RunnableConfig) -> dict:
 
     # 3. PHÁT TÍN HIỆU (Emit): Ghi vào reg_blog_plan
     # Sử dụng .model_dump() để LangGraph có thể serialize dữ liệu
-    return StandardFrame.emit(
-        BusRegistry.BP,
-        safe_output.model_dump()
-    )
+    return StandardFrame.emit(BusRegistry.BP, safe_output.model_dump())

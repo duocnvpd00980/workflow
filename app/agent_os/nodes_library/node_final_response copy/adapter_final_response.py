@@ -37,7 +37,7 @@ def _resolve_upstream(state: MainBus) -> tuple[str | None, list, str]:
         hr
         and hr.payload
         and hr.payload.status == "SUCCESS"
-        and hr.payload.route == "approved"          # ← khớp với node_human_review emit
+        and hr.payload.route == "approved"  # ← khớp với node_human_review emit
     ):
         flow = "knowledge" if state.knowledge else "marketing"
         return hr.payload.text, hr.payload.records or [], flow
@@ -47,7 +47,7 @@ def _resolve_upstream(state: MainBus) -> tuple[str | None, list, str]:
     if lc and lc.payload and lc.payload.status == "SUCCESS":
         text = lc.payload.text
         # Đảm bảo records là một list rỗng [] nếu không có dữ liệu
-        records = lc.payload.records or [] 
+        records = lc.payload.records or []
         return text, records, "chat"
 
     return None, [], "default"
@@ -68,7 +68,12 @@ async def node_final_response(
             error_code="TOPOLOGY_VIOLATION",
         )
 
-    log.debug("[node_final_response] flow=%s text_len=%d records=%d", flow_type, len(text), len(records))
+    log.debug(
+        "[node_final_response] flow=%s text_len=%d records=%d",
+        flow_type,
+        len(text),
+        len(records),
+    )
 
     upstream = BodyFrame(
         status="SUCCESS",
@@ -78,11 +83,18 @@ async def node_final_response(
     )
 
     try:
-        component_specs = _service.build_components(payload=upstream, flow_type=flow_type)
+        component_specs = _service.build_components(
+            payload=upstream, flow_type=flow_type
+        )
         rendered = [spec.model_dump() for spec in component_specs]
     except Exception as exc:
         log.exception("[node_final_response] FinalResponseService crash: %s", exc)
-        return _emit_error(text=text, message="Lỗi render giao diện.", error_code="FINAL_RESPONSE_CRASH", debug_details=str(exc))
+        return _emit_error(
+            text=text,
+            message="Lỗi render giao diện.",
+            error_code="FINAL_RESPONSE_CRASH",
+            debug_details=str(exc),
+        )
 
     return StandardFrame.emit(
         registry_key=BusRegistry.FR,
@@ -90,29 +102,37 @@ async def node_final_response(
             status="SUCCESS",
             text=text,
             records=rendered,
-            state={"flow_type": flow_type, "ui_rendered": True, "component_count": len(rendered)},
+            state={
+                "flow_type": flow_type,
+                "ui_rendered": True,
+                "component_count": len(rendered),
+            },
             error=None,
         ),
     )
 
 
-def _emit_error(*, text: str, message: str, error_code: str, debug_details: str = "") -> dict:
+def _emit_error(
+    *, text: str, message: str, error_code: str, debug_details: str = ""
+) -> dict:
     return StandardFrame.emit(
         registry_key=BusRegistry.FR,
         payload=BodyFrame(
             status="FAILED",
             text=text,
-            records=[{
-                "component_id": "error_card",
-                "props": {
-                    "title":        "Hệ thống thông báo",
-                    "message":      message,
-                    "error_code":   error_code,
-                    "failed_node":  "node_final_response",
-                    "debug_details": debug_details,
-                },
-                "template_path": "widgets/error_display.html",
-            }],
+            records=[
+                {
+                    "component_id": "error_card",
+                    "props": {
+                        "title": "Hệ thống thông báo",
+                        "message": message,
+                        "error_code": error_code,
+                        "failed_node": "node_final_response",
+                        "debug_details": debug_details,
+                    },
+                    "template_path": "widgets/error_display.html",
+                }
+            ],
             error=f"[node_final_response] {message}",
         ),
     )

@@ -12,28 +12,33 @@ COMPONENT_REGISTRY: Dict[str, Dict[str, Any]] = {
         "intent_tags": ["ads_only", "full_campaign"],
         "required_props": ["headline", "body"],
         "optional_props": ["cta_text", "platform", "tone"],
-        "template_path": "widgets/ads_card.html"
+        "template_path": "widgets/ads_card.html",
     },
     "email_template": {
         "description": "Hiển thị email marketing: subject line, preheader, body HTML, CTA",
         "intent_tags": ["email_only", "full_campaign"],
         "required_props": ["subject", "body"],
         "optional_props": ["preheader", "cta_text", "cta_url"],
-        "template_path": "widgets/email_template.html"
+        "template_path": "widgets/email_template.html",
     },
     "blog_preview": {
         "description": "Hiển thị bài viết blog: title, excerpt, tags, estimated read time",
         "intent_tags": ["full_campaign"],
         "required_props": ["title", "content"],
-        "optional_props": ["tags", "read_time_minutes", "seo_title", "meta_description"],
-        "template_path": "widgets/blog_preview.html"
+        "optional_props": [
+            "tags",
+            "read_time_minutes",
+            "seo_title",
+            "meta_description",
+        ],
+        "template_path": "widgets/blog_preview.html",
     },
     "campaign_summary": {
         "description": "Hiển thị tổng quan chiến dịch khi có đủ ads + email + blog cùng lúc",
         "intent_tags": ["full_campaign"],
         "required_props": ["status", "components_ready"],
         "optional_props": ["message", "total_words"],
-        "template_path": "widgets/campaign_summary.html"
+        "template_path": "widgets/campaign_summary.html",
     },
     # 🔥 ĐỒNG BỘ: Cập nhật mô tả lỗi khớp với error_display.html
     "error_card": {
@@ -41,7 +46,7 @@ COMPONENT_REGISTRY: Dict[str, Dict[str, Any]] = {
         "intent_tags": ["error", "fallback"],
         "required_props": ["message"],
         "optional_props": ["title", "error_code", "failed_node", "debug_details"],
-        "template_path": "widgets/error_display.html" # Chỉ định đúng file bạn đã tạo
+        "template_path": "widgets/error_display.html",  # Chỉ định đúng file bạn đã tạo
     },
     # 🔥 BỔ SUNG: Thêm cấu hình cho trạng thái rỗng trống trải empty_state.html
     "empty_state": {
@@ -49,14 +54,14 @@ COMPONENT_REGISTRY: Dict[str, Dict[str, Any]] = {
         "intent_tags": ["empty", "fallback"],
         "required_props": ["title"],
         "optional_props": ["description", "user_input"],
-        "template_path": "widgets/empty_state.html" # Chỉ định đúng file bạn đã tạo
+        "template_path": "widgets/empty_state.html",  # Chỉ định đúng file bạn đã tạo
     },
     "text_response": {
         "description": "Fallback: hiển thị plain text khi không có component phù hợp",
         "intent_tags": ["fallback", "invalid"],
         "required_props": ["text"],
         "optional_props": ["title"],
-        "template_path": "widgets/text_response.html"
+        "template_path": "widgets/text_response.html",
     },
 }
 
@@ -64,6 +69,7 @@ COMPONENT_REGISTRY: Dict[str, Dict[str, Any]] = {
 # =========================================================
 # PROPS SCHEMAS — validate từng component
 # =========================================================
+
 
 class AdsCardProps(BaseModel):
     headline: str = Field(..., max_length=200)
@@ -107,11 +113,15 @@ class CampaignSummaryProps(BaseModel):
 
 # 🔥 ĐỒNG BỘ: Sửa lại Props của ErrorCard để map trùng khớp với file error_display.html của bạn
 class ErrorCardProps(BaseModel):
-    message: str = Field(..., description="Nội dung thông báo lỗi thuần Việt hiển thị cho user")
+    message: str = Field(
+        ..., description="Nội dung thông báo lỗi thuần Việt hiển thị cho user"
+    )
     title: Optional[str] = Field(default="Hệ thống thông báo")
     error_code: Optional[str] = Field(default="INTERNAL_ERROR")
     failed_node: Optional[str] = Field(default="System")
-    debug_details: Optional[str] = Field(default=None, description="Chi tiết lỗi kỹ thuật (traceback)")
+    debug_details: Optional[str] = Field(
+        default=None, description="Chi tiết lỗi kỹ thuật (traceback)"
+    )
 
     model_config = ConfigDict(extra="ignore")
 
@@ -120,7 +130,9 @@ class ErrorCardProps(BaseModel):
 class EmptyStateProps(BaseModel):
     title: str = Field(default="Không tìm thấy nội dung kết quả")
     description: Optional[str] = Field(None, max_length=1000)
-    user_input: Optional[str] = Field(None, description="Câu prompt gốc của người dùng để hiển thị ngữ cảnh")
+    user_input: Optional[str] = Field(
+        None, description="Câu prompt gốc của người dùng để hiển thị ngữ cảnh"
+    )
 
     model_config = ConfigDict(extra="ignore")
 
@@ -139,7 +151,7 @@ PROPS_SCHEMA_MAP: Dict[str, type[BaseModel]] = {
     "blog_preview": BlogPreviewProps,
     "campaign_summary": CampaignSummaryProps,
     "error_card": ErrorCardProps,
-    "empty_state": EmptyStateProps, # Đưa empty_state vào map schema
+    "empty_state": EmptyStateProps,  # Đưa empty_state vào map schema
     "text_response": TextResponseProps,
 }
 
@@ -159,6 +171,7 @@ ComponentId = Literal[
 # LLM RESPONSE SCHEMA — dùng lại cho rule-based selector
 # =========================================================
 
+
 class ComponentSelection(BaseModel):
     component_id: ComponentId
     props: Dict[str, Any]
@@ -172,7 +185,9 @@ class LLMSelectorResponse(BaseModel):
 
     @field_validator("selections")
     @classmethod
-    def validate_component_ids(cls, v: List[ComponentSelection]) -> List[ComponentSelection]:
+    def validate_component_ids(
+        cls, v: List[ComponentSelection]
+    ) -> List[ComponentSelection]:
         valid_ids = set(COMPONENT_REGISTRY.keys())
         for sel in v:
             if sel.component_id not in valid_ids:
@@ -186,10 +201,11 @@ class LLMSelectorResponse(BaseModel):
 # NODE OUTPUT SCHEMA — emit vào MainBus
 # =========================================================
 
+
 class RenderedComponent(BaseModel):
     component_id: ComponentId
-    props: Dict[str, Any]         # props đã validated
-    template_path: str             # path cho Django/Jinja2 render_to_string
+    props: Dict[str, Any]  # props đã validated
+    template_path: str  # path cho Django/Jinja2 render_to_string
 
     model_config = ConfigDict(extra="ignore")
 
@@ -197,7 +213,7 @@ class RenderedComponent(BaseModel):
 class UISelectorOutput(BaseModel):
     rendered_components: List[RenderedComponent] = Field(default_factory=list)
     fallback_used: bool = Field(default=False)
-    selector_status: str = Field(default="success")   # "success" | "fallback" | "error"
-    raw_text_fallback: Optional[str] = None            # populated khi fallback_used=True
+    selector_status: str = Field(default="success")  # "success" | "fallback" | "error"
+    raw_text_fallback: Optional[str] = None  # populated khi fallback_used=True
 
     model_config = ConfigDict(frozen=True, extra="ignore")

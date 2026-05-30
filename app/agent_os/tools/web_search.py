@@ -3,6 +3,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
+
 @tool
 def web_search_tool(query: str) -> str:
     """..."""

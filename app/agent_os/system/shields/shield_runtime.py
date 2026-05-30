@@ -10,6 +10,7 @@ from typing import Any, Dict
 # EXCEPTION
 # =============================================================================
 
+
 class ShieldFault(Exception):
     pass
 
@@ -18,8 +19,8 @@ class ShieldFault(Exception):
 # SHIELD ENGINE
 # =============================================================================
 
-class ShieldRuntime:
 
+class ShieldRuntime:
     # =========================
     # PRE-GUARD
     # =========================
@@ -41,7 +42,6 @@ class ShieldRuntime:
 
         return state
 
-
     # =========================
     # POST-GUARD
     # =========================
@@ -51,7 +51,6 @@ class ShieldRuntime:
             raise ShieldFault(f"[POST_GUARD] null output from {node}")
 
         if isinstance(output, dict):
-
             # schema check basic
             if "error" in output:
                 raise ShieldFault(f"[POST_GUARD] error payload in {node}")
@@ -61,7 +60,6 @@ class ShieldRuntime:
             raise ShieldFault(f"[POST_GUARD] policy violation in {node}")
 
         return output
-
 
     # =========================
     # SECURITY CORE

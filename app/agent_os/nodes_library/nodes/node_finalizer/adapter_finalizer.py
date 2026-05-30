@@ -9,6 +9,7 @@ from .finalizer_service import FinalizerService
 # Khởi tạo Service Module duy nhất cấp module
 service_module = FinalizerService()
 
+
 async def node_FINALIZER(
     state: MainBus,
     config: RunnableConfig = None,
@@ -38,14 +39,16 @@ async def node_FINALIZER(
     # ==================================================================
     # STEP 1: SAFE POST-GUARD (CHỐNG CRASH LUỒNG)
     # ==================================================================
-    has_active_lane = any([
-        getattr(state, "reg_dead_letter_queue", None),
-        getattr(state, "reg_lightweight_chat", None),
-        getattr(state, "reg_qa_response", None),
-        getattr(state, "reg_ads", None),
-        getattr(state, "reg_blog_writer", None),
-        getattr(state, "reg_email", None)
-    ])
+    has_active_lane = any(
+        [
+            getattr(state, "reg_dead_letter_queue", None),
+            getattr(state, "reg_lightweight_chat", None),
+            getattr(state, "reg_qa_response", None),
+            getattr(state, "reg_ads", None),
+            getattr(state, "reg_blog_writer", None),
+            getattr(state, "reg_email", None),
+        ]
+    )
 
     if not has_active_lane:
         error_msg = "[NODE_FINALIZER] Pipeline Broken: Toàn bộ các luồng xử lý trước đều không có dữ liệu."
@@ -59,19 +62,37 @@ async def node_FINALIZER(
                 state={"flow_type": "error", "status": "FAILED"},
                 metrics={"flow_type": "error"},
                 context={"topology_error": error_msg},
-                error=error_msg
-            )
+                error=error_msg,
+            ),
         )
 
     # ==================================================================
     # STEP 2: CONTEXT EXTRACTION (TRÍCH XUẤT OBJECT SẠCH - KHÔNG DUMP DICT)
     # ==================================================================
-    dlq_payload = state.reg_dead_letter_queue.payload if getattr(state, "reg_dead_letter_queue", None) else None
-    chat_payload = state.reg_lightweight_chat.payload if getattr(state, "reg_lightweight_chat", None) else None
-    qa_payload = state.reg_qa_response.payload if getattr(state, "reg_qa_response", None) else None
+    dlq_payload = (
+        state.reg_dead_letter_queue.payload
+        if getattr(state, "reg_dead_letter_queue", None)
+        else None
+    )
+    chat_payload = (
+        state.reg_lightweight_chat.payload
+        if getattr(state, "reg_lightweight_chat", None)
+        else None
+    )
+    qa_payload = (
+        state.reg_qa_response.payload
+        if getattr(state, "reg_qa_response", None)
+        else None
+    )
     ads_payload = state.reg_ads.payload if getattr(state, "reg_ads", None) else None
-    blog_payload = state.reg_blog_writer.payload if getattr(state, "reg_blog_writer", None) else None
-    email_payload = state.reg_email.payload if getattr(state, "reg_email", None) else None
+    blog_payload = (
+        state.reg_blog_writer.payload
+        if getattr(state, "reg_blog_writer", None)
+        else None
+    )
+    email_payload = (
+        state.reg_email.payload if getattr(state, "reg_email", None) else None
+    )
 
     # ==================================================================
     # STEP 3: PURE DOMAIN EXECUTION
@@ -83,16 +104,22 @@ async def node_FINALIZER(
         qa=qa_payload,
         ads=ads_payload,
         blog=blog_payload,
-        email=email_payload
+        email=email_payload,
     )
 
     print("\n📦 FINALIZER COMPLIANT OUTPUT LOGGING FOR UI:")
-    print(json.dumps({
-        "status": result.status,
-        "flow_type": result.flow_type,
-        "text": result.text,
-        "summary_message": result.summary_message
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "status": result.status,
+                "flow_type": result.flow_type,
+                "text": result.text,
+                "summary_message": result.summary_message,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
     print("🏁" * 25 + "\n")
 
     # ==================================================================
@@ -110,12 +137,8 @@ async def node_FINALIZER(
                 "flow_type": result.flow_type,
                 "status": result.status,
             },
-            metrics={
-                "flow_type": result.flow_type
-            },
-            context={
-                "summary_message": result.summary_message
-            },
-            error=result.error_details
+            metrics={"flow_type": result.flow_type},
+            context={"summary_message": result.summary_message},
+            error=result.error_details,
         ),
     )

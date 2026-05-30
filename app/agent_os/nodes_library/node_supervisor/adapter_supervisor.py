@@ -72,9 +72,8 @@ async def node_supervisor(
         error_message = "[node_supervisor] Missing INPUT_GUARD upstream frame"
 
     elif getattr(upstream_frame.payload, "status", None) == "FAILED":
-        error_message = (
-            "[node_supervisor] INPUT_GUARD FAILED: "
-            + str(getattr(upstream_frame.payload, "error", None))
+        error_message = "[node_supervisor] INPUT_GUARD FAILED: " + str(
+            getattr(upstream_frame.payload, "error", None)
         )
 
     # --- Hạ cánh an toàn (Graceful Degradation) ----------------------------
@@ -99,7 +98,7 @@ async def node_supervisor(
     # =========================================================================
     # STEP 2 — CONTEXT EXTRACTION & DEPENDENCY INJECTION
     # =========================================================================
-    ctx        = await get_ctx()
+    ctx = await get_ctx()
     llm_engine = ctx.llm_factory.get_model("default")
 
     # --- Trích xuất lịch sử hội thoại ----------------------------------------
@@ -131,10 +130,9 @@ async def node_supervisor(
     except Exception as exc:  # noqa: BLE001
         # Bắt toàn bộ lỗi LLM (timeout, schema mismatch, API error…)
         # TUYỆT ĐỐI không re-raise — tuân thủ Graceful Degradation Law
-        result          = None
+        result = None
         execution_error = (
-            f"[node_supervisor] Service Execution Error: "
-            f"{type(exc).__name__}: {exc}"
+            f"[node_supervisor] Service Execution Error: {type(exc).__name__}: {exc}"
         )
 
     # =========================================================================
@@ -170,12 +168,13 @@ async def node_supervisor(
             route=result.next_agent,
             error=None,
         ),
-    ) | {"rework_count": state.rework_count + 1} 
+    ) | {"rework_count": state.rework_count + 1}
 
 
 # =============================================================================
 # PRIVATE HELPERS — Trích xuất an toàn, không bao giờ raise
 # =============================================================================
+
 
 def _safe_extract_history(state: MainBus) -> list:
     """
@@ -209,10 +208,7 @@ def _safe_extract_user_profile(state: MainBus) -> dict:
         if frame is None:
             continue
         payload_state = getattr(frame.payload, "state", None) or {}
-        profile = (
-            payload_state.get("user_profile")
-            or payload_state.get("profile")
-        )
+        profile = payload_state.get("user_profile") or payload_state.get("profile")
         if isinstance(profile, dict) and profile:
             return profile
         # Fallback: toàn bộ state nếu có vẻ là profile
@@ -237,7 +233,9 @@ def _safe_extract_episodes(state: MainBus) -> list:
         if isinstance(records, list) and records:
             return records
         payload_state = getattr(frame.payload, "state", None) or {}
-        episodes = payload_state.get("relevant_episodes") or payload_state.get("episodes")
+        episodes = payload_state.get("relevant_episodes") or payload_state.get(
+            "episodes"
+        )
         if isinstance(episodes, list) and episodes:
             return episodes
     return []

@@ -35,7 +35,7 @@ class RouterService:
                 Context: {context}
                 """,
                 schema=RouterOutput,
-                temperature=0.1
+                temperature=0.1,
             )
 
             # SAFETY WRAP (IMPORTANT)

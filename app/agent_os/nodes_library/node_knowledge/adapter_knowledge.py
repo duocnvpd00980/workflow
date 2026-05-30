@@ -2,7 +2,10 @@
 import logging
 from langchain_core.runnables import RunnableConfig
 
-from agent_os.nodes_library.node_knowledge.knowledge_service import KnowledgeRetrieverService, KnowledgeService
+from agent_os.nodes_library.node_knowledge.knowledge_service import (
+    KnowledgeRetrieverService,
+    KnowledgeService,
+)
 from agent_os.system.bus.main_bus import MainBus
 from agent_os.system.bus.registry import BusRegistry
 from agent_os.system.bus.protocol import StandardFrame, BodyFrame
@@ -15,16 +18,16 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _service = KnowledgeService()
 
-async def node_knowledge(
-    state: MainBus,
-    config: RunnableConfig = None
-) -> dict:
+
+async def node_knowledge(state: MainBus, config: RunnableConfig = None) -> dict:
     """
     CERTIFIED PROTOCOL WORKFLOW: [node_knowledge]
     Xử lý truy xuất RAG an toàn, đảm bảo biến đồng bộ và topology ổn định.
     """
-    logger.info("⚡ [GRAPH NODE] Tiến vào phân tầng truy xuất tri thức: [node_knowledge]")
-    
+    logger.info(
+        "⚡ [GRAPH NODE] Tiến vào phân tầng truy xuất tri thức: [node_knowledge]"
+    )
+
     if isinstance(state, dict):
         state = MainBus.model_validate(state)
 
@@ -33,20 +36,24 @@ async def node_knowledge(
     error_message = None
 
     if not supervisor or not hasattr(supervisor, "payload"):
-        error_message = "[node_supervisor] Topology Violation: Upstream Supervisor missing."
+        error_message = (
+            "[node_supervisor] Topology Violation: Upstream Supervisor missing."
+        )
     elif supervisor.payload.status == "FAILED":
-        error_message = f"[node_supervisor] Upstream Failure: {supervisor.payload.error}"
+        error_message = (
+            f"[node_supervisor] Upstream Failure: {supervisor.payload.error}"
+        )
     elif getattr(supervisor.payload, "route", None) != "knowledge":
         return StandardFrame.emit(
             registry_key=BusRegistry.RS,
             payload=BodyFrame(
-                status="EMPTY", 
-                text="Skipped: Routing bypass.", 
+                status="EMPTY",
+                text="Skipped: Routing bypass.",
                 state={"retrieval_status": "SKIPPED"},
                 context={"source": "node_knowledge"},
-            )
+            ),
         )
-    
+
     if error_message:
         return StandardFrame.emit(
             registry_key=BusRegistry.RS,
@@ -54,8 +61,8 @@ async def node_knowledge(
                 status="FAILED",
                 text="Skipped due to upstream failure.",
                 error=error_message,
-                context={"source": "node_knowledge"}
-            )
+                context={"source": "node_knowledge"},
+            ),
         )
 
     # STEP 2: CONTEXT EXTRACTION & DI
@@ -75,15 +82,15 @@ async def node_knowledge(
 
         payload = retrieval_svc.Request(query=search_query, top_k=top_k)
         db_result = await retrieval_svc.retrieve(payload)
-        
+
         domain_service = KnowledgeRetrieverService(score_threshold=score_threshold)
         # Kiểm tra db_result an toàn
         raw_chunks = getattr(db_result, "chunks", []) if db_result else []
         result_dict = domain_service.process_retrieved_chunks(raw_chunks=raw_chunks)
-        
+
         contexts_list = result_dict.get("contexts", [])
         status = "SUCCESS" if contexts_list else "EMPTY"
-        
+
     except Exception as e:
         status = "FAILED"
         error_message = str(e)
@@ -99,6 +106,6 @@ async def node_knowledge(
             state={"query": user_input, "process_completed": True},
             metrics={"count": len(contexts_list), "score": score_threshold},
             context={"source": "node_knowledge", "pipeline": "rag_retrieval"},
-            error=error_message
-        )
+            error=error_message,
+        ),
     )

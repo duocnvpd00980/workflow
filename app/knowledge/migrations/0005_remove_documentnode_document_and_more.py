@@ -4,33 +4,32 @@ from django.db import migrations
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('knowledge', '0004_documentnode'),
+        ("knowledge", "0004_documentnode"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='documentnode',
-            name='document',
+            model_name="documentnode",
+            name="document",
         ),
         migrations.RemoveIndex(
-            model_name='documentsource',
-            name='knowledge_d_vector__1d2622_idx',
+            model_name="documentsource",
+            name="knowledge_d_vector__1d2622_idx",
         ),
         migrations.DeleteModel(
-            name='DocumentNode',
+            name="DocumentNode",
         ),
         migrations.RemoveField(
-            model_name='documentsource',
-            name='chunk_count',
+            model_name="documentsource",
+            name="chunk_count",
         ),
         migrations.RemoveField(
-            model_name='documentsource',
-            name='last_ingestion_log',
+            model_name="documentsource",
+            name="last_ingestion_log",
         ),
         migrations.RemoveField(
-            model_name='documentsource',
-            name='vector_doc_id',
+            model_name="documentsource",
+            name="vector_doc_id",
         ),
     ]

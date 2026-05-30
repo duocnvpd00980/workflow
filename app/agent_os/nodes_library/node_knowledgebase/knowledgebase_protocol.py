@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Any
 
+
 class KnowledgebaseOutput(BaseModel):
     model_config = ConfigDict(frozen=True, extra="ignore")
 

@@ -8,6 +8,7 @@ from .evaluator_service import EvaluatorService
 
 service_module = EvaluatorService()
 
+
 async def node_evaluator(state: MainBus, config: RunnableConfig = None) -> dict:
 
     # STEP 1: SAFE POST-GUARD
@@ -19,8 +20,8 @@ async def node_evaluator(state: MainBus, config: RunnableConfig = None) -> dict:
                 status="FAILED",
                 text="Evaluator skipped: Upstream node missing or failed.",
                 route="end",  # ← FAILED → end, không retry
-                error="Topology violation detected."
-            )
+                error="Topology violation detected.",
+            ),
         )
 
     # STEP 2: CONTEXT EXTRACTION & DI
@@ -29,8 +30,8 @@ async def node_evaluator(state: MainBus, config: RunnableConfig = None) -> dict:
 
     try:
         # ✅ Đọc đúng từ MainBus
-        user_req  = state.input_guard.payload.text if state.input_guard else ""
-        sup_instr = state.supervisor.payload.text  if state.supervisor  else ""
+        user_req = state.input_guard.payload.text if state.input_guard else ""
+        sup_instr = state.supervisor.payload.text if state.supervisor else ""
         agent_out = store.payload.text
 
         # STEP 3: PURE DOMAIN EXECUTION
@@ -43,13 +44,15 @@ async def node_evaluator(state: MainBus, config: RunnableConfig = None) -> dict:
         if not result.is_passed and state.rework_count < state.max_rework:
             route = "pass"
         else:
-            route = "pass" 
+            route = "pass"
 
         return StandardFrame.emit(
             registry_key=BusRegistry.EV,
             payload=BodyFrame(
                 status="SUCCESS",
-                text=result.remediation_instruction if not result.is_passed else agent_out,
+                text=result.remediation_instruction
+                if not result.is_passed
+                else agent_out,
                 state={"process_completed": True},
                 metrics={
                     "quality_score": result.quality_score,
@@ -57,7 +60,7 @@ async def node_evaluator(state: MainBus, config: RunnableConfig = None) -> dict:
                 },
                 context={"critique": result.critique},
                 route=route,
-            )
+            ),
         )
 
     except Exception as e:
@@ -67,6 +70,6 @@ async def node_evaluator(state: MainBus, config: RunnableConfig = None) -> dict:
                 status="FAILED",
                 text="Evaluator Internal Runtime Error",
                 route="end",  # ← exception → end, không retry
-                error=str(e)
-            )
+                error=str(e),
+            ),
         )

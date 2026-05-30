@@ -15,7 +15,6 @@ from jinja2 import Environment, FileSystemLoader, FileSystemLoader
 from .supervisor_protocol import SupervisorResult
 
 
-
 # ---------------------------------------------------------------------------
 # SERVICE CLASS
 # ---------------------------------------------------------------------------
@@ -55,7 +54,7 @@ class SupervisorService:
 
         template = self._env.get_template("supervisor.jinja2")
         system_prompt = template.render(
-            user_message=user_input,          # ← thêm dòng này
+            user_message=user_input,  # ← thêm dòng này
             user_profile_text=self._format_profile(user_profile),
             history_text=self._format_history(history),
             episodes_text=self._format_episodes(relevant_episodes),
@@ -64,7 +63,7 @@ class SupervisorService:
 
         result = await llm_engine.generate(
             system=system_prompt,
-            user=user_input,                  # ← thay bằng tin nhắn thật
+            user=user_input,  # ← thay bằng tin nhắn thật
             schema=SupervisorResult,
             temperature=0.0,
         )
@@ -81,7 +80,7 @@ class SupervisorService:
 
         lines: list[str] = []
         for turn in history:
-            role    = turn.get("role", "unknown").upper()
+            role = turn.get("role", "unknown").upper()
             content = turn.get("content", "")
             lines.append(f"[{role}]: {content}")
         return "\n".join(lines)
@@ -100,8 +99,8 @@ class SupervisorService:
         sections: list[str] = []
         for idx, ep in enumerate(episodes, start=1):
             if isinstance(ep, dict):
-                query   = ep.get("query", "")
-                agent   = ep.get("agent_used", "")
+                query = ep.get("query", "")
+                agent = ep.get("agent_used", "")
                 outcome = ep.get("outcome", "")
                 sections.append(
                     f"  [{idx}] Query: '{query}' → Agent: '{agent}' → Kết quả: {outcome}"

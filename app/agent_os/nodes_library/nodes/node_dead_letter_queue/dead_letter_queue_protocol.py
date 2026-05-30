@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
-class DeadLetterQueueOutput(BaseModel):
 
+class DeadLetterQueueOutput(BaseModel):
     failed_node: str = Field(default="unknown")
 
     error_code: str = Field(default="UNKNOWN")

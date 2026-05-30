@@ -4,11 +4,10 @@ from .seed_protocol import SeedOutput
 
 
 class SeedService:
-
     KEYWORDS = {
         "ads": ["quảng cáo", "bán", "sale", "marketing"],
         "email": ["email", "gửi mail", "thư"],
-        "blog": ["blog", "viết bài", "seo"]
+        "blog": ["blog", "viết bài", "seo"],
     }
 
     def _detect_intent(self, text: str) -> str:
@@ -43,5 +42,5 @@ class SeedService:
             intent=intent,
             language=lang,
             brand_color=seed.get("brand_color", "#000000"),
-            confidence=0.7 if intent != "unknown" else 0.3
+            confidence=0.7 if intent != "unknown" else 0.3,
         )

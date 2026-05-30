@@ -21,7 +21,6 @@ NỘI DUNG CẦN HOÀN THIỆN:
 
 
 class AggregatorService:
-
     async def execute(
         self,
         original_query: str,
@@ -37,10 +36,12 @@ class AggregatorService:
         )
 
         structured_llm = llm_engine.with_structured_output(AggregationResult)
-        return await structured_llm.ainvoke([
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user",   "content": user_message},
-        ])
+        return await structured_llm.ainvoke(
+            [
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": user_message},
+            ]
+        )
 
     def _fmt_profile(self, profile: dict) -> str:
         if not profile:

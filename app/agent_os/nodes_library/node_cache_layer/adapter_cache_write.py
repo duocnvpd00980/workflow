@@ -40,6 +40,7 @@ INVALID_CACHE_PATTERNS = {
 # CACHE WRITE NODE
 # =========================================================
 
+
 async def node_cache_write(
     state: MainBus,
     config: RunnableConfig = None,
@@ -68,9 +69,7 @@ async def node_cache_write(
 
     try:
         if hasattr(state, "input_guard") and state.input_guard:
-            user_query = (
-                getattr(state.input_guard.payload, "text", "") or ""
-            ).strip()
+            user_query = (getattr(state.input_guard.payload, "text", "") or "").strip()
 
     except Exception:
         logger.exception("[CACHE_WRITE] Failed extracting user_query")
@@ -107,41 +106,29 @@ async def node_cache_write(
     is_success = False
 
     if generation_payload:
-
-        answer = (
-            getattr(generation_payload, "text", "") or ""
-        ).strip()
+        answer = (getattr(generation_payload, "text", "") or "").strip()
 
         status = getattr(generation_payload, "status", "")
         error = getattr(generation_payload, "error", None)
 
-        is_success = (
-            status == "SUCCESS"
-            and not error
-        )
+        is_success = status == "SUCCESS" and not error
 
     # =====================================================
     # CACHE FILTER
     # =====================================================
 
     contains_invalid_pattern = any(
-        pattern in answer
-        for pattern in INVALID_CACHE_PATTERNS
+        pattern in answer for pattern in INVALID_CACHE_PATTERNS
     )
 
-    is_valid_answer = (
-        bool(answer)
-        and not contains_invalid_pattern
-    )
+    is_valid_answer = bool(answer) and not contains_invalid_pattern
 
     # =====================================================
     # WRITE CACHE
     # =====================================================
 
     try:
-
         if user_query and is_success and is_valid_answer:
-
             _cache.store(
                 user_query,
                 answer,
@@ -153,12 +140,8 @@ async def node_cache_write(
             )
 
         else:
-
             logger.warning(
-                (
-                    "[CACHE_WRITE] Skip cache | "
-                    "query=%s success=%s valid=%s"
-                ),
+                ("[CACHE_WRITE] Skip cache | query=%s success=%s valid=%s"),
                 user_query,
                 is_success,
                 is_valid_answer,

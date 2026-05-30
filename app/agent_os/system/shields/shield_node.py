@@ -13,7 +13,6 @@ def _abort(node_id: str, reason: str) -> dict:
 
 
 class Node:
-
     def __init__(self, key: str, fn: Callable):
         self.id = key
         self.fn = fn

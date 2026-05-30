@@ -50,7 +50,7 @@ async def node_lightweight_chat(
     # STEP 2 — CONTEXT EXTRACTION & DI
     # =========================================================================
     user_input = state.input_guard.payload.text if state.input_guard else ""
-    ctx        = await get_ctx()
+    ctx = await get_ctx()
     llm_engine = ctx.llm_factory.get_model("default")
 
     # =========================================================================

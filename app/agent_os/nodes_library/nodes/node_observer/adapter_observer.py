@@ -49,7 +49,9 @@ async def node_OBSERVER(
         # safe check upstream status
         try:
             upstream_status = audit_node.payload.status
-            error_msg = None if upstream_status == "SUCCESS" else "Upstream anomalies detected"
+            error_msg = (
+                None if upstream_status == "SUCCESS" else "Upstream anomalies detected"
+            )
         except Exception:
             error_msg = "Upstream status unavailable"
 

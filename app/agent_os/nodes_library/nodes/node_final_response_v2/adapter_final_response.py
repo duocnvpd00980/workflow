@@ -19,13 +19,21 @@ async def node_final_response(
 
     # Luồng chính
     human_review = state.human_review
-    if human_review and human_review.payload and human_review.payload.status == "SUCCESS":
+    if (
+        human_review
+        and human_review.payload
+        and human_review.payload.status == "SUCCESS"
+    ):
         text = human_review.payload.text
 
     # Luồng smalltalk
     if not text:
         lightweight_chat = state.lightweight_chat
-        if lightweight_chat and lightweight_chat.payload and lightweight_chat.payload.status == "SUCCESS":
+        if (
+            lightweight_chat
+            and lightweight_chat.payload
+            and lightweight_chat.payload.status == "SUCCESS"
+        ):
             text = lightweight_chat.payload.text
 
     if not text:

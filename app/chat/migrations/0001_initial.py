@@ -8,7 +8,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -17,81 +16,166 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Conversation',
+            name="Conversation",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('title', models.CharField(blank=True, default='', max_length=255)),
-                ('system_prompt', models.TextField(blank=True, default='')),
-                ('is_archived', models.BooleanField(default=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('last_message_at', models.DateTimeField(default=django.utils.timezone.now)),
-                ('metadata', models.JSONField(blank=True, default=dict)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='chat_conversations', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("title", models.CharField(blank=True, default="", max_length=255)),
+                ("system_prompt", models.TextField(blank=True, default="")),
+                ("is_archived", models.BooleanField(default=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "last_message_at",
+                    models.DateTimeField(default=django.utils.timezone.now),
+                ),
+                ("metadata", models.JSONField(blank=True, default=dict)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="chat_conversations",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-last_message_at'],
+                "ordering": ["-last_message_at"],
             },
         ),
         migrations.CreateModel(
-            name='ConversationMemory',
+            name="ConversationMemory",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('key', models.CharField(max_length=255)),
-                ('value', models.JSONField(default=dict)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('conversation', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='memories', to='chat.conversation')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("key", models.CharField(max_length=255)),
+                ("value", models.JSONField(default=dict)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "conversation",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="memories",
+                        to="chat.conversation",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Message',
+            name="Message",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('role', models.CharField(choices=[('user', 'User'), ('assistant', 'Assistant'), ('system', 'System'), ('tool', 'Tool')], max_length=20)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('streaming', 'Streaming'), ('completed', 'Completed'), ('error', 'Error'), ('interrupted', 'Interrupted')], default='completed', max_length=20)),
-                ('content', models.TextField(blank=True, default='')),
-                ('html', models.TextField(blank=True, default='')),
-                ('node_name', models.CharField(blank=True, default='', max_length=100)),
-                ('token_input', models.PositiveIntegerField(default=0)),
-                ('token_output', models.PositiveIntegerField(default=0)),
-                ('model_name', models.CharField(blank=True, default='', max_length=100)),
-                ('error_message', models.TextField(blank=True, default='')),
-                ('metadata', models.JSONField(blank=True, default=dict)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('conversation', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='messages', to='chat.conversation')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "role",
+                    models.CharField(
+                        choices=[
+                            ("user", "User"),
+                            ("assistant", "Assistant"),
+                            ("system", "System"),
+                            ("tool", "Tool"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("streaming", "Streaming"),
+                            ("completed", "Completed"),
+                            ("error", "Error"),
+                            ("interrupted", "Interrupted"),
+                        ],
+                        default="completed",
+                        max_length=20,
+                    ),
+                ),
+                ("content", models.TextField(blank=True, default="")),
+                ("html", models.TextField(blank=True, default="")),
+                ("node_name", models.CharField(blank=True, default="", max_length=100)),
+                ("token_input", models.PositiveIntegerField(default=0)),
+                ("token_output", models.PositiveIntegerField(default=0)),
+                (
+                    "model_name",
+                    models.CharField(blank=True, default="", max_length=100),
+                ),
+                ("error_message", models.TextField(blank=True, default="")),
+                ("metadata", models.JSONField(blank=True, default=dict)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "conversation",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="messages",
+                        to="chat.conversation",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['created_at'],
+                "ordering": ["created_at"],
             },
         ),
         migrations.AddIndex(
-            model_name='conversation',
-            index=models.Index(fields=['user', '-last_message_at'], name='chat_conver_user_id_539cc6_idx'),
+            model_name="conversation",
+            index=models.Index(
+                fields=["user", "-last_message_at"],
+                name="chat_conver_user_id_539cc6_idx",
+            ),
         ),
         migrations.AddIndex(
-            model_name='conversation',
-            index=models.Index(fields=['created_at'], name='chat_conver_created_656b50_idx'),
+            model_name="conversation",
+            index=models.Index(
+                fields=["created_at"], name="chat_conver_created_656b50_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='conversationmemory',
-            index=models.Index(fields=['conversation', 'key'], name='chat_conver_convers_3621f2_idx'),
+            model_name="conversationmemory",
+            index=models.Index(
+                fields=["conversation", "key"], name="chat_conver_convers_3621f2_idx"
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='conversationmemory',
-            unique_together={('conversation', 'key')},
+            name="conversationmemory",
+            unique_together={("conversation", "key")},
         ),
         migrations.AddIndex(
-            model_name='message',
-            index=models.Index(fields=['conversation', 'created_at'], name='chat_messag_convers_3154fc_idx'),
+            model_name="message",
+            index=models.Index(
+                fields=["conversation", "created_at"],
+                name="chat_messag_convers_3154fc_idx",
+            ),
         ),
         migrations.AddIndex(
-            model_name='message',
-            index=models.Index(fields=['role'], name='chat_messag_role_9cd150_idx'),
+            model_name="message",
+            index=models.Index(fields=["role"], name="chat_messag_role_9cd150_idx"),
         ),
         migrations.AddIndex(
-            model_name='message',
-            index=models.Index(fields=['status'], name='chat_messag_status_8c4650_idx'),
+            model_name="message",
+            index=models.Index(fields=["status"], name="chat_messag_status_8c4650_idx"),
         ),
     ]

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import Literal
 
+
 class SupervisorResult(BaseModel):
     model_config = ConfigDict(frozen=True, extra="ignore")
 

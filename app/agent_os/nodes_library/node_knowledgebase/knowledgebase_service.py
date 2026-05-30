@@ -4,6 +4,7 @@ from .knowledgebase_protocol import KnowledgebaseOutput
 try:
     from llama_index.core import StorageContext, load_index_from_storage
     from llama_index.embeddings.fastembed import FastEmbedEmbedding
+
     _LLAMA_AVAILABLE = True
 except ImportError:
     _LLAMA_AVAILABLE = False
@@ -11,8 +12,9 @@ except ImportError:
 # Đường dẫn tuyệt đối để tránh lỗi không tìm thấy file
 BASE_DIR = os.getcwd()
 FAISS_PERSIST_DIR = os.path.join(BASE_DIR, "storage_test_faiss")
-EMBED_MODEL_NAME  = "BAAI/bge-small-en-v1.5"
-TOP_K             = 4
+EMBED_MODEL_NAME = "BAAI/bge-small-en-v1.5"
+TOP_K = 4
+
 
 class KnowledgeBaseService:
     def __init__(self):
@@ -30,7 +32,9 @@ class KnowledgeBaseService:
             return
 
         if not os.path.exists(FAISS_PERSIST_DIR):
-            raise FileNotFoundError(f"[KNOWLEDGE] Thư mục chứa index không tồn tại: {FAISS_PERSIST_DIR}")
+            raise FileNotFoundError(
+                f"[KNOWLEDGE] Thư mục chứa index không tồn tại: {FAISS_PERSIST_DIR}"
+            )
 
         try:
             # Load trực tiếp từ persist_dir - LlamaIndex tự động đọc các file json/faiss bên trong
@@ -45,31 +49,37 @@ class KnowledgeBaseService:
 
     async def run(self, query: str) -> KnowledgebaseOutput:
         if not _LLAMA_AVAILABLE:
-            return KnowledgebaseOutput(retrieved_context="", source_nodes=[], top_score=None, node_count=0)
+            return KnowledgebaseOutput(
+                retrieved_context="", source_nodes=[], top_score=None, node_count=0
+            )
 
         self._load_index()
-        
+
         # Retrieval
         retriever = self._index.as_retriever(similarity_top_k=TOP_K)
         nodes = retriever.retrieve(query)
 
         if not nodes:
-            return KnowledgebaseOutput(retrieved_context="", source_nodes=[], top_score=None, node_count=0)
+            return KnowledgebaseOutput(
+                retrieved_context="", source_nodes=[], top_score=None, node_count=0
+            )
 
         context_parts = []
-        source_nodes  = []
+        source_nodes = []
 
         for n in nodes:
             context_parts.append(n.get_content())
-            source_nodes.append({
-                "text":  n.get_content()[:200],
-                "score": float(n.score) if n.score is not None else 0.0,
-                "doc_id": n.node_id,
-            })
+            source_nodes.append(
+                {
+                    "text": n.get_content()[:200],
+                    "score": float(n.score) if n.score is not None else 0.0,
+                    "doc_id": n.node_id,
+                }
+            )
 
         return KnowledgebaseOutput(
             retrieved_context="\n\n---\n\n".join(context_parts),
             source_nodes=source_nodes,
             top_score=float(nodes[0].score) if nodes[0].score is not None else 0.0,
-            node_count=len(nodes)
+            node_count=len(nodes),
         )

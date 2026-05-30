@@ -20,9 +20,12 @@ async def node_POLICY_ENGINE(
     state: MainBus,
     config: RunnableConfig,
 ) -> dict:
-    
+
     # 1. KIỂM TRA CHẶN LỖI (Fail-fast): Yêu cầu bắt buộc phải có dữ liệu sạch từ Intent Classifier (IC)
-    if not state.reg_intent_classifier or state.reg_intent_classifier.payload.status != "SUCCESS":
+    if (
+        not state.reg_intent_classifier
+        or state.reg_intent_classifier.payload.status != "SUCCESS"
+    ):
         raise RuntimeError(
             "[NODE_POLICY_ENGINE] Security Violation: Chưa có kết quả phân loại Intent hoặc IC thất bại!"
         )
@@ -37,9 +40,8 @@ async def node_POLICY_ENGINE(
     result = await service_module.enforce_policy(mode=str(mode))
 
     # 4. CHUẨN HÓA TRẠNG THÁI (Status Normalization)
-    policy_passed = (result.route != "error")
+    policy_passed = result.route != "error"
     status = "SUCCESS" if policy_passed else "FAILED"
-
 
     # 5. EMIT: Phát tín hiệu chuyển mạch chính thức lên thanh ghi POL của MainBus
     return StandardFrame.emit(
@@ -59,7 +61,9 @@ async def node_POLICY_ENGINE(
             metrics={
                 "priority": 1 if result.allow_heavy_execution else 0,
             },
-            context=state.reg_intent_classifier.payload.context, 
-            error=None if policy_passed else "Policy rejected: Undefined or error traffic detected.",
+            context=state.reg_intent_classifier.payload.context,
+            error=None
+            if policy_passed
+            else "Policy rejected: Undefined or error traffic detected.",
         ),
     )

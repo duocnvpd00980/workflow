@@ -43,7 +43,7 @@ async def node_output_guard(
     # =========================================================================
     # STEP 2 — PURE DOMAIN EXECUTION (rule-based, no LLM)
     # =========================================================================
-    text   = aggregator.payload.text
+    text = aggregator.payload.text
     result = _service.check(text)
 
     # =========================================================================

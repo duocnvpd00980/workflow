@@ -1,5 +1,6 @@
 from llama_index.core.postprocessor import LLMRerank
 
+
 class RetrieverService:
     def __init__(self, index, llm):
         self.index = index

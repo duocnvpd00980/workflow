@@ -1,5 +1,4 @@
 class CacheMemoryService:
-
     def __init__(self):
 
         self._memory = {}

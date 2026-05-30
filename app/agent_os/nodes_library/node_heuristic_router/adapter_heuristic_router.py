@@ -7,10 +7,7 @@ from .heuristic_router_service import HeuristicRouterService
 _service = HeuristicRouterService()
 
 
-async def node_heuristic_router(
-    state: MainBus,
-    config: RunnableConfig = None
-) -> dict:
+async def node_heuristic_router(state: MainBus, config: RunnableConfig = None) -> dict:
     """
     ======================================================================
     CERTIFIED PROTOCOL WORKFLOW: HEURISTIC_ROUTER
@@ -32,7 +29,9 @@ async def node_heuristic_router(
     # STEP 1: SAFE POST-GUARD
     error_message = None
     if not hasattr(state, "input_guard") or state.input_guard is None:
-        error_message = "[HEURISTIC_ROUTER] Topology Violation: input_guard không tồn tại trên Bus."
+        error_message = (
+            "[HEURISTIC_ROUTER] Topology Violation: input_guard không tồn tại trên Bus."
+        )
     elif state.input_guard.payload.status != "SUCCESS":
         error_message = (
             f"[HEURISTIC_ROUTER] Upstream Failure: INPUT_GUARD thất bại. "
@@ -48,8 +47,8 @@ async def node_heuristic_router(
                 records=[],
                 state={"process_completed": False, "route_to": "end"},
                 context={"topology_error": error_message},
-                error=error_message
-            )
+                error=error_message,
+            ),
         )
 
     # STEP 2: CONTEXT EXTRACTION
@@ -71,6 +70,6 @@ async def node_heuristic_router(
                 "heuristic_router": result.route,
             },
             context={"matched_keyword": result.matched_keyword},
-            error=None
-        )
+            error=None,
+        ),
     )

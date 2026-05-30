@@ -5,6 +5,7 @@ from agent_os.workflows.mainboard import factory, board
 _main_app = None
 _lock = asyncio.Lock()
 
+
 async def get_main_app():
     global _main_app
     if _main_app is None:

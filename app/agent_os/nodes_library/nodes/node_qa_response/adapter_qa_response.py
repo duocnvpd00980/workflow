@@ -38,40 +38,52 @@ async def node_QA_RESPONSE(state: MainBus) -> dict:
     # 3. MULTI-LAYER DEFENSIVE POST-GUARD (Phòng vệ dữ liệu thượng nguồn)
     # Tìm kiếm an toàn câu hỏi của User từ Retrieval Router (RR)
     upstream_router = getattr(state, "reg_retrieval_router", None)
-    user_input = upstream_router.payload.text if upstream_router else (getattr(state, "user_input", "") or "Hi")
+    user_input = (
+        upstream_router.payload.text
+        if upstream_router
+        else (getattr(state, "user_input", "") or "Hi")
+    )
 
     # Tìm kiếm an toàn mảng tri thức từ QA Retriever (QAR)
     upstream_retriever = getattr(state, "reg_qa_retriever", None)
-    
+
     clean_contexts: List[Any] = []
     is_rag_valid = False
 
     if upstream_retriever and upstream_retriever.payload.status == "SUCCESS":
         raw_records = upstream_retriever.payload.records
         # 🛡️ BẪY CHẶN BẨN: Loại bỏ trường hợp chuỗi báo lỗi, báo rỗng bị nhầm là tài liệu tri thức
-        if raw_records and len(raw_records) > 0 and "aborted" not in str(raw_records[0]).lower():
+        if (
+            raw_records
+            and len(raw_records) > 0
+            and "aborted" not in str(raw_records[0]).lower()
+        ):
             clean_contexts = raw_records
             is_rag_valid = True
-            logger.info(f"[NodeQAResponse] Tiếp nhận thành công {len(clean_contexts)} tài liệu tri thức sạch.")
-    
+            logger.info(
+                f"[NodeQAResponse] Tiếp nhận thành công {len(clean_contexts)} tài liệu tri thức sạch."
+            )
+
     if not is_rag_valid:
-        logger.warning("[NodeQAResponse] Phát hiện luồng tri thức thượng nguồn trống hoặc gãy. Kích hoạt cơ chế Fallback sang LLM Base Knowledge.")
+        logger.warning(
+            "[NodeQAResponse] Phát hiện luồng tri thức thượng nguồn trống hoặc gãy. Kích hoạt cơ chế Fallback sang LLM Base Knowledge."
+        )
 
     # 4. PURE DOMAIN EXECUTION (Gọi nghiệp vụ lõi)
     module = QaResponseService(llm_engine=llm_engine)
-    
+
     try:
-        # Nếu RAG gãy, ta vẫn truyền user_input xuống, Service hoặc Prompt bên trong 
+        # Nếu RAG gãy, ta vẫn truyền user_input xuống, Service hoặc Prompt bên trong
         # sẽ tự biết cách ép LLM dùng kiến thức nền dựa trên mảng contexts rỗng.
         decision = await module.generate_response(
             user_input=user_input,
             contexts=clean_contexts,
         )
-        
+
         answer_text = getattr(decision, "answer", "").strip()
         tone = getattr(decision, "tone", "neutral")
         citations = getattr(decision, "citations", [])
-        
+
     except Exception as service_err:
         logger.error(f"[NodeQAResponse] Nghiệp vụ LLM sập: {str(service_err)}")
         answer_text = f"Hệ thống gặp sự cố khi xử lý câu hỏi: '{user_input}'. Vui lòng thử lại sau."
@@ -89,19 +101,14 @@ async def node_QA_RESPONSE(state: MainBus) -> dict:
             text=answer_text,
             records=clean_contexts,  # Giữ lại vết tài liệu đã dùng để đối chiếu UI nếu cần
             entities=[],
-            state={
-                "source_used": is_rag_valid,
-                "tone": tone,
-                "flow_type": "qa"
-            },
+            state={"source_used": is_rag_valid, "tone": tone, "flow_type": "qa"},
             metrics={
                 "context_quality": 1.0 if is_rag_valid else 0.0,
-                "latency_optimized": True
+                "latency_optimized": True,
             },
-            context={
-                "citations": citations,
-                "source_node": "node_qa_response"
-            },
-            error=None if final_status == "SUCCESS" else "LLM generated an empty answer."
+            context={"citations": citations, "source_node": "node_qa_response"},
+            error=None
+            if final_status == "SUCCESS"
+            else "LLM generated an empty answer.",
         ),
     )

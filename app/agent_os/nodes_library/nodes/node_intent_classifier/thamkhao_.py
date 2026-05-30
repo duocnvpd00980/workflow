@@ -22,8 +22,8 @@ from .intent_classifier_protocol import IntentClassifierOutput
 # ENCODER
 # =============================================================================
 
-class SystemFactoryEncoder(DenseEncoder):
 
+class SystemFactoryEncoder(DenseEncoder):
     model: str = Field(...)
     base_url: str = Field(...)
 
@@ -36,7 +36,7 @@ class SystemFactoryEncoder(DenseEncoder):
             name="semantic-intent-router",
             model=factory_embed_engine.model,
             base_url=factory_embed_engine.base_url,
-            **kwargs
+            **kwargs,
         )
 
     def __call__(self, docs: list[str]) -> list[list[float]]:
@@ -50,18 +50,15 @@ class SystemFactoryEncoder(DenseEncoder):
             api_base=self.base_url,
         )
 
-        return [
-            x["embedding"]
-            for x in response["data"]
-        ]
+        return [x["embedding"] for x in response["data"]]
 
 
 # =============================================================================
 # SERVICE
 # =============================================================================
 
-class IntentClassifierService:
 
+class IntentClassifierService:
     MIN_ROUTE_SCORE: Final[float] = 0.70
 
     # -------------------------------------------------------------------------
@@ -148,7 +145,6 @@ class IntentClassifierService:
         # ---------------------------------------------------------------------
 
         routes = [
-
             # CODING
             Route(
                 name="coding",
@@ -162,7 +158,6 @@ class IntentClassifierService:
                     "nextjs routing problem",
                 ],
             ),
-
             # MARKETING
             Route(
                 name="marketing",
@@ -175,7 +170,6 @@ class IntentClassifierService:
                     "email marketing plan",
                 ],
             ),
-
             # RESEARCH
             Route(
                 name="research",
@@ -187,7 +181,6 @@ class IntentClassifierService:
                     "industry analysis",
                 ],
             ),
-
             # QA
             Route(
                 name="qa",
@@ -200,7 +193,6 @@ class IntentClassifierService:
                     "tutorial",
                 ],
             ),
-
             # MATH
             Route(
                 name="math",
@@ -211,7 +203,6 @@ class IntentClassifierService:
                     "statistics problem",
                 ],
             ),
-
             # TRANSLATION
             Route(
                 name="translation",
@@ -221,7 +212,6 @@ class IntentClassifierService:
                     "dịch giúp tôi",
                 ],
             ),
-
             # SMALLTALK
             Route(
                 name="smalltalk",
@@ -239,9 +229,7 @@ class IntentClassifierService:
         # ROUTER
         # ---------------------------------------------------------------------
 
-        encoder = SystemFactoryEncoder(
-            factory_embed_engine=ollama_embed_model
-        )
+        encoder = SystemFactoryEncoder(factory_embed_engine=ollama_embed_model)
 
         self._router = SemanticRouter(
             encoder=encoder,
@@ -287,23 +275,15 @@ class IntentClassifierService:
         # ---------------------------------------------------------------------
 
         try:
-
             router_output = await asyncio.to_thread(
                 self._router,
                 text,
             )
 
-            if (
-                router_output
-                and router_output.name
-            ):
-
-                score = float(
-                    getattr(router_output, "score", 0.0) or 0.0
-                )
+            if router_output and router_output.name:
+                score = float(getattr(router_output, "score", 0.0) or 0.0)
 
                 if score >= self.MIN_ROUTE_SCORE:
-
                     result = self._build_by_route(
                         mode=router_output.name,
                         confidence=score,
@@ -398,7 +378,6 @@ class IntentClassifierService:
         # ---------------------------------------------------------------------
 
         policy_map = {
-
             "coding": {
                 "execution_strategy": "tools",
                 "model_tier": "reasoning",
@@ -408,7 +387,6 @@ class IntentClassifierService:
                 "requires_web_search": False,
                 "requires_rag": False,
             },
-
             "research": {
                 "execution_strategy": "multi_agent",
                 "model_tier": "reasoning",
@@ -418,7 +396,6 @@ class IntentClassifierService:
                 "requires_web_search": True,
                 "requires_rag": True,
             },
-
             "marketing": {
                 "execution_strategy": "multi_agent",
                 "model_tier": "balanced",
@@ -428,7 +405,6 @@ class IntentClassifierService:
                 "requires_web_search": True,
                 "requires_rag": False,
             },
-
             "qa": {
                 "execution_strategy": "direct",
                 "model_tier": "balanced",
@@ -438,7 +414,6 @@ class IntentClassifierService:
                 "requires_web_search": False,
                 "requires_rag": False,
             },
-
             "math": {
                 "execution_strategy": "tools",
                 "model_tier": "reasoning",
@@ -448,7 +423,6 @@ class IntentClassifierService:
                 "requires_web_search": False,
                 "requires_rag": False,
             },
-
             "translation": {
                 "execution_strategy": "direct",
                 "model_tier": "cheap",
@@ -458,7 +432,6 @@ class IntentClassifierService:
                 "requires_web_search": False,
                 "requires_rag": False,
             },
-
             "smalltalk": {
                 "execution_strategy": "direct",
                 "model_tier": "cheap",

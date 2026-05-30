@@ -4,75 +4,91 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('knowledge', '0002_alter_documentsource_options_and_more'),
+        ("knowledge", "0002_alter_documentsource_options_and_more"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='documentsource',
+            name="documentsource",
             options={},
         ),
         migrations.AddField(
-            model_name='documentsource',
-            name='last_ingestion_log',
-            field=models.TextField(blank=True, help_text='Debug logs cho ingestion pipeline (optional)', null=True),
+            model_name="documentsource",
+            name="last_ingestion_log",
+            field=models.TextField(
+                blank=True,
+                help_text="Debug logs cho ingestion pipeline (optional)",
+                null=True,
+            ),
         ),
         migrations.AlterField(
-            model_name='documentsource',
-            name='chunk_count',
+            model_name="documentsource",
+            name="chunk_count",
             field=models.IntegerField(default=0),
         ),
         migrations.AlterField(
-            model_name='documentsource',
-            name='content_type',
+            model_name="documentsource",
+            name="content_type",
             field=models.CharField(blank=True, max_length=128, null=True),
         ),
         migrations.AlterField(
-            model_name='documentsource',
-            name='error_message',
+            model_name="documentsource",
+            name="error_message",
             field=models.TextField(blank=True, null=True),
         ),
         migrations.AlterField(
-            model_name='documentsource',
-            name='file',
-            field=models.FileField(upload_to='knowledge/'),
+            model_name="documentsource",
+            name="file",
+            field=models.FileField(upload_to="knowledge/"),
         ),
         migrations.AlterField(
-            model_name='documentsource',
-            name='file_size',
+            model_name="documentsource",
+            name="file_size",
             field=models.BigIntegerField(blank=True, null=True),
         ),
         migrations.AlterField(
-            model_name='documentsource',
-            name='status',
-            field=models.CharField(choices=[('pending', 'Pending'), ('processing', 'Processing'), ('completed', 'Completed'), ('failed', 'Failed')], default='pending', max_length=32),
+            model_name="documentsource",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("pending", "Pending"),
+                    ("processing", "Processing"),
+                    ("completed", "Completed"),
+                    ("failed", "Failed"),
+                ],
+                default="pending",
+                max_length=32,
+            ),
         ),
         migrations.AlterField(
-            model_name='documentsource',
-            name='title',
+            model_name="documentsource",
+            name="title",
             field=models.CharField(max_length=512),
         ),
         migrations.AlterField(
-            model_name='documentsource',
-            name='vector_doc_id',
+            model_name="documentsource",
+            name="vector_doc_id",
             field=models.CharField(blank=True, max_length=255, null=True),
         ),
         migrations.AddIndex(
-            model_name='documentsource',
-            index=models.Index(fields=['status'], name='knowledge_d_status_eba4cc_idx'),
+            model_name="documentsource",
+            index=models.Index(fields=["status"], name="knowledge_d_status_eba4cc_idx"),
         ),
         migrations.AddIndex(
-            model_name='documentsource',
-            index=models.Index(fields=['created_at'], name='knowledge_d_created_13aef1_idx'),
+            model_name="documentsource",
+            index=models.Index(
+                fields=["created_at"], name="knowledge_d_created_13aef1_idx"
+            ),
         ),
         migrations.AddIndex(
-            model_name='documentsource',
-            index=models.Index(fields=['vector_doc_id'], name='knowledge_d_vector__1d2622_idx'),
+            model_name="documentsource",
+            index=models.Index(
+                fields=["vector_doc_id"], name="knowledge_d_vector__1d2622_idx"
+            ),
         ),
         migrations.AlterModelTable(
-            name='documentsource',
-            table='knowledge_document_source',
+            name="documentsource",
+            table="knowledge_document_source",
         ),
     ]

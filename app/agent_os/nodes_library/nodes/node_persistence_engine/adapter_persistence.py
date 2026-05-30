@@ -15,14 +15,10 @@ async def node_PERSISTENCE_ENGINE(
     config: RunnableConfig | None = None,
 ) -> dict:
 
-    ok = await service.persist(
-        state
-    )
+    ok = await service.persist(state)
 
     payload = {
-
         "persisted": ok,
-
         "storage_backend": "postgres",
     }
 

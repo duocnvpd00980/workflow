@@ -18,22 +18,15 @@ async def node_GATEKEEPER(
     config: RunnableConfig,
 ) -> dict:
 
-    conf = (
-        config.get("configurable", {})
-        if isinstance(config, dict)
-        else {}
-    )
+    conf = config.get("configurable", {}) if isinstance(config, dict) else {}
 
     thread_id = conf.get("thread_id")
 
     tenant_id = conf.get("tenant_id")
 
     user_input = (
-
         state.get("user_input", "")
-
         if isinstance(state, dict)
-
         else getattr(
             state,
             "user_input",
@@ -42,11 +35,8 @@ async def node_GATEKEEPER(
     )
 
     brand_color = (
-
         state.get("brand_color", "#000000")
-
         if isinstance(state, dict)
-
         else getattr(
             state,
             "brand_color",
@@ -57,80 +47,49 @@ async def node_GATEKEEPER(
     module = GatekeeperService()
 
     res = await module.run(
-
         {
             "headline": user_input,
             "content": user_input,
             "brand_color": brand_color,
         },
-
         tenant_id=tenant_id,
-
         thread_id=thread_id,
     )
 
     return StandardFrame.emit(
-
         registry_key=BusRegistry.GK,
-
         payload=BodyFrame(
-
-            status=(
-                "SUCCESS"
-                if res.gatekeeper_passed
-                else "FAILED"
-            ),
-
+            status=("SUCCESS" if res.gatekeeper_passed else "FAILED"),
             text=res.content or "",
-
             entities=[
-
-                {
-                    "violation": str(v)
-                }
-
+                {"violation": str(v)}
                 for v in getattr(
                     res,
                     "violations",
                     [],
                 )
             ],
-
             state={
-
-                "gatekeeper_passed":
-                res.gatekeeper_passed,
-
-                "risk_score":
-                getattr(
+                "gatekeeper_passed": res.gatekeeper_passed,
+                "risk_score": getattr(
                     res,
                     "risk_score",
                     0.0,
                 ),
-
-                "headline":res.headline or "",
+                "headline": res.headline or "",
                 "brand_color": getattr(
                     res,
                     "brand_color",
                     "#000000",
                 ),
             },
-
             context={
-
-                "tenant_id":
-                tenant_id,
-
-                "thread_id":
-                thread_id,
+                "tenant_id": tenant_id,
+                "thread_id": thread_id,
             },
-
             error=(
-
                 None
-
                 if res.gatekeeper_passed
-
                 else getattr(
                     res,
                     "reason",

@@ -1,13 +1,15 @@
 # =========================================================
 # FILE: policy_engine_service.py
 # =========================================================
-from agent_os.nodes_library.node_policy_engine.policy_engine_protocol import PolicyEngineOutput
+from agent_os.nodes_library.node_policy_engine.policy_engine_protocol import (
+    PolicyEngineOutput,
+)
 
 
 class PolicyEngineService:
     """
     POLICY ENGINE DOMAIN SERVICE (PURE LOGIC)
-    
+
     Chỉ tập trung vào business logic đóng ngắt thiết bị bảo vệ.
     Trả về dữ liệu chuẩn hóa theo đúng Hợp đồng Protocol (Pydantic Native).
     """

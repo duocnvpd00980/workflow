@@ -1,28 +1,16 @@
-from langchain_core.runnables import (
-    RunnableConfig
-)
+from langchain_core.runnables import RunnableConfig
 
 from django.conf import settings as django_settings
 
-from agent_os.system.bus.main_bus import (
-    MainBus
-)
+from agent_os.system.bus.main_bus import MainBus
 
-from agent_os.system.bus.registry import (
-    BusRegistry
-)
+from agent_os.system.bus.registry import BusRegistry
 
-from agent_os.system.bus.protocol import (
-    StandardFrame
-)
+from agent_os.system.bus.protocol import StandardFrame
 
-from .router_protocol import (
-    RouterOutput
-)
+from .router_protocol import RouterOutput
 
-from .router_service import (
-    RouterService
-)
+from .router_service import RouterService
 
 
 async def node_ROUTER(state: MainBus, config: RunnableConfig) -> dict:

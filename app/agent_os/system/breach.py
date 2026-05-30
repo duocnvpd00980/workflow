@@ -8,6 +8,7 @@
 
 class Breach(BaseException):
     """Trip không thể chặn. Chỉ finally chạy được."""
+
     def __init__(self, reason: str):
         self.reason = reason
         super().__init__(f"[SYSTEM BREACH] {reason}")

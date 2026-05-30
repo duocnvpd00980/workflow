@@ -5,7 +5,6 @@ from .evaluator_protocol import EvaluationResult
 
 
 class EvaluatorService:
-
     def __init__(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self._env = Environment(loader=FileSystemLoader(current_dir))

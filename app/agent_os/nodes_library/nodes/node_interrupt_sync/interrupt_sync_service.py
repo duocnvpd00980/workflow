@@ -2,7 +2,6 @@ from .interrupt_sync_protocol import InterruptSyncOutput
 
 
 class InterruptSyncService:
-
     async def run(
         self,
         completed_modules: list[str] | None,
@@ -27,9 +26,7 @@ class InterruptSyncService:
                 checkpoint_note="Không có branch cần đồng bộ.",
             )
 
-        pending_modules = sorted(
-            list(active_set - completed_set)
-        )
+        pending_modules = sorted(list(active_set - completed_set))
 
         is_sync_complete = len(pending_modules) == 0
 

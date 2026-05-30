@@ -30,13 +30,16 @@ def _rebuild_rag():
             docs = loader.load_file(doc.file.path)
             if docs:
                 import asyncio
+
                 asyncio.run(rag.add(docs[0].text, **docs[0].metadata))
         except Exception as e:
             pass
 
 
 @admin.action(description="🚀 Reprocess selected")
-def reprocess_documents(modeladmin, request: HttpRequest, queryset: List[DocumentSource]):
+def reprocess_documents(
+    modeladmin, request: HttpRequest, queryset: List[DocumentSource]
+):
     from agent_os.rag.rag_service import RAG
     from agent_os.rag.document_loader_service import DocumentLoader
     import asyncio
@@ -72,10 +75,14 @@ def delete_and_rebuild(modeladmin, request: HttpRequest, queryset):
 
 @admin.register(DocumentSource)
 class DocumentSourceAdmin(admin.ModelAdmin):
-
     list_display = (
-        "id", "title", "display_status", "extension_badge",
-        "chunk_count", "file_size_display", "created_at",
+        "id",
+        "title",
+        "display_status",
+        "extension_badge",
+        "chunk_count",
+        "file_size_display",
+        "created_at",
     )
     list_filter = ("status", "created_at")
     search_fields = ("title", "error_message")
@@ -83,8 +90,12 @@ class DocumentSourceAdmin(admin.ModelAdmin):
     actions = (reprocess_documents, delete_and_rebuild)
 
     readonly_fields = (
-        "status", "chunk_count", "error_message",
-        "created_at", "updated_at", "processed_at",
+        "status",
+        "chunk_count",
+        "error_message",
+        "created_at",
+        "updated_at",
+        "processed_at",
     )
 
     fieldsets = (
@@ -95,13 +106,17 @@ class DocumentSourceAdmin(admin.ModelAdmin):
 
     def display_status(self, obj):
         colors = {
-            "pending": "#6b7280", "processing": "#2563eb",
-            "completed": "#16a34a", "failed": "#dc2626",
+            "pending": "#6b7280",
+            "processing": "#2563eb",
+            "completed": "#16a34a",
+            "failed": "#dc2626",
         }
         return format_html(
             "<b style='color:white;background:{};padding:4px 10px;border-radius:12px;'>{}</b>",
-            colors.get(obj.status, "#111827"), obj.get_status_display(),
+            colors.get(obj.status, "#111827"),
+            obj.get_status_display(),
         )
+
     display_status.short_description = "Trạng thái"
 
     def extension_badge(self, obj):
@@ -109,6 +124,7 @@ class DocumentSourceAdmin(admin.ModelAdmin):
             "<span style='background:#f3f4f6;padding:3px 8px;border-radius:8px;'>{}</span>",
             obj.extension.upper(),
         )
+
     extension_badge.short_description = "Loại"
 
     def file_size_display(self, obj):
@@ -120,6 +136,7 @@ class DocumentSourceAdmin(admin.ModelAdmin):
         elif size < 1024 * 1024:
             return f"{size / 1024:.1f} KB"
         return f"{size / (1024 * 1024):.1f} MB"
+
     file_size_display.short_description = "Kích thước"
 
     def delete_model(self, request, obj):

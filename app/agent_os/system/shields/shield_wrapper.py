@@ -1,7 +1,4 @@
-from agent_os.system.shields.shield_runtime import (
-    shield_pre,
-    shield_post
-)
+from agent_os.system.shields.shield_runtime import shield_pre, shield_post
 
 
 async def run_shielded(node_fn, state, config):
@@ -23,12 +20,11 @@ async def run_shielded(node_fn, state, config):
     # ======================
     safe_output = shield_post(raw_output)
 
-    return {
-        "ads_output": safe_output
-    }
+    return {"ads_output": safe_output}
+
 
 async def run_shielded(node_name, state, config, fn):
-    
+
     # PRE
     SHIELD.scrub(state.user_input)
     POLICY.check(node_name)

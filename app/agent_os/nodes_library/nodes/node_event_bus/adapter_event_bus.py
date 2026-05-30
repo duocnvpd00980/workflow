@@ -16,9 +16,7 @@ async def node_EVENT_BUS(
 ) -> dict:
 
     payload = {
-
         "event_name": "workflow.completed",
-
         "event_data": {},
     }
 

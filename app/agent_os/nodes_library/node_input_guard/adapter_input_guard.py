@@ -7,8 +7,12 @@ BUSINESS INTENT
 =======================================================================
 """
 
-from agent_os.nodes_library.node_input_guard.input_guard_protocol import InputGuardOutput
-from agent_os.nodes_library.node_input_guard.input_guard_service import InputGuardService
+from agent_os.nodes_library.node_input_guard.input_guard_protocol import (
+    InputGuardOutput,
+)
+from agent_os.nodes_library.node_input_guard.input_guard_service import (
+    InputGuardService,
+)
 from agent_os.system.bus.main_bus import MainBus
 from agent_os.system.bus.protocol import BodyFrame, StandardFrame
 from agent_os.system.bus.registry import BusRegistry
@@ -30,7 +34,6 @@ async def node_input_guard(state: MainBus):
                     "is_safe": False,
                     "sanitized_text": "",
                     "risk_category": "EMPTY_INPUT",
-
                     # ===== MOCK FOR SUPERVISOR =====
                     "history": [],
                     "user_profile": {},
@@ -52,9 +55,7 @@ async def node_input_guard(state: MainBus):
     # =========================================================
     service = InputGuardService()
 
-    domain_result: InputGuardOutput = service.run(
-        raw_query=raw_query
-    )
+    domain_result: InputGuardOutput = service.run(raw_query=raw_query)
     # =========================================================
     # S4 NORMALIZATION + EMIT
     # =========================================================
@@ -70,15 +71,9 @@ async def node_input_guard(state: MainBus):
                     "sanitized_text": domain_result.sanitized_text,
                     "risk_category": domain_result.risk_category,
                     "user_input": raw_query,
-
                     # ===== MOCK FOR SUPERVISOR =====
-                    "history": [
-                        {"role": "user", "content": raw_query}
-                    ],
-                    "user_profile": {
-                        "user_id": "mock_user",
-                        "persona": "tester"
-                    },
+                    "history": [{"role": "user", "content": raw_query}],
+                    "user_profile": {"user_id": "mock_user", "persona": "tester"},
                     "relevant_episodes": [],
                     "evaluation_feedback": "",
                 },
@@ -97,25 +92,21 @@ async def node_input_guard(state: MainBus):
                 "sanitized_text": domain_result.sanitized_text,
                 "risk_category": domain_result.risk_category,
                 "user_input": raw_query,
-
                 # =================================================
                 # MOCK DATA CHO SUPERVISOR (_safe_extract_* chạy)
                 # =================================================
                 "history": [
                     {"role": "user", "content": raw_query},
-                    {"role": "assistant", "content": "acknowledged"}
+                    {"role": "assistant", "content": "acknowledged"},
                 ],
-
                 "user_profile": {
                     "user_id": "mock_user_001",
-                    "persona": "marketing_user"
+                    "persona": "marketing_user",
                 },
-
                 "relevant_episodes": [
                     {"event": "previous_query", "summary": "user asked about marketing"}
                 ],
-
-                "evaluation_feedback": ""
+                "evaluation_feedback": "",
             },
             metrics={},
             context={},

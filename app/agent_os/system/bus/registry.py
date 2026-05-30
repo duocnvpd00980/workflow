@@ -1,6 +1,4 @@
 class BusRegistry:
-
-
     IG = "input_guard"
 
     SV = "supervisor"
@@ -12,13 +10,13 @@ class BusRegistry:
     LWC = "lightweight_chat"
 
     EV = "evaluator"
-    
+
     AG = "aggregator"
 
     OG = "output_guard"
 
     HR = "human_review"
-    
+
     SS = "shared_state"
 
     FR = "final_response"
@@ -35,16 +33,13 @@ class BusRegistry:
 
     KLB = "knowledge_base"
 
-    RC =  "relevance_check"
+    RC = "relevance_check"
 
-    LLM =  "llm_generation"
+    LLM = "llm_generation"
 
-    FB =  "fallback_search"
+    FB = "fallback_search"
 
-    GEN =  "generation"
-
-
-    
+    GEN = "generation"
 
     # =====================================================
     # INTERNAL ORCHESTRATION
@@ -55,7 +50,6 @@ class BusRegistry:
     METRICS = "reg_metrics"
 
     HEALTH = "reg_system_health"
-    
 
     # =====================================================
     # UTILITY
@@ -68,15 +62,9 @@ class BusRegistry:
         """
 
         return [
-
             value
-
             for key, value in cls.__dict__.items()
-
-            if (
-                isinstance(value, str)
-                and key.isupper()
-            )
+            if (isinstance(value, str) and key.isupper())
         ]
 
     @classmethod
@@ -86,7 +74,6 @@ class BusRegistry:
         """
 
         return [
-
             cls.BS,
             cls.IS,
             cls.EB,
@@ -100,7 +87,6 @@ class BusRegistry:
         """
 
         return [
-
             cls.AL,
             cls.OBS,
             cls.METRICS,
@@ -114,7 +100,6 @@ class BusRegistry:
         """
 
         return [
-
             cls.RL,
             cls.CB,
             cls.DLQ,

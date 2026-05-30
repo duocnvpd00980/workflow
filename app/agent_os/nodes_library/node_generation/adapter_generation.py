@@ -9,27 +9,33 @@ from .generation_service import GenerationService
 _service = GenerationService()
 
 import logging
+
 log = logging.getLogger(__name__)
+
 
 async def node_generation(
     state: MainBus,
     config: RunnableConfig = None,
 ) -> dict:
-    
+
     log.info("[DEBUG] --- Bắt đầu node_generation ---")
 
     # 1. TRÍCH XUẤT NGỮ CẢNH
     relevance_frame = getattr(state, "relevance_check", None)
     log.info(f"[DEBUG] Relevance Frame tồn tại: {relevance_frame is not None}")
-    
+
     rag_context = "Không có thông tin."
-    if relevance_frame and hasattr(relevance_frame, 'payload'):
+    if relevance_frame and hasattr(relevance_frame, "payload"):
         log.info(f"[DEBUG] Relevance Status: {relevance_frame.payload.status}")
-        rag_context = relevance_frame.payload.text if relevance_frame.payload.status == "SUCCESS" else "RAG Fail"
-    
+        rag_context = (
+            relevance_frame.payload.text
+            if relevance_frame.payload.status == "SUCCESS"
+            else "RAG Fail"
+        )
+
     chat_history = getattr(state, "messages", [])
     log.info(f"[DEBUG] Số lượng tin nhắn history: {len(chat_history)}")
-    
+
     user_input = getattr(state.input_guard.payload, "text", "")
     log.info(f"[DEBUG] User Input: {user_input}")
 
@@ -52,7 +58,7 @@ async def node_generation(
             llm_engine=llm_engine,
         )
         log.info(f"[DEBUG] Service trả về: {result.model_dump()}")
-        
+
         return StandardFrame.emit(
             registry_key=BusRegistry.GEN,
             payload=BodyFrame(
@@ -71,10 +77,11 @@ async def node_generation(
             registry_key=BusRegistry.GEN,
             payload=BodyFrame(
                 status="FAILED",
-                text=f"Lỗi chi tiết: {str(e)}", # Hiển thị lỗi ra UI để cậu đọc
+                text=f"Lỗi chi tiết: {str(e)}",  # Hiển thị lỗi ra UI để cậu đọc
                 error=f"[node_generation] {e!r}",
             ),
         )
+
 
 def _emit_error(msg):
     return StandardFrame.emit(

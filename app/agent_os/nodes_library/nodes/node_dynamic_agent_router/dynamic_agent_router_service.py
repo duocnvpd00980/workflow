@@ -7,17 +7,14 @@ from typing import Any, Dict
 class DynamicAgentRouterService:
     """
     DYNAMIC AGENT ROUTER DOMAIN SERVICE (PURE LOGIC)
-    
+
     Thuật toán xử lý lõi của Rơ-le định tuyến.
-    Nhận các tham số đóng ngắt mạch điện từ bộ cấu hình (Planner) 
+    Nhận các tham số đóng ngắt mạch điện từ bộ cấu hình (Planner)
     để tính toán ra các kênh ngõ ra được cấp điện thực tế.
     """
 
     async def compute_routing_channels(
-        self,
-        run_ads: bool,
-        run_email: bool,
-        run_blog: bool
+        self, run_ads: bool, run_email: bool, run_blog: bool
     ) -> Dict[str, Any]:
         """
         Tính toán toán học và logic để xuất ra trạng thái các kênh của bộ định tuyến.
@@ -39,7 +36,9 @@ class DynamicAgentRouterService:
         elif total > 0:
             routing_mode = "dynamic"
         else:
-            routing_mode = "bypass" # Toàn bộ hệ thống marketing bị ngắt, đi thẳng về sync
+            routing_mode = (
+                "bypass"  # Toàn bộ hệ thống marketing bị ngắt, đi thẳng về sync
+            )
 
         return {
             "router_active": True,

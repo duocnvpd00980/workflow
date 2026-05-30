@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 # SHIELD FAULTS
 # =============================================================================
 
-class ShieldFault(BaseModel):
 
+class ShieldFault(BaseModel):
     shield: str
 
     code: str
@@ -35,11 +35,14 @@ class ToolForbiddenException(PermissionError):
     pass
 
 
-
-
-
 class PipelineError(Exception):
-    def __init__(self, message: str, node: str = "unknown", code: str = "EXECUTION_ERROR", recoverable: bool = False):
+    def __init__(
+        self,
+        message: str,
+        node: str = "unknown",
+        code: str = "EXECUTION_ERROR",
+        recoverable: bool = False,
+    ):
         self.node = node
         self.code = code
         self.message = message

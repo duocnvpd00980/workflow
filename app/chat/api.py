@@ -14,7 +14,7 @@ from django.db import transaction
 from django.http import StreamingHttpResponse
 from ninja import Router, Schema
 from ninja.responses import Response
-from uuid import UUID 
+from uuid import UUID
 from chat.models import Conversation
 from chat.services import ChatService
 
@@ -27,6 +27,7 @@ chat_service = ChatService()
 # =============================================================================
 # Schemas
 # =============================================================================
+
 
 class StreamRequest(Schema):
     message: str
@@ -58,9 +59,10 @@ class ConversationOut(Schema):
 # Helpers
 # =============================================================================
 
+
 def _sse_headers(response: StreamingHttpResponse) -> StreamingHttpResponse:
-    response["Cache-Control"]         = "no-cache"
-    response["X-Accel-Buffering"]     = "no"
+    response["Cache-Control"] = "no-cache"
+    response["X-Accel-Buffering"] = "no"
     response["X-Content-Type-Options"] = "nosniff"
     return response
 
@@ -83,6 +85,7 @@ def _get_or_create_test_user(request):
     )
     return test_user
 
+
 def _generate_title(text: str, limit: int = 60) -> str:
     text = " ".join(text.strip().split())
 
@@ -91,17 +94,19 @@ def _generate_title(text: str, limit: int = 60) -> str:
 
     return text[:limit].rstrip() + "..."
 
+
 # =============================================================================
 # POST /api/chat/stream   —  SSE streaming
 # =============================================================================
 
+
 @router.post("/stream", auth=None, url_name="stream")
 async def stream_message(request, payload: StreamRequest):
     """SSE endpoint — nhận message, stream kết quả về client theo chuẩn SSE."""
-    message         = payload.message.strip()
-    session_id      = payload.session_id.strip()
+    message = payload.message.strip()
+    session_id = payload.session_id.strip()
     conversation_id = str(payload.conversation_id)
-    msg_id          = (payload.msg_id or "").strip() or str(uuid.uuid4())
+    msg_id = (payload.msg_id or "").strip() or str(uuid.uuid4())
 
     if not conversation_id:
         return Response({"detail": "Thiếu conversation_id."}, status=400)
@@ -112,9 +117,7 @@ async def stream_message(request, payload: StreamRequest):
     user = await sync_to_async(_get_or_create_test_user)(request)
 
     try:
-        conversation = await sync_to_async(
-            Conversation.objects.for_user(user).get
-        )(
+        conversation = await sync_to_async(Conversation.objects.for_user(user).get)(
             id=conversation_id,
         )
     except Conversation.DoesNotExist:
@@ -161,7 +164,9 @@ async def stream_message(request, payload: StreamRequest):
             await sync_to_async(conversation.touch)()
 
     return _sse_headers(
-        StreamingHttpResponse(event_stream(), content_type="text/event-stream; charset=utf-8")
+        StreamingHttpResponse(
+            event_stream(), content_type="text/event-stream; charset=utf-8"
+        )
     )
 
 
@@ -169,13 +174,14 @@ async def stream_message(request, payload: StreamRequest):
 # POST /api/chat/resume   —  Resume sau human review
 # =============================================================================
 
+
 @router.post("/resume", auth=None, url_name="resume")
 async def resume_message(request, payload: ResumeRequest):
     """Resume graph sau khi human review quyết định approve/reject."""
-    session_id      = payload.session_id.strip()
-    action          = payload.action.strip()
-    feedback        = (payload.feedback or "").strip()
-    msg_id          = (payload.msg_id or "").strip()
+    session_id = payload.session_id.strip()
+    action = payload.action.strip()
+    feedback = (payload.feedback or "").strip()
+    msg_id = (payload.msg_id or "").strip()
     conversation_id = str(payload.conversation_id)
 
     if not session_id or not action:
@@ -201,13 +207,16 @@ async def resume_message(request, payload: ResumeRequest):
             yield "event: done\ndata: {}\n\n"
 
     return _sse_headers(
-        StreamingHttpResponse(event_stream(), content_type="text/event-stream; charset=utf-8")
+        StreamingHttpResponse(
+            event_stream(), content_type="text/event-stream; charset=utf-8"
+        )
     )
 
 
 # =============================================================================
 # POST /api/chat/restore  —  Restore session
 # =============================================================================
+
 
 @router.post("/restore", auth=None, url_name="restore")
 async def restore_chat(request, payload: RestoreRequest):
@@ -216,33 +225,42 @@ async def restore_chat(request, payload: RestoreRequest):
     - Nếu có conversation_id → trả về list messages (JSON).
     - Fallback → trả về HTML snapshot từ LangGraph.
     """
-    session_id      = (payload.session_id or "").strip()
+    session_id = (payload.session_id or "").strip()
     conversation_id = (payload.conversation_id or "").strip()
 
     if not session_id and not conversation_id:
-        return Response({"detail": "Thiếu session_id hoặc conversation_id."}, status=400)
+        return Response(
+            {"detail": "Thiếu session_id hoặc conversation_id."}, status=400
+        )
 
-    result = await chat_service.restore_session(session_id, conversation_id=conversation_id)
+    result = await chat_service.restore_session(
+        session_id, conversation_id=conversation_id
+    )
 
     if isinstance(result, list):
-        return Response({
-            "type":            "messages",
-            "messages":        result,
-            "conversation_id": conversation_id,
-            "session_id":      session_id,
-        })
+        return Response(
+            {
+                "type": "messages",
+                "messages": result,
+                "conversation_id": conversation_id,
+                "session_id": session_id,
+            }
+        )
 
-    return Response({
-        "type":       "html",
-        "html":       result or "",
-        "msg_id":     payload.msg_id or "",
-        "session_id": session_id,
-    })
+    return Response(
+        {
+            "type": "html",
+            "html": result or "",
+            "msg_id": payload.msg_id or "",
+            "session_id": session_id,
+        }
+    )
 
 
 # =============================================================================
 # GET /api/chat/conversations  —  Danh sách hội thoại
 # =============================================================================
+
 
 @router.get("/conversations", auth=None, url_name="conversation_list")
 def conversation_list(request):
@@ -251,8 +269,7 @@ def conversation_list(request):
     user = _get_or_create_test_user(request)
 
     convs = (
-        Conversation.objects
-        .for_user(user)
+        Conversation.objects.for_user(user)
         .active()
         .values("id", "title", "last_message_at")
     )
@@ -264,15 +281,14 @@ def conversation_list(request):
 # GET /api/chat/conversations/{conversation_id}  —  Load messages
 # =============================================================================
 
+
 @router.get("/conversations/{conversation_id}", auth=None, url_name="conversation_load")
 def conversation_load(request, conversation_id: uuid.UUID):
     """Trả về danh sách messages trong 1 conversation."""
     user = _get_or_create_test_user(request)
 
     try:
-        conversation = Conversation.objects.for_user(user).get(
-            id=conversation_id
-        )
+        conversation = Conversation.objects.for_user(user).get(id=conversation_id)
     except Conversation.DoesNotExist:
         return Response({"detail": "Không tìm thấy conversation."}, status=404)
 
@@ -284,16 +300,15 @@ def conversation_load(request, conversation_id: uuid.UUID):
 
     return {
         "conversation_id": str(conversation.id),
-        "session_id":      request.session.session_key or "local_test_session",
-        "messages":        messages,
+        "session_id": request.session.session_key or "local_test_session",
+        "messages": messages,
     }
-
-
 
 
 # =============================================================================
 # POST /api/chat/conversations  —  Create conversation
 # =============================================================================
+
 
 @router.post("/conversations", auth=None, url_name="conversation_create")
 def conversation_create(request):

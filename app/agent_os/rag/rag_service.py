@@ -13,43 +13,45 @@ from rank_bm25 import BM25Okapi
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("rag")
 
-PERSIST_DIR    = Path("./rag_storage")
-EMBED_MODEL    = "BAAI/bge-small-en-v1.5"
-DIM            = 384
-CHUNK_SIZE     = 512
-CHUNK_OVERLAP  = 50
-RRF_K          = 60
-RRF_GAP        = 0.6
+PERSIST_DIR = Path("./rag_storage")
+EMBED_MODEL = "BAAI/bge-small-en-v1.5"
+DIM = 384
+CHUNK_SIZE = 512
+CHUNK_OVERLAP = 50
+RRF_K = 60
+RRF_GAP = 0.6
 BM25_MIN_RATIO = 0.3
-L2_THRESHOLD   = 0.85
-L1_MAX         = 1000
+L2_THRESHOLD = 0.85
+L1_MAX = 1000
 
 
 # ── Async embed helper ────────────────────────────────────────────────────────
 
+
 async def _aembed(embed_model: TextEmbedding, text: str) -> np.ndarray:
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None, lambda: list(embed_model.embed([text]))[0]
-    )
+    return await loop.run_in_executor(None, lambda: list(embed_model.embed([text]))[0])
 
 
 # ── Data classes ──────────────────────────────────────────────────────────────
+
 
 @dataclass
 class Doc:
     text: str
     metadata: dict = field(default_factory=dict)
 
+
 @dataclass
 class Chunk:
     score: float
-    text:  str
-    meta:  dict
+    text: str
+    meta: dict
+
 
 @dataclass
 class Result:
-    query:  str
+    query: str
     chunks: List[Chunk]
     source: str
 
@@ -57,20 +59,29 @@ class Result:
 # ── Synonyms ──────────────────────────────────────────────────────────────────
 
 SYNONYMS = {
-    "thưởng tháng 13": ["tiền thưởng cuối năm", "bonus tết", "lương tháng 13", "thưởng tết"],
-    "nghỉ phép năm":   ["annual leave", "phép năm", "ngày phép hưởng lương"],
-    "nghỉ phép":       ["ngày phép", "leave", "day off", "xin nghỉ"],
-    "public code":     ["public mã nguồn", "đăng github", "upload source", "chia sẻ code"],
-    "lương":           ["tiền công", "thu nhập"],
-    "bảo mật":         ["security", "an ninh", "confidential"],
+    "thưởng tháng 13": [
+        "tiền thưởng cuối năm",
+        "bonus tết",
+        "lương tháng 13",
+        "thưởng tết",
+    ],
+    "nghỉ phép năm": ["annual leave", "phép năm", "ngày phép hưởng lương"],
+    "nghỉ phép": ["ngày phép", "leave", "day off", "xin nghỉ"],
+    "public code": ["public mã nguồn", "đăng github", "upload source", "chia sẻ code"],
+    "lương": ["tiền công", "thu nhập"],
+    "bảo mật": ["security", "an ninh", "confidential"],
 }
 
 _reverse = {v.lower(): k for k, vs in SYNONYMS.items() for v in vs}
 _reverse.update({k.lower(): k for k in SYNONYMS})
 _reverse = dict(sorted(_reverse.items(), key=lambda x: len(x[0]), reverse=True))
 
+
 def _no_accent(s: str) -> str:
-    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+    return "".join(
+        c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn"
+    )
+
 
 def expand_query(text: str) -> List[str]:
     result = text.lower()
@@ -83,11 +94,12 @@ def expand_query(text: str) -> List[str]:
 
 # ── Cache (L1 exact + L2 semantic) ───────────────────────────────────────────
 
+
 class Cache:
     def __init__(self, embed: TextEmbedding):
         self._l1: Dict[str, Chunk] = {}
         self._embed = embed
-        self._idx   = faiss.IndexFlatIP(DIM)
+        self._idx = faiss.IndexFlatIP(DIM)
         self._items: List[Chunk] = []
 
     def get_l1(self, q: str) -> Optional[Chunk]:
@@ -109,18 +121,22 @@ class Cache:
         self._idx.add(_vec(await _aembed(self._embed, q)))
         self._items.append(c)
 
-    def stats(self): return {"l1": len(self._l1), "l2": self._idx.ntotal}
+    def stats(self):
+        return {"l1": len(self._l1), "l2": self._idx.ntotal}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _vec(emb) -> np.ndarray:
     v = np.array([emb], dtype=np.float32)
     faiss.normalize_L2(v)
     return v
 
+
 def _key(text: str) -> str:
     return hashlib.md5(text.encode()).hexdigest()[:16]
+
 
 def _rrf(lists: List[List[Chunk]], k: int = RRF_K) -> List[Chunk]:
     ranks: Dict[int, Dict] = {}
@@ -145,15 +161,16 @@ def _rrf(lists: List[List[Chunk]], k: int = RRF_K) -> List[Chunk]:
 
 # ── Store (ingest + search) ───────────────────────────────────────────────────
 
+
 class Store:
     def __init__(self, embed: TextEmbedding):
-        self._embed  = embed
-        self._idx    = faiss.IndexFlatIP(DIM)
-        self._texts: List[str]       = []
-        self._metas: List[dict]      = []
+        self._embed = embed
+        self._idx = faiss.IndexFlatIP(DIM)
+        self._texts: List[str] = []
+        self._metas: List[dict] = []
         self._bm25_corpus: List[List[str]] = []
-        self._bm25: Optional[BM25Okapi]    = None
-        self._hashes: Set[str]             = set()
+        self._bm25: Optional[BM25Okapi] = None
+        self._hashes: Set[str] = set()
         PERSIST_DIR.mkdir(exist_ok=True)
         self._load()
 
@@ -161,12 +178,12 @@ class Store:
 
     async def add(self, doc: Doc) -> str:
         text = doc.text.strip()
-        h    = hashlib.sha256(text.encode()).hexdigest()[:16]
+        h = hashlib.sha256(text.encode()).hexdigest()[:16]
         if not text or h in self._hashes:
             return "duplicate" if text else "skipped"
 
         chunks = self._chunk(text)
-        meta   = {"source_id": doc.metadata.get("source_id", h), **doc.metadata}
+        meta = {"source_id": doc.metadata.get("source_id", h), **doc.metadata}
 
         embs_list = await asyncio.gather(*[_aembed(self._embed, c) for c in chunks])
         embs = np.array(embs_list, dtype=np.float32)
@@ -190,7 +207,7 @@ class Store:
             return [text]
         out, start = [], 0
         while start < len(words):
-            out.append(" ".join(words[start:start + CHUNK_SIZE]))
+            out.append(" ".join(words[start : start + CHUNK_SIZE]))
             start += CHUNK_SIZE - CHUNK_OVERLAP
         return out
 
@@ -202,7 +219,8 @@ class Store:
         scores, ids = self._idx.search(_vec(await _aembed(self._embed, query)), k)
         return [
             Chunk(float(s), self._texts[i], self._metas[i])
-            for s, i in zip(scores[0], ids[0]) if i >= 0 and s > 0
+            for s, i in zip(scores[0], ids[0])
+            if i >= 0 and s > 0
         ]
 
     def bm25(self, queries: List[str], k: int) -> List[Chunk]:
@@ -211,14 +229,15 @@ class Store:
         raw = np.max(
             [self._bm25.get_scores(q.lower().split()) for q in queries], axis=0
         )
-        top  = np.argsort(raw)[::-1][:k]
-        mx   = raw.max() or 1
+        top = np.argsort(raw)[::-1][:k]
+        mx = raw.max() or 1
         best = raw[top[0]] if len(top) else 1
         return [
             Chunk(float(raw[i] / mx), self._texts[i], self._metas[i])
-            for i in top if raw[i] > 0 and raw[i] >= best * BM25_MIN_RATIO
+            for i in top
+            if raw[i] > 0 and raw[i] >= best * BM25_MIN_RATIO
         ]
-    
+
     # Thêm vào class Store:
     def stats(self) -> dict:
         return {
@@ -231,8 +250,8 @@ class Store:
 
     def _save(self):
         data = {
-            "texts":  self._texts,
-            "metas":  self._metas,
+            "texts": self._texts,
+            "metas": self._metas,
             "corpus": self._bm25_corpus,
             "hashes": list(self._hashes),
         }
@@ -249,7 +268,9 @@ class Store:
             raise
 
         index_path = PERSIST_DIR / "faiss.index"
-        tmp_index = tempfile.NamedTemporaryFile(dir=PERSIST_DIR, delete=False, suffix=".tmp")
+        tmp_index = tempfile.NamedTemporaryFile(
+            dir=PERSIST_DIR, delete=False, suffix=".tmp"
+        )
         try:
             tmp_index.close()
             faiss.write_index(self._idx, tmp_index.name)
@@ -281,6 +302,7 @@ class Store:
 
 # ── RAG Pipeline ──────────────────────────────────────────────────────────────
 
+
 class RAG:
     def __init__(self):
         self._embed = TextEmbedding(model_name=EMBED_MODEL)
@@ -298,14 +320,14 @@ class RAG:
         if c := await self._cache.get_l2(query):
             return Result(query, [c], "cache_l2")
 
-        variants  = expand_query(query)
+        variants = expand_query(query)
         bm25_hits = self._store.bm25(variants, top_k * 3)
-        vec_hits  = await self._store.vector(variants[0], top_k * 3)
-        fused     = _rrf([bm25_hits, vec_hits])[:top_k]
+        vec_hits = await self._store.vector(variants[0], top_k * 3)
+        fused = _rrf([bm25_hits, vec_hits])[:top_k]
 
         log.info(
             f"[search] bm25={len(bm25_hits)} vec={len(vec_hits)} "
-            f"fused_top3: {[(round(c.score,4), c.meta.get('source_id','?')) for c in fused[:3]]}"
+            f"fused_top3: {[(round(c.score, 4), c.meta.get('source_id', '?')) for c in fused[:3]]}"
         )
 
         if not fused:

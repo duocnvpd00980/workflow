@@ -10,19 +10,16 @@ from agent_os.system.bus.protocol import StandardFrame
 from .dynamic_agent_router_protocol import DynamicAgentRouterOutput
 
 
-async def node_DYNAMIC_AGENT_ROUTER(
-    state: MainBus, 
-    config: RunnableConfig
-) -> dict:
+async def node_DYNAMIC_AGENT_ROUTER(state: MainBus, config: RunnableConfig) -> dict:
     """
     ADAPTER NODE: DYNAMIC AGENT ROUTER (DRIVER LAYER)
-    
-    Nhiệm vụ: 
+
+    Nhiệm vụ:
     - Đọc các switch cấu hình cấp phép từ bộ nhớ của Policy Engine (Planner).
     - Tổng hợp các kênh/ngõ ra (nhánh Agent) được phép kích hoạt.
     - Ép kiểu dữ liệu sạch theo đúng khung Protocol và phát tín hiệu lên BusRegistry.DAR.
     """
-    
+
     # ── 1. ĐỌC CẤU HÌNH ĐÓNG NGẮT TỪ THANH GHI POLICY ENGINE ─────────────────────
     poe_reg = None
     if isinstance(state, dict):
@@ -37,11 +34,11 @@ async def node_DYNAMIC_AGENT_ROUTER(
 
     if poe_reg:
         payload = (
-            poe_reg.get("payload", {}) 
-            if isinstance(poe_reg, dict) 
+            poe_reg.get("payload", {})
+            if isinstance(poe_reg, dict)
             else getattr(poe_reg, "payload", {})
         )
-        
+
         # Đồng bộ hóa kiểu dữ liệu Object/Dict an toàn
         if hasattr(payload, "model_dump"):
             payload_dict = payload.model_dump()
@@ -57,10 +54,10 @@ async def node_DYNAMIC_AGENT_ROUTER(
 
     # ── 2. ĐỊNH TUYẾN KÊNH DỰA TRÊN THÔNG SỐ TRÍCH XUẤT ──────────────────────────
     activated_channels = []
-    
+
     # Map các switch True/False thành danh sách các Registry Key đích thực tế
     if run_ads:
-        activated_channels.append(BusRegistry.AD)    # "reg_ads"
+        activated_channels.append(BusRegistry.AD)  # "reg_ads"
     if run_email:
         activated_channels.append(BusRegistry.EM)  # "reg_email"
     if run_blog:
@@ -81,7 +78,4 @@ async def node_DYNAMIC_AGENT_ROUTER(
 
     # ── 4. PHÁT TÍN HIỆU LÊN TRỤC BUS HỆ THỐNG ─────────────────────────────────
     # Đăng ký lên trục chính thông qua khóa BusRegistry.DAR (Đã đổi tên từ BS)
-    return StandardFrame.emit(
-        BusRegistry.BS, 
-        safe_output.model_dump()
-    )
+    return StandardFrame.emit(BusRegistry.BS, safe_output.model_dump())

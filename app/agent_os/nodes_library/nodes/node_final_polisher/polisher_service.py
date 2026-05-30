@@ -1,6 +1,7 @@
 from typing import Any, Final
 from .polisher_schema import FinalProduct
 
+
 class PolisherService:
     SYSTEM_PROMPT: Final[str] = """
     You are a Content Editor & Formatter. 
@@ -29,10 +30,10 @@ class PolisherService:
         --- EMAIL CAMPAIGN ---
         {mail}
         """
-        
+
         return await self._llm.generate(
             system=self.SYSTEM_PROMPT,
             user=user_msg,
             schema=FinalProduct,
-            temperature=0.5
+            temperature=0.5,
         )

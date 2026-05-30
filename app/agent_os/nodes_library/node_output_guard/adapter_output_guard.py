@@ -26,7 +26,7 @@ async def node_output_guard(
             payload=BodyFrame(
                 status="FAILED",
                 text="",
-                route = "skip_cache",
+                route="skip_cache",
                 error="[node_output_guard] aggregator frame missing.",
             ),
         )
@@ -36,7 +36,7 @@ async def node_output_guard(
             registry_key=BusRegistry.OG,
             payload=BodyFrame(
                 status="FAILED",
-                route = "skip_cache",
+                route="skip_cache",
                 text="",
                 error=f"[node_output_guard] aggregator failed: {generation.payload.error}",
             ),
@@ -45,7 +45,7 @@ async def node_output_guard(
     # =========================================================================
     # STEP 2 — PURE DOMAIN EXECUTION (rule-based, no LLM)
     # =========================================================================
-    text   = generation.payload.text
+    text = generation.payload.text
     result = _service.check(text)
 
     # =========================================================================
@@ -56,7 +56,7 @@ async def node_output_guard(
             registry_key=BusRegistry.OG,
             payload=BodyFrame(
                 status="FAILED",
-                route = "skip_cache",
+                route="skip_cache",
                 text=text,
                 error=f"[node_output_guard] {result.reason}",
                 context={"violation": result.violation},
@@ -67,7 +67,7 @@ async def node_output_guard(
         registry_key=BusRegistry.OG,
         payload=BodyFrame(
             status="SUCCESS",
-            route = "cache",
+            route="cache",
             text=text,
             context={"violation": "none"},
             error=None,

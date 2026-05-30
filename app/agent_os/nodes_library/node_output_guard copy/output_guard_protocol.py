@@ -2,6 +2,7 @@
 from pydantic import BaseModel
 from typing import Literal
 
+
 class OutputGuardResult(BaseModel):
     is_safe: bool
     reason: str = ""

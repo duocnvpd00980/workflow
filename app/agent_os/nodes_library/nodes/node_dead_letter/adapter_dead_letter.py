@@ -16,11 +16,8 @@ async def node_DEAD_LETTER(
 ) -> dict:
 
     payload = {
-
         "failed_node": "unknown",
-
         "error_code": "unknown",
-
         "error_message": "captured",
     }
 

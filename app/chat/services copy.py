@@ -34,33 +34,34 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 
 NODE_LABELS: dict[str, str] = {
-    "input_guard":      "Kiểm duyệt đầu vào",
-    "supervisor":       "Supervisor",
-    "knowledge":        "Knowledge Agent",
-    "marketing":        "Marketing Agent",
+    "input_guard": "Kiểm duyệt đầu vào",
+    "supervisor": "Supervisor",
+    "knowledge": "Knowledge Agent",
+    "marketing": "Marketing Agent",
     "lightweight_chat": "Chat nhanh",
-    "evaluator":        "Đánh giá kết quả",
-    "aggregator":       "Tổng hợp",
-    "output_guard":     "Kiểm duyệt đầu ra",
-    "human_review":     "Human Review",
-    "final_response":   "Render giao diện",
+    "evaluator": "Đánh giá kết quả",
+    "aggregator": "Tổng hợp",
+    "output_guard": "Kiểm duyệt đầu ra",
+    "human_review": "Human Review",
+    "final_response": "Render giao diện",
 }
 
 COMPONENT_TEMPLATES: dict[str, str] = {
-    "text_response":    "widgets/text_response.html",
-    "source_list":      "widgets/source_list.html",
-    "ads_card":         "widgets/ads_card.html",
-    "email_template":   "widgets/email_template.html",
-    "blog_preview":     "widgets/blog_preview.html",
+    "text_response": "widgets/text_response.html",
+    "source_list": "widgets/source_list.html",
+    "ads_card": "widgets/ads_card.html",
+    "email_template": "widgets/email_template.html",
+    "blog_preview": "widgets/blog_preview.html",
     "campaign_summary": "widgets/campaign_summary.html",
-    "error_card":       "widgets/error_display.html",
-    "empty_state":      "widgets/empty_state.html",
-    "human_review":     "widgets/human_review.html",
+    "error_card": "widgets/error_display.html",
+    "empty_state": "widgets/empty_state.html",
+    "human_review": "widgets/human_review.html",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Thread ID
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _make_thread_id(conversation_id: str, session_id: str) -> str:
     """
@@ -70,6 +71,7 @@ def _make_thread_id(conversation_id: str, session_id: str) -> str:
     if conversation_id:
         return f"conv_{conversation_id}"
     return f"sess_{session_id}"
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Pure helpers
@@ -94,6 +96,7 @@ def _sse(event: str, data: dict) -> str:
 # DB helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @sync_to_async(thread_sensitive=False)
 def _get_or_create_conversation(user, conversation_id: str) -> Conversation:
     """Lấy conversation theo id hoặc tạo mới. user=None chỉ dùng khi conv đã tồn tại."""
@@ -109,7 +112,9 @@ def _get_or_create_conversation(user, conversation_id: str) -> Conversation:
 
 
 @sync_to_async(thread_sensitive=False)
-def _create_user_message(conversation: Conversation, content: str, msg_id: str) -> Message:
+def _create_user_message(
+    conversation: Conversation, content: str, msg_id: str
+) -> Message:
     return Message.objects.create(
         id=msg_id,
         conversation=conversation,
@@ -120,7 +125,9 @@ def _create_user_message(conversation: Conversation, content: str, msg_id: str) 
 
 
 @sync_to_async(thread_sensitive=False)
-def _create_assistant_message_pending(conversation: Conversation, msg_id: str) -> Message:
+def _create_assistant_message_pending(
+    conversation: Conversation, msg_id: str
+) -> Message:
     return Message.objects.create(
         id=msg_id,
         conversation=conversation,
@@ -172,7 +179,6 @@ def _set_conversation_title(conversation_id: str, title: str) -> None:
     )
 
 
-
 @sync_to_async(thread_sensitive=False)
 def _get_conversation_messages(conversation_id: str, limit: int = 20) -> list[dict]:
     messages = Message.objects.filter(
@@ -180,21 +186,26 @@ def _get_conversation_messages(conversation_id: str, limit: int = 20) -> list[di
         status=Message.Status.COMPLETED,
     ).order_by("-created_at")[:limit]
 
-    return list(reversed([
-        {
-            "id":      str(m.id),
-            "role":    m.role,
-            "status":  m.status,
-            "content": m.content,
-            "html":    m.html,
-        }
-        for m in messages
-    ]))
+    return list(
+        reversed(
+            [
+                {
+                    "id": str(m.id),
+                    "role": m.role,
+                    "status": m.status,
+                    "content": m.content,
+                    "html": m.html,
+                }
+                for m in messages
+            ]
+        )
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Core stream pipeline
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 async def _run_stream(
     main_app,
@@ -214,7 +225,6 @@ async def _run_stream(
         pipeline_error: Exception | None = None
 
         async for event_type, value in stream_guarded(main_app, graph_input, thread_id):
-
             if event_type == "node":
                 yield _sse("node", {"label": _node_label(value)})
 
@@ -252,7 +262,9 @@ async def _run_stream(
         )
 
         if assistant_msg_id:
-            status = Message.Status.ERROR if pipeline_error else Message.Status.COMPLETED
+            status = (
+                Message.Status.ERROR if pipeline_error else Message.Status.COMPLETED
+            )
             await _update_assistant_message(
                 msg_id=assistant_msg_id,
                 html=html,
@@ -285,8 +297,8 @@ async def _run_stream(
 # ChatService
 # ─────────────────────────────────────────────────────────────────────────────
 
-class ChatService:
 
+class ChatService:
     # ── Khởi chạy lần đầu ────────────────────────────────────────────────────
 
     async def stream_graph(
@@ -331,25 +343,30 @@ class ChatService:
                 ]
 
             except Exception:
-                logger.exception("[stream_graph] DB setup failed conv=%s", conversation_id)
+                logger.exception(
+                    "[stream_graph] DB setup failed conv=%s", conversation_id
+                )
                 assistant_msg_id = ""
-                history = [] 
+                history = []
 
         # ── Chạy LangGraph ─────────────────────────────────────────────────
         thread_id = _make_thread_id(conversation_id, session_id)
 
         initial_input = {
-            "user_input":      message,
-            "language":        "vi",
-            "budget_limit":    2.0,
+            "user_input": message,
+            "language": "vi",
+            "budget_limit": 2.0,
             "conversation_id": conversation_id,
-            "msg_id":          msg_id,
-            "chat_history":    history[-10:],  # 10 tin gần nhất
+            "msg_id": msg_id,
+            "chat_history": history[-10:],  # 10 tin gần nhất
         }
 
         main_app = await get_main_app()
         async for chunk in _run_stream(
-            main_app, thread_id, initial_input, session_id,
+            main_app,
+            thread_id,
+            initial_input,
+            session_id,
             msg_id=msg_id,
             assistant_msg_id=assistant_msg_id,
             conversation_id=conversation_id,
@@ -385,15 +402,19 @@ class ChatService:
 
         thread_id = _make_thread_id(conversation_id, session_id)
 
-        cmd = Command(resume={
-            "action":   action.strip().lower(),
-            "feedback": feedback.strip(),
-        })
+        cmd = Command(
+            resume={
+                "action": action.strip().lower(),
+                "feedback": feedback.strip(),
+            }
+        )
 
-       
         main_app = await get_main_app()
         async for chunk in _run_stream(
-            main_app, thread_id, cmd, session_id,
+            main_app,
+            thread_id,
+            cmd,
+            session_id,
             msg_id=msg_id,
             assistant_msg_id=assistant_msg_id,
             conversation_id=conversation_id,
@@ -413,7 +434,7 @@ class ChatService:
         # Fallback: restore từ LangGraph snapshot (dev/test)
         thread_id = _make_thread_id("", session_id)
         main_app = await get_main_app()
-        snapshot  = await _safe_get_snapshot(main_app, thread_id)
+        snapshot = await _safe_get_snapshot(main_app, thread_id)
         if snapshot:
             return await ChatService._render_from_snapshot_static(snapshot, None)
         return None
@@ -433,10 +454,7 @@ class ChatService:
         state: dict = snapshot.values if snapshot else {}
         logger.info("[Render] Snapshot nodes: %s", list(state.keys()))
 
-        has_interrupt = any(
-            bool(task.interrupts)
-            for task in (snapshot.tasks or [])
-        )
+        has_interrupt = any(bool(task.interrupts) for task in (snapshot.tasks or []))
 
         if has_interrupt:
             return await _render_human_review_widget(
@@ -447,9 +465,9 @@ class ChatService:
 
         final_node = state.get("final_response")
         if isinstance(final_node, dict):
-            payload    = final_node.get("payload", {})
+            payload = final_node.get("payload", {})
             components = payload.get("records", [])
-            text       = payload.get("text")
+            text = payload.get("text")
 
             if components:
                 return await _render_component_list(components)
@@ -479,24 +497,29 @@ class ChatService:
 # Render helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 async def _render_human_review_from_payload(
     payload: dict,
     session_id: str = "",
     msg_id: str = "",
     conversation_id: str = "",
 ) -> str:
-    draft       = payload.get("draft") or payload.get("text", "")
-    instruction = payload.get("instruction", "Review nội dung. Chọn Duyệt hoặc Từ chối kèm phản hồi.")
+    draft = payload.get("draft") or payload.get("text", "")
+    instruction = payload.get(
+        "instruction", "Review nội dung. Chọn Duyệt hoặc Từ chối kèm phản hồi."
+    )
 
     return await _render_async(
         COMPONENT_TEMPLATES["human_review"],
-        {"props": {
-            "draft":           draft,
-            "instruction":     instruction,
-            "session_id":      session_id,
-            "msg_id":          msg_id,
-            "conversation_id": conversation_id,
-        }},
+        {
+            "props": {
+                "draft": draft,
+                "instruction": instruction,
+                "session_id": session_id,
+                "msg_id": msg_id,
+                "conversation_id": conversation_id,
+            }
+        },
     )
 
 
@@ -523,13 +546,15 @@ async def _render_human_review_widget(
 
     return await _render_async(
         COMPONENT_TEMPLATES["human_review"],
-        {"props": {
-            "draft":           draft,
-            "instruction":     "Review nội dung. Chọn Duyệt hoặc Từ chối kèm phản hồi.",
-            "session_id":      session_id,
-            "msg_id":          msg_id,
-            "conversation_id": conversation_id,
-        }},
+        {
+            "props": {
+                "draft": draft,
+                "instruction": "Review nội dung. Chọn Duyệt hoặc Từ chối kèm phản hồi.",
+                "session_id": session_id,
+                "msg_id": msg_id,
+                "conversation_id": conversation_id,
+            }
+        },
     )
 
 
@@ -540,8 +565,8 @@ async def _render_component_list(components: list) -> str:
         if not isinstance(comp, dict):
             continue
 
-        cid      = comp.get("component_id", "text_response")
-        props    = comp.get("props", {})
+        cid = comp.get("component_id", "text_response")
+        props = comp.get("props", {})
         template = comp.get("template_path") or COMPONENT_TEMPLATES.get(
             cid, COMPONENT_TEMPLATES["text_response"]
         )
@@ -552,7 +577,9 @@ async def _render_component_list(components: list) -> str:
         try:
             parts.append(await _render_async(template, {"props": props}))
         except Exception as exc:
-            logger.error("[Render] Template error cid=%s path=%s: %s", cid, template, exc)
+            logger.error(
+                "[Render] Template error cid=%s path=%s: %s", cid, template, exc
+            )
 
     return "\n".join(parts)
 
@@ -561,9 +588,15 @@ async def _render_error(error: Exception | None) -> str:
     if isinstance(error, TimeoutError):
         msg, code = "Hệ thống đang tải quá lâu. Vui lòng thử lại.", "TIMEOUT_ERROR"
     elif error is not None:
-        msg, code = "Đã xảy ra lỗi trong quá trình xử lý. Vui lòng thử lại.", "PIPELINE_CRASH"
+        msg, code = (
+            "Đã xảy ra lỗi trong quá trình xử lý. Vui lòng thử lại.",
+            "PIPELINE_CRASH",
+        )
     else:
-        msg, code = "Xin lỗi, hệ thống hiện chưa tạo được nội dung kết quả.", "EMPTY_STATE"
+        msg, code = (
+            "Xin lỗi, hệ thống hiện chưa tạo được nội dung kết quả.",
+            "EMPTY_STATE",
+        )
 
     debug = (
         "".join(traceback.format_exception(type(error), error, error.__traceback__))
@@ -573,23 +606,16 @@ async def _render_error(error: Exception | None) -> str:
 
     return await _render_async(
         COMPONENT_TEMPLATES["error_card"],
-        {"props": {
-            "title":         "Hệ thống thông báo",
-            "message":       msg,
-            "error_code":    code,
-            "failed_node":   "System_Runtime",
-            "debug_details": debug,
-        }},
+        {
+            "props": {
+                "title": "Hệ thống thông báo",
+                "message": msg,
+                "error_code": code,
+                "failed_node": "System_Runtime",
+                "debug_details": debug,
+            }
+        },
     )
-
-
-
-
-
-
-
-
-
 
 
 # # chat/services.py — stream_graph

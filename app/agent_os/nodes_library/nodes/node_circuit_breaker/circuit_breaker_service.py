@@ -1,5 +1,4 @@
 class CircuitBreakerService:
-
     def __init__(self):
 
         self.failures = {}
@@ -21,19 +20,8 @@ class CircuitBreakerService:
         self.failures[node_name] = count
 
         return {
-
             "is_open": count >= self.threshold,
-
             "failure_count": count,
-
             "threshold": self.threshold,
-
-            "blocked_node": (
-
-                node_name
-
-                if count >= self.threshold
-
-                else None
-            )
+            "blocked_node": (node_name if count >= self.threshold else None),
         }

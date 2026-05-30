@@ -1,5 +1,4 @@
 class DeadLetterQueueService:
-
     def __init__(self):
 
         self.queue = []

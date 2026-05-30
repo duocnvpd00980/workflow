@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 class QaResponseService:
     """
     ENTERPRISE KNOWLEDGE PROCESSOR (MULTI-TENANT & MULTI-DOMAIN)
-    
+
     Tối ưu hóa RAGAS cho SLM (Qwen 0.5B). Hệ thống Prompt được chuyển hoàn toàn
     sang tiếng Việt để giảm thiểu việc mô hình sinh chuỗi trống hoặc lỗi cấu trúc JSON.
     """
@@ -90,54 +90,70 @@ class QaResponseService:
             raw_answer = data_dict.get("answer", "")
             # Sửa lỗi Dict lồng nhau đặc trưng của các dòng SLM khi sinh schema sai
             if isinstance(raw_answer, dict):
-                logger.warning("[QaResponseService] Kích hoạt cứu hộ: Sửa lỗi Dict lồng nhau của Qwen 0.5B.")
-                extracted_answer = raw_answer.get("default") or raw_answer.get("value") or str(raw_answer)
+                logger.warning(
+                    "[QaResponseService] Kích hoạt cứu hộ: Sửa lỗi Dict lồng nhau của Qwen 0.5B."
+                )
+                extracted_answer = (
+                    raw_answer.get("default")
+                    or raw_answer.get("value")
+                    or str(raw_answer)
+                )
             else:
                 extracted_answer = str(raw_answer)
 
             extracted_source = bool(data_dict.get("source_used", False))
             extracted_tone = str(data_dict.get("tone", "neutral"))
-            
+
             raw_citations = data_dict.get("citations", [])
-            extracted_citations = raw_citations if isinstance(raw_citations, list) else [str(raw_citations)]
+            extracted_citations = (
+                raw_citations
+                if isinstance(raw_citations, list)
+                else [str(raw_citations)]
+            )
 
         return QaResponseOutput(
             answer=extracted_answer.strip(),
             source_used=extracted_source,
             tone=extracted_tone,
-            citations=extracted_citations
+            citations=extracted_citations,
         )
 
-    async def generate_response(self, user_input: str, contexts: List[str]) -> QaResponseOutput:
+    async def generate_response(
+        self, user_input: str, contexts: List[str]
+    ) -> QaResponseOutput:
         is_rag_route = bool(contexts and len(contexts) > 0 and str(contexts[0]).strip())
 
         try:
             if is_rag_route:
-                logger.info("[QaResponseService] Kích hoạt luồng xử lý RAG nghiêm ngặt.")
+                logger.info(
+                    "[QaResponseService] Kích hoạt luồng xử lý RAG nghiêm ngặt."
+                )
                 context_str = "\n---\n".join(contexts)
-                
+
                 # Nạp dữ liệu vào LLM với các tham số đã tối ưu cho mô hình nhỏ
                 result = await self._llm.generate(
                     system=self.RAG_SYSTEM_PROMPT,
                     user=f"Câu hỏi của người dùng: {user_input}\n\nTài liệu tri thức (Contexts):\n{context_str}",
                     schema=None,  # Để Driver nhận JSON thô, không ép Pydantic validate trước khi cứu hộ
-                    temperature=0.2  # 💡 TĂNG NHẸ: Giúp mô hình nhỏ không bị bó cứng thuật toán tư duy dẫn đến rỗng văn bản
+                    temperature=0.2,  # 💡 TĂNG NHẸ: Giúp mô hình nhỏ không bị bó cứng thuật toán tư duy dẫn đến rỗng văn bản
                 )
-                
+
                 output = self._repair_slm_hallucination(result)
                 output.source_used = True
                 return output
 
             # 🚀 LUỒNG CỨU THUA CHUYÊN GIA (FALLBACK TO BASE KNOWLEDGE)
-            logger.warning(f"[QaResponseService] Context rỗng! Kích hoạt luồng Fallback cho: '{user_input}'")
-            
+            logger.warning(
+                f"[QaResponseService] Context rỗng! Kích hoạt luồng Fallback cho: '{user_input}'"
+            )
+
             result = await self._llm.generate(
                 system=self.FALLBACK_SYSTEM_PROMPT,
                 user=f"Câu hỏi của người dùng: {user_input}",
                 schema=None,
-                temperature=0.4  # Tăng tính tư duy giải pháp cho luồng không có tài liệu
+                temperature=0.4,  # Tăng tính tư duy giải pháp cho luồng không có tài liệu
             )
-            
+
             output = self._repair_slm_hallucination(result)
             output.source_used = False
             if not output.citations:
@@ -150,5 +166,5 @@ class QaResponseService:
                 answer=f"Hệ thống lõi AI gặp sự cố kỹ thuật khi xử lý câu hỏi: '{user_input}'. Vui lòng liên hệ quản trị viên.",
                 source_used=False,
                 tone="neutral",
-                citations=[]
+                citations=[],
             )

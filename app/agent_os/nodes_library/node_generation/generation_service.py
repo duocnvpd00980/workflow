@@ -10,12 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 class GenerationService:
-
     def __init__(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        self._env = Environment(
-            loader=FileSystemLoader(current_dir)
-        )
+        self._env = Environment(loader=FileSystemLoader(current_dir))
 
     async def run(
         self,
@@ -30,14 +27,9 @@ class GenerationService:
         formatted_history = []
 
         for msg in chat_history:
+            role = str(msg.get("role", "user")).strip().lower()
 
-            role = str(
-                msg.get("role", "user")
-            ).strip().lower()
-
-            content = str(
-                msg.get("content", "")
-            ).strip()
+            content = str(msg.get("content", "")).strip()
 
             if not content:
                 continue
@@ -49,21 +41,20 @@ class GenerationService:
             }:
                 role = "user"
 
-            formatted_history.append({
-                "type": role,
-                "content": content,
-            })
+            formatted_history.append(
+                {
+                    "type": role,
+                    "content": content,
+                }
+            )
 
-        prompt = self._env.get_template(
-            "generation.jinja2"
-        ).render(
+        prompt = self._env.get_template("generation.jinja2").render(
             chat_history=formatted_history,
             rag_context=rag_context,
             extra_rules=[],
         )
 
         try:
-
             result = await llm_engine.generate_raw(
                 system=prompt,
                 user=user_input,
@@ -102,14 +93,10 @@ class GenerationService:
                     or ""
                 )
 
-            response_text = str(
-                response_text
-            ).strip()
+            response_text = str(response_text).strip()
 
             if not response_text:
-                raise ValueError(
-                    "LLM returned empty response"
-                )
+                raise ValueError("LLM returned empty response")
 
             return GenerationOutput(
                 response=response_text,
@@ -127,16 +114,11 @@ class GenerationService:
             )
 
         except Exception:
-            logger.exception(
-                "[GenerationService] Failed to generate response"
-            )
+            logger.exception("[GenerationService] Failed to generate response")
 
             return GenerationOutput(
-                response=(
-                    "Tôi chưa thể tạo phản hồi lúc này."
-                ),
+                response=("Tôi chưa thể tạo phản hồi lúc này."),
                 tone="neutral",
                 input_tokens=0,
                 output_tokens=0,
             )
-

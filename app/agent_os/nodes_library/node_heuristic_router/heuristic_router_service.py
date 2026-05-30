@@ -8,13 +8,9 @@ from .heuristic_router_protocol import HeuristicRouterOutput
 
 
 class HeuristicRouterService:
-
     def __init__(self):
 
-        config_path = (
-            Path(__file__).parent
-            / "router_patterns.yml"
-        )
+        config_path = Path(__file__).parent / "router_patterns.yml"
 
         with open(config_path, "r", encoding="utf-8") as f:
             raw = yaml.safe_load(f)
@@ -22,15 +18,10 @@ class HeuristicRouterService:
         self.routes = {}
 
         for route_name, cfg in raw.items():
-
-            keywords = [
-                k.strip().lower()
-                for k in cfg.get("keywords", [])
-            ]
+            keywords = [k.strip().lower() for k in cfg.get("keywords", [])]
 
             regex_patterns = [
-                re.compile(p, re.IGNORECASE)
-                for p in cfg.get("regex", [])
+                re.compile(p, re.IGNORECASE) for p in cfg.get("regex", [])
             ]
 
             self.routes[route_name] = {
@@ -43,10 +34,8 @@ class HeuristicRouterService:
         normalized = query.strip().lower()
 
         for route_name, cfg in self.routes.items():
-
             # keyword match
             for keyword in cfg["keywords"]:
-
                 if keyword in normalized:
                     return HeuristicRouterOutput(
                         route=route_name,
@@ -56,7 +45,6 @@ class HeuristicRouterService:
 
             # regex fallback
             for pattern in cfg["regex"]:
-
                 match = pattern.search(normalized)
 
                 if match:

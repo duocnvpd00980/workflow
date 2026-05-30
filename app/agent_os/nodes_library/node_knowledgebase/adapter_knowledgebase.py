@@ -7,10 +7,7 @@ from agent_os.system.bus.protocol import StandardFrame, BodyFrame
 _rag = RAG()
 
 
-async def node_knowledgebase(
-    state: MainBus,
-    config: RunnableConfig = None
-) -> dict:
+async def node_knowledgebase(state: MainBus, config: RunnableConfig = None) -> dict:
     """
     ======================================================================
     CERTIFIED PROTOCOL WORKFLOW: KNOWLEDGE_BASE (RAG ZERO v2.1)
@@ -19,7 +16,7 @@ async def node_knowledgebase(
 
     # ── STEP 1: POST-GUARD ────────────────────────────────────────────────
     cr = getattr(state, "cache_read", None)
-    if not cr or not hasattr(cr, 'payload'):
+    if not cr or not hasattr(cr, "payload"):
         return _emit_failed("Topology Violation: cache_read không tồn tại.")
 
     payload = cr.payload
@@ -56,10 +53,10 @@ async def node_knowledgebase(
                 state={"process_completed": True, "query": query, "node_count": 0},
                 metrics={"retrieved_chunks": 0},
                 error=None,
-            )
+            ),
         )
 
-    context = "\n\n".join(f"[{i+1}] {c.text}" for i, c in enumerate(chunks))
+    context = "\n\n".join(f"[{i + 1}] {c.text}" for i, c in enumerate(chunks))
     records = [{"text": c.text, "score": c.score, "meta": c.meta} for c in chunks]
 
     return StandardFrame.emit(
@@ -79,7 +76,7 @@ async def node_knowledgebase(
                 "retrieved_chunks": len(chunks),
             },
             error=None,
-        )
+        ),
     )
 
 
@@ -93,5 +90,5 @@ def _emit_failed(error: str, **context) -> dict:
             state={"process_completed": False},
             context={"error": error, **context},
             error=error,
-        )
+        ),
     )

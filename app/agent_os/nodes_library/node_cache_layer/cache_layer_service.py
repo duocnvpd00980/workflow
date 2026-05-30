@@ -63,7 +63,9 @@ class CacheLayerService:
     def _hash(self, text: str) -> str:
         return hashlib.sha256(text.strip().lower().encode()).hexdigest()[:32]
 
-    def _fuzzy_match(self, query: str, candidates: list[tuple[str, str]]) -> Optional[tuple[str, float]]:
+    def _fuzzy_match(
+        self, query: str, candidates: list[tuple[str, str]]
+    ) -> Optional[tuple[str, float]]:
         query_lower = query.strip().lower()
         best = None
         best_ratio = 0.0
@@ -107,18 +109,20 @@ class CacheLayerService:
         with sqlite3.connect(str(CACHE_DB), timeout=5.0) as conn:
             row = conn.execute(
                 "SELECT answer, created_at FROM answer_cache WHERE query_hash = ?",
-                (query_hash,)
+                (query_hash,),
             ).fetchone()
             if not row:
                 return None
             answer, created_at = row
             if time.time() - created_at > self._ttl_seconds:
-                conn.execute("DELETE FROM answer_cache WHERE query_hash = ?", (query_hash,))
+                conn.execute(
+                    "DELETE FROM answer_cache WHERE query_hash = ?", (query_hash,)
+                )
                 conn.commit()
                 return None
             conn.execute(
                 "UPDATE answer_cache SET hit_count = hit_count + 1 WHERE query_hash = ?",
-                (query_hash,)
+                (query_hash,),
             )
             conn.commit()
             return answer
@@ -135,7 +139,7 @@ class CacheLayerService:
             conn.execute(
                 """INSERT OR REPLACE INTO answer_cache (query_hash, query_text, answer, created_at, hit_count)
                    VALUES (?, ?, ?, ?, COALESCE((SELECT hit_count FROM answer_cache WHERE query_hash = ?), 0) + 1)""",
-                (query_hash, query, answer, time.time(), query_hash)
+                (query_hash, query, answer, time.time(), query_hash),
             )
             conn.commit()
         self._l2_cleanup()
@@ -147,7 +151,7 @@ class CacheLayerService:
                 to_delete = count - self._max_entries
                 conn.execute(
                     "DELETE FROM answer_cache WHERE query_hash IN (SELECT query_hash FROM answer_cache ORDER BY created_at ASC LIMIT ?)",
-                    (to_delete,)
+                    (to_delete,),
                 )
                 conn.commit()
 
@@ -160,7 +164,7 @@ class CacheLayerService:
                 cache_status="hit",
                 cached_answer=answer,
                 cache_tier="L1",
-                similarity_score=1.0
+                similarity_score=1.0,
             )
 
         # 2. L2 SQLite exact
@@ -170,7 +174,7 @@ class CacheLayerService:
                 cache_status="hit",
                 cached_answer=answer,
                 cache_tier="L2",
-                similarity_score=1.0
+                similarity_score=1.0,
             )
 
         # 3. L2 SQLite fuzzy
@@ -182,7 +186,7 @@ class CacheLayerService:
                 cache_status="hit",
                 cached_answer=answer,
                 cache_tier="L2",
-                similarity_score=ratio
+                similarity_score=ratio,
             )
 
         # 4. Miss
@@ -190,7 +194,7 @@ class CacheLayerService:
             cache_status="miss",
             cached_answer=None,
             cache_tier="none",
-            similarity_score=0.0
+            similarity_score=0.0,
         )
 
     def store(self, query: str, answer: str):

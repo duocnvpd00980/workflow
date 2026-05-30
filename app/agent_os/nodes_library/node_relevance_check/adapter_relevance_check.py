@@ -13,10 +13,7 @@ RRF_THRESHOLD = 0.015
 MIN_CHUNKS = 2
 
 
-async def node_relevance_check(
-    state: MainBus,
-    config: RunnableConfig = None
-) -> dict:
+async def node_relevance_check(state: MainBus, config: RunnableConfig = None) -> dict:
     """
     ======================================================================
     RELEVANCE_CHECK — Lọc kết quả RAG trước khi gọi LLM.
@@ -38,7 +35,7 @@ async def node_relevance_check(
 
     # ── STEP 1: POST-GUARD ────────────────────────────────────────────────
     kb = getattr(state, "knowledge_base", None)
-    if not kb or not hasattr(kb, 'payload'):
+    if not kb or not hasattr(kb, "payload"):
         return _emit_low_rel("Topology Violation: knowledge_base không tồn tại.")
 
     payload = kb.payload
@@ -54,7 +51,9 @@ async def node_relevance_check(
     chunk_count = metrics.get("retrieved_chunks", 0)
 
     if not records:
-        return _emit_low_rel("Empty records.", context_text=getattr(payload, "text", ""))
+        return _emit_low_rel(
+            "Empty records.", context_text=getattr(payload, "text", "")
+        )
 
     # ── STEP 2: DUAL THRESHOLD CHECK ──────────────────────────────────────
     # Cả 2 tiêu chí: RRF score cao HOẶC có nhiều chunks (đa dạng nguồn)
@@ -91,7 +90,7 @@ async def node_relevance_check(
                     "count_passed": count_ok,
                 },
                 error=None,
-            )
+            ),
         )
 
     # low_rel — cả 2 đều fail
@@ -130,5 +129,5 @@ def _emit_low_rel(
                 "relevance_reason": reason,
             },
             error=None,
-        )
+        ),
     )

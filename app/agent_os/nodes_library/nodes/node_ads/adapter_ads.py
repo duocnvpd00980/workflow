@@ -4,12 +4,13 @@ from agent_os.system.bus.main_bus import MainBus
 from agent_os.system.bus.registry import BusRegistry
 from agent_os.system.bus.protocol import StandardFrame
 
+
 async def node_AGENT_ADS(state: MainBus, config: RunnableConfig) -> dict:
     """
     NODE TEST THÔNG LUỒNG:
     Tạm thời comment logic nghiệp vụ, trả về dữ liệu mẫu chuẩn StandardFrame.
     """
-    
+
     # --- LOGIC NGHIỆP VỤ (TẠM COMMENT) ---
     # services = config["configurable"].get("services")
     # llm_factory = services.get("llm_factory")
@@ -29,10 +30,7 @@ async def node_AGENT_ADS(state: MainBus, config: RunnableConfig) -> dict:
         📞 Liên hệ ngay để nhận ưu đãi!
         """,
         "has_cta": True,
-        "language_detected": "vi"
+        "language_detected": "vi",
     }
     safe_output = AdOutput(**mock_ad_content)
-    return StandardFrame.emit(
-        BusRegistry.AD,
-        safe_output.model_dump()
-    )
+    return StandardFrame.emit(BusRegistry.AD, safe_output.model_dump())

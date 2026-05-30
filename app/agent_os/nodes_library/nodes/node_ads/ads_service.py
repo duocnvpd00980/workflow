@@ -1,12 +1,13 @@
 from typing import Any, Final, Optional
 from .ads_protocol import AdOutput
 
+
 class AdsService:
     """
     DOMAIN COMPONENT: Xử lý nghiệp vụ sáng tạo nội dung quảng cáo.
     Thiết kế theo chuẩn 'Plug-and-Play', nhận Engine từ tầng Adapter.
     """
-    
+
     # Sử dụng Final để đảm bảo cấu hình Prompt không bị thay đổi trong runtime
     SYSTEM_PROMPT: Final[str] = """
 You are a professional performance marketer.
@@ -31,7 +32,7 @@ STRICT RULES:
         """
         # Inject ngôn ngữ trực tiếp vào prompt để tăng độ chính xác
         formatted_system_prompt = self.SYSTEM_PROMPT.format(language=language)
-        
+
         # Lệnh thực thi được đóng gói gọn gàng
         # Engine (_llm) phải hỗ trợ phương thức .generate với tham số schema (Instructor)
         return await self._llm.generate(

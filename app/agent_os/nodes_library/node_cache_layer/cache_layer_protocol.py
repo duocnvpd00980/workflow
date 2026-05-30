@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Literal
 
+
 class CacheLayerOutput(BaseModel):
     model_config = ConfigDict(frozen=True, extra="ignore")
 

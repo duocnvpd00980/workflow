@@ -8,7 +8,7 @@ from .response_resolver_protocol import ResponseResolverOutput
 class ResponseResolverService:
     """
     CORE DOMAIN SERVICE: Response Resolver (Pure Logic)
-    
+
     Phân tích ý định người dùng và định tuyến luồng điều chỉnh quy chế (Regulation/QA).
     Tách biệt hoàn toàn khỏi hạ tầng MainBus, nhận LLM Engine qua Dependency Injection.
     """
@@ -31,14 +31,18 @@ class ResponseResolverService:
         """
         self._llm = llm_engine
 
-    async def classify_intent(self, user_input: str, context: dict, llm_engine: Any = None) -> ResponseResolverOutput:
+    async def classify_intent(
+        self, user_input: str, context: dict, llm_engine: Any = None
+    ) -> ResponseResolverOutput:
         """
         Thực thi gọi LLM bóc tách cấu trúc dữ liệu theo đúng cam kết Protocol.
         """
         # Hỗ trợ lấy engine linh hoạt từ tham số truyền vào hàm (đúng chuẩn mẫu Adapter mới)
         active_llm = llm_engine or self._llm
         if not active_llm:
-            raise RuntimeError("[ResponseResolverService] Missing LLM Engine infrastructure!")
+            raise RuntimeError(
+                "[ResponseResolverService] Missing LLM Engine infrastructure!"
+            )
 
         try:
             # LLM được cấu hình đổ thẳng dữ liệu vào schema Pydantic Object xịn
@@ -46,7 +50,7 @@ class ResponseResolverService:
                 system=self.SYSTEM_PROMPT,
                 user=f"User Input: {user_input}\nContext: {context}",
                 schema=ResponseResolverOutput,
-                temperature=0.1
+                temperature=0.1,
             )
 
             # PURE PYDANTIC NATIVE: Trả về trực tiếp Object vì dữ liệu đã được validate chặt chẽ từ Core LLM

@@ -10,7 +10,6 @@ from django.utils import timezone
 
 
 class ConversationQuerySet(models.QuerySet):
-
     def active(self):
         return self.filter(is_archived=False)
 

@@ -1,6 +1,7 @@
 from typing import Any, Final
 from .blog_writer_protocol import WriterOutput
 
+
 class WriterService:
     SYSTEM_PROMPT: Final[str] = """
     You are a professional Content Writer.
@@ -15,12 +16,14 @@ class WriterService:
     def __init__(self, llm_engine: Any):
         self._llm = llm_engine
 
-    async def run(self, plan: Any, tool_data: str = "", lang: str = "vi") -> WriterOutput:
+    async def run(
+        self, plan: Any, tool_data: str = "", lang: str = "vi"
+    ) -> WriterOutput:
         user_msg = f"Plan: {plan}\nExisting Data: {tool_data}\nLanguage: {lang}"
-        
+
         return await self._llm.generate(
             system=self.SYSTEM_PROMPT,
             user=user_msg,
             schema=WriterOutput,
-            temperature=0.7 # Tăng độ sáng tạo cho Writer
+            temperature=0.7,  # Tăng độ sáng tạo cho Writer
         )

@@ -12,10 +12,7 @@ from .qa_retriever_service import QARetrieverService, HyDEService
 logger = logging.getLogger(__name__)
 
 
-async def node_QA_RETRIEVER(
-    state: MainBus,
-    config: RunnableConfig = None
-) -> dict:
+async def node_QA_RETRIEVER(state: MainBus, config: RunnableConfig = None) -> dict:
     """
     ======================================================================
     CERTIFIED PROTOCOL WORKFLOW: [QA_RETRIEVER]
@@ -26,18 +23,24 @@ async def node_QA_RETRIEVER(
     ======================================================================
     """
     logger.info("⚡ [GRAPH NODE] Tiến vào phân tầng truy xuất tri thức: [QA_RETRIEVER]")
-    
+
     # ==================================================================
     # STEP 1: SAFE POST-GUARD (CHỐNG SẬP ĐỒ THỊ DO ĐỨT GÃY TOPOLOGY)
     # ==================================================================
     error_message = None
     resolver_property = BusRegistry.RRO
-    
+
     resolver_node = getattr(state, resolver_property, None)
     if not resolver_node and isinstance(state, dict):
-        resolver_node = state.get(resolver_property) or state.get("reg_response_resolver")
+        resolver_node = state.get(resolver_property) or state.get(
+            "reg_response_resolver"
+        )
 
-    if not resolver_node or not hasattr(resolver_node, "payload") or resolver_node.payload is None:
+    if (
+        not resolver_node
+        or not hasattr(resolver_node, "payload")
+        or resolver_node.payload is None
+    ):
         error_message = f"[QA_RETRIEVER] Topology Violation: Thuộc tính định tuyến ({resolver_property}) không tồn tại trên mạng Bus!"
     elif resolver_node.payload.status == "FAILED":
         error_message = f"[QA_RETRIEVER] Upstream Failure: Node định tuyến liền trước (RR) gặp sự cố! Chi tiết: {resolver_node.payload.error}"
@@ -53,20 +56,24 @@ async def node_QA_RETRIEVER(
                 state={"retrieval_status": "FAILED"},
                 metrics={"count": 0, "top_k": 0, "score_threshold": 0.45},
                 context={"topology_error": error_message},
-                error=error_message
-            )
+                error=error_message,
+            ),
         )
 
     resolver_state = getattr(resolver_node.payload, "state", {}) or {}
     if not isinstance(resolver_state, dict):
         resolver_state = {}
-        
+
     retrieval_needed = resolver_state.get("retrieval_needed", True)
 
     brief = (
-        resolver_state.get("rewritten_query") 
-        or resolver_node.payload.text 
-        or (state.get("user_input", "Hi") if isinstance(state, dict) else getattr(state, "user_input", "Hi"))
+        resolver_state.get("rewritten_query")
+        or resolver_node.payload.text
+        or (
+            state.get("user_input", "Hi")
+            if isinstance(state, dict)
+            else getattr(state, "user_input", "Hi")
+        )
     )
 
     if not retrieval_needed:
@@ -80,8 +87,8 @@ async def node_QA_RETRIEVER(
                 state={"query": brief, "retrieval_status": "SKIPPED"},
                 metrics={"count": 0, "top_k": 0, "score_threshold": 0.45},
                 context={"source": "node_qa_retriever", "pipeline": "rag_skip"},
-                error=None
-            )
+                error=None,
+            ),
         )
 
     # ==================================================================
@@ -117,7 +124,9 @@ async def node_QA_RETRIEVER(
             error_message = str(err)
     else:
         status = "FAILED"
-        error_message = "Dependency Injection Error: Retrieval Service or LLM Engine unavailable"
+        error_message = (
+            "Dependency Injection Error: Retrieval Service or LLM Engine unavailable"
+        )
 
     contexts_list = []
     score_threshold = 0.45

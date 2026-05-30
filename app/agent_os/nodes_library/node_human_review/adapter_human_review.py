@@ -61,13 +61,15 @@ async def node_human_review(
     # Giá trị này xuất hiện trong chunk["__interrupt__"][0].value khi streaming.
     log.info("[node_human_review] Triggering interrupt — awaiting human decision")
 
-    decision: dict = interrupt({
-        "draft": draft,
-        "instruction": (
-            "Review nội dung. "
-            "Resume với {'action': 'approved'|'rejected', 'feedback': '...'}"
-        ),
-    })
+    decision: dict = interrupt(
+        {
+            "draft": draft,
+            "instruction": (
+                "Review nội dung. "
+                "Resume với {'action': 'approved'|'rejected', 'feedback': '...'}"
+            ),
+        }
+    )
 
     # ─── 3. Xử lý decision (chỉ chạy sau Command(resume=...)) ───────────────
     # Docs: "The node restarts from the beginning when resumed" —

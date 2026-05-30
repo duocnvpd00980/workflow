@@ -8,6 +8,7 @@ from .audit_logger_service import AuditLoggerService
 # Khởi tạo Service Module duy nhất cấp module để tái sử dụng
 audit_service = AuditLoggerService()
 
+
 async def node_AUDIT_LOGGER(
     state: MainBus,
     config: RunnableConfig = None,
@@ -22,10 +23,10 @@ async def node_AUDIT_LOGGER(
     # STEP 1: SAFE POST-GUARD (HẠ CÁNH AN TOÀN - TRÁNH CRASH APP)
     # ==================================================================
     error_message = None
-    
+
     # 🎯 FIX 1: Lấy đúng key đăng ký thực tế trên mạng Bus thay vì viết cứng chuỗi (thường là "node_reg_ui_selector")
-    reg_ui_key = BusRegistry.UI  
-    
+    reg_ui_key = BusRegistry.UI
+
     # Trích xuất an toàn đối tượng node UI Selector bằng getattr phòng vệ
     ui_node = getattr(state, reg_ui_key, None) if hasattr(state, reg_ui_key) else None
 
@@ -40,15 +41,15 @@ async def node_AUDIT_LOGGER(
     # NẾU PHÁT HIỆN VI PHẠM: Đóng gói trả về trạng thái FAILED trực tiếp lên Bus, không dùng 'raise'
     if error_message:
         return StandardFrame.emit(
-            registry_key=BusRegistry.AL,  
+            registry_key=BusRegistry.AL,
             payload=BodyFrame(
                 status="FAILED",
                 text="Audit logging skipped or degraded due to upstream schema violation.",
                 records=[],
                 state={"process_completed": False},
                 context={"topology_error": error_message},
-                error=error_message
-            )
+                error=error_message,
+            ),
         )
 
     # ==================================================================
@@ -56,10 +57,10 @@ async def node_AUDIT_LOGGER(
     # ==================================================================
     # 🎯 FIX 2: Bóc tách an toàn thông qua biến ui_node đã qua vòng kiểm duyệt ở trên
     prev_payload = ui_node.payload
-    
+
     # Phòng vệ chuỗi văn bản nếu text của tuyến trước bị None/Rỗng
     raw_text = prev_payload.text if prev_payload.text else "No output text provided"
-    
+
     extracted_event_type = "workflow"
     extracted_actor = "system"
     extracted_action = f"pipeline_step_completed: {raw_text[:30]}..."
@@ -72,9 +73,9 @@ async def node_AUDIT_LOGGER(
         event_type=extracted_event_type,
         actor=extracted_actor,
         action=extracted_action,
-        success=extracted_success
+        success=extracted_success,
     )
-    
+
     payload_dict = safe_output.model_dump()
 
     # ==================================================================
@@ -83,7 +84,7 @@ async def node_AUDIT_LOGGER(
     status = "SUCCESS" if payload_dict.get("success") else "FAILED"
 
     return StandardFrame.emit(
-        registry_key=BusRegistry.AL,  
+        registry_key=BusRegistry.AL,
         payload=BodyFrame(
             status=status,
             text="Audit log recorded successfully.",
@@ -96,6 +97,6 @@ async def node_AUDIT_LOGGER(
             context={
                 "audit_raw": payload_dict,
             },
-            error=None if status == "SUCCESS" else "Audit processing marked as failed."
+            error=None if status == "SUCCESS" else "Audit processing marked as failed.",
         ),
     )

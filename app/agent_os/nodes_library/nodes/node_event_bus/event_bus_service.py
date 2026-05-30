@@ -1,5 +1,4 @@
 class EventBusService:
-
     def __init__(self):
 
         self.subscribers = {}
@@ -10,9 +9,7 @@ class EventBusService:
         data,
     ):
 
-        print(
-            f"[EVENT] {event_name}"
-        )
+        print(f"[EVENT] {event_name}")
 
     async def subscribe(
         self,
@@ -20,6 +17,4 @@ class EventBusService:
         handler,
     ):
 
-        self.subscribers[
-            event_name
-        ] = handler
+        self.subscribers[event_name] = handler

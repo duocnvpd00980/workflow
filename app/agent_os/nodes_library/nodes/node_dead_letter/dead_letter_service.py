@@ -1,5 +1,4 @@
 class DeadLetterService:
-
     def __init__(self):
 
         self.failures = []

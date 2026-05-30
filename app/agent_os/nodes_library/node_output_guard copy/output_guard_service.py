@@ -3,13 +3,16 @@ import re
 from .output_guard_protocol import OutputGuardResult
 
 _PII_PATTERNS = [
-    r"\b\d{9,12}\b",                          # CCCD / số điện thoại
+    r"\b\d{9,12}\b",  # CCCD / số điện thoại
     r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",  # email
-    r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b",           # số thẻ
+    r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b",  # số thẻ
 ]
 
 _TOXIC_KEYWORDS = [
-    "chết đi", "tự tử", "giết", "thù hận",
+    "chết đi",
+    "tự tử",
+    "giết",
+    "thù hận",
 ]
 
 _MIN_LENGTH = 10
@@ -17,7 +20,6 @@ _MAX_LENGTH = 8000
 
 
 class OutputGuardService:
-
     def check(self, text: str) -> OutputGuardResult:
 
         # 1. Empty

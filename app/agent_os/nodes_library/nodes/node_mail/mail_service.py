@@ -1,6 +1,7 @@
 from typing import Any, Dict, Final
 from .mail_protocol import convertToEmailCampaign
 
+
 class EmailService:
     """
     CORE DOMAIN: Logic viết Email Marketing.
@@ -28,5 +29,5 @@ STRICT RULES:
             user=f"Context from Ads: {seed.get('ads_content')}. Session: {seed.get('session_id')}",
             schema=convertToEmailCampaign,
             # Giảm temperature một chút giúp model bớt "sáng tạo" tên hàm
-            temperature=0.3, 
+            temperature=0.3,
         )

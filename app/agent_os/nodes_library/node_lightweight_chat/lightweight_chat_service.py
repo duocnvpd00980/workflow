@@ -5,7 +5,6 @@ from .lightweight_chat_protocol import LightweightChatOutput
 
 
 class LightweightChatService:
-
     def __init__(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self._env = Environment(loader=FileSystemLoader(current_dir))
@@ -17,7 +16,7 @@ class LightweightChatService:
     ) -> LightweightChatOutput:
 
         template = self._env.get_template("lightweight_chat.jinja2")
-        prompt   = template.render(user_input=user_input)
+        prompt = template.render(user_input=user_input)
 
         try:
             result = await llm_engine.generate(

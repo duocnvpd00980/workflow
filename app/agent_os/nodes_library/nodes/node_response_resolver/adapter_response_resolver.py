@@ -40,7 +40,10 @@ async def node_RESPONSE_RESOLVER(
         state = MainBus.model_validate(state)
 
     # STEP 2: FAIL-FAST POST-GUARD (Sửa đổi: Đổi từ reg_seed thành reg_intent_classifier)
-    if not state.reg_intent_classifier or state.reg_intent_classifier.payload.status != "SUCCESS":
+    if (
+        not state.reg_intent_classifier
+        or state.reg_intent_classifier.payload.status != "SUCCESS"
+    ):
         raise RuntimeError(
             "[NODE_RESPONSE_RESOLVER] Security Violation: Thanh ghi 'reg_intent_classifier' trống hoặc thất bại! Không thể định tuyến."
         )
@@ -48,34 +51,34 @@ async def node_RESPONSE_RESOLVER(
     # STEP 3: CONTEXT EXTRACTION & DEPENDENCY INJECTION
     ctx = await get_ctx()
     cloud_engine = ctx.llm_factory.get_model()
-    
+
     # ĐÚNG BẢN CHẤT: Lấy text gốc và context động từ kết quả của Intent Classifier
     user_query = state.user_input or state.reg_intent_classifier.payload.text or "Hi"
-    
+
     # Lấy thông tin trạng thái/ngữ cảnh được trích xuất từ các bước trước để làm context cho LLM Resolver
     routing_context = state.reg_intent_classifier.payload.state
 
     # STEP 4: PURE DOMAIN EXECUTION
     result = await service_module.classify_intent(
         user_input=str(user_query),
-        context=routing_context, # Nạp ngữ cảnh an toàn, đúng luồng mạch vẽ
-        llm_engine=cloud_engine
+        context=routing_context,  # Nạp ngữ cảnh an toàn, đúng luồng mạch vẽ
+        llm_engine=cloud_engine,
     )
 
     intent = result.route or "invalid"
-    
+
     # Map nhánh chạy thực tế khớp hoàn toàn với sơ đồ đồ thị bên dưới của bạn
     mapping = {
-        "qa": ["retriever", "qa_response"],      
-        "direct_qa": ["direct_qa_response"],      
-        "invalid": [],                            
+        "qa": ["retriever", "qa_response"],
+        "direct_qa": ["direct_qa_response"],
+        "invalid": [],
     }
     active_branches = mapping.get(intent, [])
-    
+
     print(f"🤖 [NODE_RESPONSE_RESOLVER] Route: {intent} | Branches: {active_branches}")
 
     # STEP 5: STATUS NORMALIZATION & BUS EMIT
-    policy_passed = (intent != "invalid")
+    policy_passed = intent != "invalid"
     status = "SUCCESS" if policy_passed else "FAILED"
 
     return StandardFrame.emit(
@@ -92,6 +95,8 @@ async def node_RESPONSE_RESOLVER(
             metrics={
                 "confidence_score": result.confidence_score,
             },
-            error=None if policy_passed else "Response Resolver bẻ luồng thất bại: Hướng đi không hợp lệ."
+            error=None
+            if policy_passed
+            else "Response Resolver bẻ luồng thất bại: Hướng đi không hợp lệ.",
         ),
     )

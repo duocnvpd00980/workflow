@@ -40,10 +40,7 @@ async def node_INTERRUPT_SYNC(
         completed_modules.append("ads")
 
     # BLOG
-    if (
-        getattr(state, "reg_blog_writer", None)
-        or getattr(state, "reg_validator", None)
-    ):
+    if getattr(state, "reg_blog_writer", None) or getattr(state, "reg_validator", None):
         completed_modules.append("blog")
 
     completed_modules = sorted(list(set(completed_modules)))

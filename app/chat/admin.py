@@ -11,7 +11,6 @@ from .models import (
 
 @admin.register(Conversation)
 class ConversationAdmin(admin.ModelAdmin):
-
     list_display = (
         "id",
         "user",
@@ -39,9 +38,7 @@ class ConversationAdmin(admin.ModelAdmin):
         "last_message_at",
     )
 
-    ordering = (
-        "-last_message_at",
-    )
+    ordering = ("-last_message_at",)
 
     fieldsets = (
         (
@@ -58,11 +55,7 @@ class ConversationAdmin(admin.ModelAdmin):
         ),
         (
             "Metadata",
-            {
-                "fields": (
-                    "metadata",
-                )
-            },
+            {"fields": ("metadata",)},
         ),
         (
             "Timestamps",
@@ -79,7 +72,6 @@ class ConversationAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-
     list_display = (
         "id",
         "conversation",
@@ -107,9 +99,7 @@ class MessageAdmin(admin.ModelAdmin):
         "updated_at",
     )
 
-    ordering = (
-        "created_at",
-    )
+    ordering = ("created_at",)
 
     fieldsets = (
         (
@@ -138,19 +128,11 @@ class MessageAdmin(admin.ModelAdmin):
         ),
         (
             "Error",
-            {
-                "fields": (
-                    "error_message",
-                )
-            },
+            {"fields": ("error_message",)},
         ),
         (
             "Metadata",
-            {
-                "fields": (
-                    "metadata",
-                )
-            },
+            {"fields": ("metadata",)},
         ),
         (
             "Timestamps",
@@ -171,7 +153,6 @@ class MessageAdmin(admin.ModelAdmin):
 
 @admin.register(ConversationMemory)
 class ConversationMemoryAdmin(admin.ModelAdmin):
-
     list_display = (
         "id",
         "conversation",
@@ -179,9 +160,7 @@ class ConversationMemoryAdmin(admin.ModelAdmin):
         "created_at",
     )
 
-    search_fields = (
-        "key",
-    )
+    search_fields = ("key",)
 
     readonly_fields = (
         "id",

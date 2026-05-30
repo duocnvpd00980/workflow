@@ -10,6 +10,7 @@ from .intent_classifier_service import IntentClassifierService
 
 logger = logging.getLogger(__name__)
 
+
 async def node_INTENT_CLASSIFIER(state: MainBus, config: RunnableConfig = None) -> dict:
     """
     ======================================================================
@@ -43,8 +44,8 @@ async def node_INTENT_CLASSIFIER(state: MainBus, config: RunnableConfig = None) 
                 entities=[],
                 state={"process_completed": False},
                 context={"topology_error": error_message},
-                error=error_message
-            )
+                error=error_message,
+            ),
         )
 
     # STEP 2: CONTEXT EXTRACTION & DEPENDENCY INJECTION
@@ -73,16 +74,19 @@ async def node_INTENT_CLASSIFIER(state: MainBus, config: RunnableConfig = None) 
             status="SUCCESS",
             text=rewrite_prompt,  # Nội dung thô để Chat render prompt
             entities=[
-                {"intent": intent, "confidence": confidence} # Đủ dữ liệu để Chat chọn Tone
+                {
+                    "intent": intent,
+                    "confidence": confidence,
+                }  # Đủ dữ liệu để Chat chọn Tone
             ],
-            records=[
-                {"label": intent, "score": confidence}
-            ],
+            records=[{"label": intent, "score": confidence}],
             state={
-                "intent": intent,           # Key chính cho node Chat logic
-                "route_to": intent, 
+                "intent": intent,  # Key chính cho node Chat logic
+                "route_to": intent,
                 "routing_ready": True,
-                "tone_hint": "professional" if intent == "qa" else "friendly" # Gợi ý tone cho Chat
+                "tone_hint": "professional"
+                if intent == "qa"
+                else "friendly",  # Gợi ý tone cho Chat
             },
             metrics={"confidence": confidence},
             context={
@@ -90,8 +94,9 @@ async def node_INTENT_CLASSIFIER(state: MainBus, config: RunnableConfig = None) 
                 "tone_hint": "professional" if intent == "qa" else "friendly",
                 "fallback_activated": error_log is not None,
                 "internal_error": error_log,
-                "is_knowledge_required": intent in ["qa", "marketing"] # Gợi ý node Chat có nên gọi RAG không
+                "is_knowledge_required": intent
+                in ["qa", "marketing"],  # Gợi ý node Chat có nên gọi RAG không
             },
-            error=None
-        )
+            error=None,
+        ),
     )

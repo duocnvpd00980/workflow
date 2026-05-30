@@ -25,7 +25,4 @@ async def node_SEED(state: MainBus, config: RunnableConfig) -> dict:
     output = SeedOutput(**mock_rate_data)
 
     # emit ra bus (fix typo output)
-    return StandardFrame.emit(
-        BusRegistry.SD,
-        output
-    )
+    return StandardFrame.emit(BusRegistry.SD, output)

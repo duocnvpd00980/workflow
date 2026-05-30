@@ -13,8 +13,8 @@ from .gatekeeper_protocol import GatekeeperOutput
 # VIOLATION TYPES
 # =============================================================================
 
-class ViolationType(str, Enum):
 
+class ViolationType(str, Enum):
     SPAM = "SPAM"
 
     INJECTION = "INJECTION"
@@ -30,8 +30,8 @@ class ViolationType(str, Enum):
 # DETECTOR HIT
 # =============================================================================
 
-class _DetectorHit(NamedTuple):
 
+class _DetectorHit(NamedTuple):
     violation: ViolationType
 
     triggered: bool
@@ -48,8 +48,8 @@ logger = logging.getLogger(__name__)
 # GATEKEEPER SERVICE
 # =============================================================================
 
-class GatekeeperService:
 
+class GatekeeperService:
     def __init__(self):
 
         # =========================================================
@@ -79,7 +79,7 @@ class GatekeeperService:
 
         text = (text or "").strip()
 
-        return text[:self.max_input_chars]
+        return text[: self.max_input_chars]
 
     # =========================================================================
     # INJECTION DETECTOR
@@ -93,11 +93,7 @@ class GatekeeperService:
         text_low = text.lower()
 
         matched = next(
-            (
-                signal
-                for signal in self.injection_signals
-                if signal in text_low
-            ),
+            (signal for signal in self.injection_signals if signal in text_low),
             None,
         )
 
@@ -120,7 +116,6 @@ class GatekeeperService:
         words = text.lower().split()
 
         if len(words) < 5:
-
             return _DetectorHit(
                 violation=ViolationType.SPAM,
                 triggered=False,
@@ -153,13 +148,9 @@ class GatekeeperService:
         # NORMALIZE INPUT
         # =========================================================
 
-        raw_head = self._guard_input(
-            seed.get("headline", "")
-        )
+        raw_head = self._guard_input(seed.get("headline", ""))
 
-        raw_cont = self._guard_input(
-            seed.get("content", "")
-        )
+        raw_cont = self._guard_input(seed.get("content", ""))
 
         full_text = f"{raw_head} {raw_cont}"
 
@@ -168,9 +159,7 @@ class GatekeeperService:
         # =========================================================
 
         hits = [
-
             self._check_injection(full_text),
-
             self._check_spam(full_text),
         ]
 
@@ -178,17 +167,9 @@ class GatekeeperService:
         # SCORE
         # =========================================================
 
-        risk_score = sum(
-            hit.weight
-            for hit in hits
-            if hit.triggered
-        )
+        risk_score = sum(hit.weight for hit in hits if hit.triggered)
 
-        violations = [
-            hit.violation.value
-            for hit in hits
-            if hit.triggered
-        ]
+        violations = [hit.violation.value for hit in hits if hit.triggered]
 
         # =========================================================
         # DECISION
@@ -198,15 +179,9 @@ class GatekeeperService:
 
         # IMPORTANT:
         # STRING ONLY (checkpoint-safe)
-        reason = (
-            "OK"
-            if passed
-            else "POLICY_VIOLATION"
-        )
+        reason = "OK" if passed else "POLICY_VIOLATION"
 
-        latency_ms = (
-            time.perf_counter() - t_start
-        ) * 1000
+        latency_ms = (time.perf_counter() - t_start) * 1000
 
         # =========================================================
         # OBSERVABILITY LOG
@@ -228,32 +203,20 @@ class GatekeeperService:
         # =========================================================
 
         return GatekeeperOutput(
-
             gatekeeper_passed=passed,
-
             headline=raw_head if passed else "",
-
             content=raw_cont if passed else "",
-
             brand_color=seed.get(
                 "brand_color",
                 "#000000",
             ),
-
             risk_score=min(
                 risk_score,
                 1.0,
             ),
-
             violations=violations,
-
             # IMPORTANT:
             # PURE STRING
             reason=reason,
-
-            reason_detail=(
-                f"Risk too high: {risk_score}"
-                if not passed
-                else None
-            ),
+            reason_detail=(f"Risk too high: {risk_score}" if not passed else None),
         )

@@ -11,11 +11,12 @@ from agent_os.system.watchdog import run_guarded
 log = logging.getLogger("agent_os")
 
 LAW = Law(
-    max_seconds    = 30.0,
-    max_iterations = 50,
-    max_rework     = 3,
-    max_errors     = 10,
+    max_seconds=30.0,
+    max_iterations=50,
+    max_rework=3,
+    max_errors=10,
 )
+
 
 class _WatchdogCallback(AsyncCallbackHandler):
     def __init__(self, wd):
@@ -29,6 +30,7 @@ class _WatchdogCallback(AsyncCallbackHandler):
     async def on_chain_error(self, error, **kwargs) -> None:
         self._wd.error()
 
+
 async def invoke(app, user_input: str, thread_id: str = "default") -> dict:
     try:
         async with run_guarded(LAW) as wd:
@@ -36,7 +38,7 @@ async def invoke(app, user_input: str, thread_id: str = "default") -> dict:
                 {"user_input": user_input},
                 config={
                     "configurable": {"thread_id": thread_id},
-                    "callbacks":    [_WatchdogCallback(wd)],
+                    "callbacks": [_WatchdogCallback(wd)],
                     "recursion_limit": 20,
                 },
             )
@@ -45,7 +47,7 @@ async def invoke(app, user_input: str, thread_id: str = "default") -> dict:
     except Breach as b:
         log.critical("SYSTEM TRIP (Breach): %s", b.reason)
         return {"ok": False, "error": f"Breach: {b.reason}", "reason": b.reason}
-        
+
     except Exception as e:
         # Bắt mọi lỗi khác (GraphRecursionError, ValidationError, v.v.)
         err_msg = str(e)

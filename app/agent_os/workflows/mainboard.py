@@ -13,18 +13,28 @@ from agent_os.system.shields.shield_node import Node
 # MAPPING: CORE AGENT FLOW (Theo sơ đồ Mermaid)
 # =========================================================
 
-from agent_os.nodes_library.node_final_response.adapter_final_response import node_final_response
+from agent_os.nodes_library.node_final_response.adapter_final_response import (
+    node_final_response,
+)
 from agent_os.nodes_library.node_input_guard.adapter_input_guard import node_input_guard
-from agent_os.nodes_library.node_output_guard.adapter_output_guard import node_output_guard
+from agent_os.nodes_library.node_output_guard.adapter_output_guard import (
+    node_output_guard,
+)
 from agent_os.nodes_library.node_cache_layer.adapter_cache_read import node_cache_read
 from agent_os.nodes_library.node_cache_layer.adapter_cache_write import node_cache_write
-from agent_os.nodes_library.node_heuristic_router.adapter_heuristic_router import node_heuristic_router
-from agent_os.nodes_library.node_knowledgebase.adapter_knowledgebase import node_knowledgebase
-from agent_os.nodes_library.node_relevance_check.adapter_relevance_check import node_relevance_check
-from agent_os.nodes_library.node_fallback_search.adapter_fallback_search import node_fallback_search
+from agent_os.nodes_library.node_heuristic_router.adapter_heuristic_router import (
+    node_heuristic_router,
+)
+from agent_os.nodes_library.node_knowledgebase.adapter_knowledgebase import (
+    node_knowledgebase,
+)
+from agent_os.nodes_library.node_relevance_check.adapter_relevance_check import (
+    node_relevance_check,
+)
+from agent_os.nodes_library.node_fallback_search.adapter_fallback_search import (
+    node_fallback_search,
+)
 from agent_os.nodes_library.node_generation.adapter_generation import node_generation
-
-
 
 
 setup_observability()
@@ -52,17 +62,21 @@ board = StateGraph(MainBus)
 # =============================================================================
 # 2. ĐĂNG KÝ CÁC NODE (Khớp chuẩn xác tên hàm và định danh hệ thống của cậu)
 # =============================================================================
-Node(BusRegistry.IG,  node_input_guard).mount(board)       # Node 1: Kiểm tra an toàn
-Node(BusRegistry.RO,  node_heuristic_router).mount(board)   # Node 2: Bộ định tuyến từ khóa
-Node(BusRegistry.CR,  node_cache_read).mount(board)       # Node 3: Bộ nhớ đệm L1/L2
-Node(BusRegistry.CW,  node_cache_write).mount(board)       # Node 3: Bộ nhớ đệm L1/L2
-Node(BusRegistry.FR,  node_final_response).mount(board)    # Node 8: Trả kết quả UI
-Node(BusRegistry.FB,  node_fallback_search).mount(board)   # Node THÊM MỚI: Khối cứu cánh Fallback
+Node(BusRegistry.IG, node_input_guard).mount(board)  # Node 1: Kiểm tra an toàn
+Node(BusRegistry.RO, node_heuristic_router).mount(
+    board
+)  # Node 2: Bộ định tuyến từ khóa
+Node(BusRegistry.CR, node_cache_read).mount(board)  # Node 3: Bộ nhớ đệm L1/L2
+Node(BusRegistry.CW, node_cache_write).mount(board)  # Node 3: Bộ nhớ đệm L1/L2
+Node(BusRegistry.FR, node_final_response).mount(board)  # Node 8: Trả kết quả UI
+Node(BusRegistry.FB, node_fallback_search).mount(
+    board
+)  # Node THÊM MỚI: Khối cứu cánh Fallback
 
-Node(BusRegistry.KLB, node_knowledgebase).mount(board)     # Node 4: Quét FAISS lấy Context
-Node(BusRegistry.RC,  node_relevance_check).mount(board)   # Node 5: Check rác tài liệu
-Node(BusRegistry.GEN, node_generation).mount(board)    # Node 6: Gọi LLM sinh câu trả lời
-Node(BusRegistry.OG,  node_output_guard).mount(board)       # Node 7: Kiểm tra đầu ra
+Node(BusRegistry.KLB, node_knowledgebase).mount(board)  # Node 4: Quét FAISS lấy Context
+Node(BusRegistry.RC, node_relevance_check).mount(board)  # Node 5: Check rác tài liệu
+Node(BusRegistry.GEN, node_generation).mount(board)  # Node 6: Gọi LLM sinh câu trả lời
+Node(BusRegistry.OG, node_output_guard).mount(board)  # Node 7: Kiểm tra đầu ra
 
 # =============================================================================
 # 3. THIẾT LẬP ĐƯỜNG ĐI TUYẾN TÍNH - KHỚP 100% MÃ MERMAID CỦA CẬU
@@ -97,8 +111,8 @@ board.add_conditional_edges(
     BusRegistry.OG,
     lambda state: state.route("output_guard"),
     {
-        "cache": END,       
-        "skip_cache": END,  
+        "cache": END,
+        "skip_cache": END,
     },
 )
 
@@ -122,4 +136,3 @@ async def get_industrial_mainboard():
         return board.compile(
             checkpointer=db_checkpointer,
         )
-

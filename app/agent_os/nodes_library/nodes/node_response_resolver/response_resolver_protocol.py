@@ -9,6 +9,7 @@ class ResponseResolverOutput(BaseModel):
     RESPONSE RESOLVER PROTOCOL
     Hợp đồng dữ liệu đầu ra của Bộ phân tích phản hồi và định tuyến luồng.
     """
+
     route: str
     reasoning: str
     confidence_score: float

@@ -8,7 +8,7 @@ from typing import Any
 
 from agent_os.nodes_library.node_knowledge_retriever.knowledge_protocol import (
     RetrievedChunk,
-    KnowledgeRetrieverOutput
+    KnowledgeRetrieverOutput,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,13 +31,11 @@ class KnowledgeRetrieverService:
         user_id: str,
         doc_type: str,
         top_k: int = 5,
-        score_threshold: float = 0.7
+        score_threshold: float = 0.7,
     ) -> KnowledgeRetrieverOutput:
 
         try:
-            logger.info(
-                f"KNOWLEDGE SEARCH | user={user_id} | type={doc_type}"
-            )
+            logger.info(f"KNOWLEDGE SEARCH | user={user_id} | type={doc_type}")
 
             # Gọi Engine tìm kiếm (Lúc này engine đã được Adapter đảm bảo nạp đủ tham số)
             results = self.engine.search(
@@ -45,7 +43,7 @@ class KnowledgeRetrieverService:
                 user_id=user_id,
                 doc_type=doc_type,
                 top_k=top_k,
-                score_threshold=score_threshold
+                score_threshold=score_threshold,
             )
 
             chunks = []
@@ -54,7 +52,7 @@ class KnowledgeRetrieverService:
                     RetrievedChunk(
                         text=r.text,
                         score=float(r.score or 0.0),
-                        metadata=r.metadata or {}
+                        metadata=r.metadata or {},
                     )
                 )
 
@@ -63,7 +61,7 @@ class KnowledgeRetrieverService:
                 query=query,
                 retrieved_chunks=chunks,
                 total_chunks=len(chunks),
-                doc_type=doc_type
+                doc_type=doc_type,
             )
 
         except Exception as e:
@@ -74,5 +72,5 @@ class KnowledgeRetrieverService:
                 retrieved_chunks=[],
                 total_chunks=0,
                 doc_type=doc_type,
-                error=str(e)
+                error=str(e),
             )

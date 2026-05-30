@@ -5,23 +5,46 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('knowledge', '0003_alter_documentsource_options_and_more'),
+        ("knowledge", "0003_alter_documentsource_options_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='DocumentNode',
+            name="DocumentNode",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('node_id', models.UUIDField(unique=True)),
-                ('node_type', models.CharField(choices=[('parent', 'Parent'), ('child', 'Child')], max_length=20)),
-                ('chunk_index', models.IntegerField(default=0)),
-                ('text', models.TextField()),
-                ('embedding_id', models.CharField(blank=True, max_length=255, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('document', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='nodes', to='knowledge.documentsource')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("node_id", models.UUIDField(unique=True)),
+                (
+                    "node_type",
+                    models.CharField(
+                        choices=[("parent", "Parent"), ("child", "Child")],
+                        max_length=20,
+                    ),
+                ),
+                ("chunk_index", models.IntegerField(default=0)),
+                ("text", models.TextField()),
+                (
+                    "embedding_id",
+                    models.CharField(blank=True, max_length=255, null=True),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "document",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="nodes",
+                        to="knowledge.documentsource",
+                    ),
+                ),
             ],
         ),
     ]
