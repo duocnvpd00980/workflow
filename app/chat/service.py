@@ -1,28 +1,26 @@
-# chat/service.py
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import traceback
 import uuid
 from typing import AsyncGenerator
 
-from app.chat.main import _safe_get_snapshot
-from app.chat.streaming import stream_guarded
 from langgraph.types import Command
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.sql import func
 
-from app.core.container import get_ctx
 from app.chat.models import Conversation, Message
 from app.graph import main_v7
 
-
 logger = logging.getLogger(__name__)
 
-# ── Constants ─────────────────────────────────────────────
+_MAX_SECONDS     = 30.0
+_RECURSION_LIMIT = 20
+
 NODE_LABELS: dict[str, str] = {
     "input_guard":      "Kiểm duyệt đầu vào",
     "heuristic_router": "Định tuyến",
@@ -35,7 +33,44 @@ NODE_LABELS: dict[str, str] = {
     "final_response":   "Hoàn tất",
 }
 
+
+# ── Stream ────────────────────────────────────────────────
+
+async def _stream_guarded(app, graph_input, thread_id: str):
+    pipeline_error: str | None = None
+    try:
+        config = {"configurable": {"thread_id": thread_id}, "recursion_limit": _RECURSION_LIMIT}
+        async with asyncio.timeout(_MAX_SECONDS):
+            async for chunk in app.astream(graph_input, config=config):
+                if "__interrupt__" in chunk:
+                    payload = chunk["__interrupt__"][0].value
+                    yield "interrupt", json.dumps(payload, ensure_ascii=False)
+                    return
+                for node_key in chunk:
+                    if not node_key.startswith("__"):
+                        yield "node", node_key
+    except asyncio.TimeoutError:
+        logger.error("[stream] timeout thread=%s", thread_id)
+        pipeline_error = "timeout"
+    except Exception as e:
+        logger.error("[stream] CRASH (%s): %s thread=%s", type(e).__name__, e, thread_id)
+        pipeline_error = repr(e)
+    finally:
+        if pipeline_error:
+            yield "error", pipeline_error
+        yield "done", None
+
+
+async def _get_snapshot(app, thread_id: str):
+    try:
+        return await app.aget_state({"configurable": {"thread_id": thread_id}})
+    except Exception as e:
+        logger.error("[snapshot] failed thread=%s: %s", thread_id, e)
+        return None
+
+
 # ── Helpers ───────────────────────────────────────────────
+
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -45,16 +80,12 @@ def _thread_id(conversation_id: str, session_id: str) -> str:
 def _node_label(key: str) -> str:
     return NODE_LABELS.get(key) or NODE_LABELS.get(key.removeprefix("node_")) or key
 
-def _safe_json(s: str) -> dict | None:
-    try:
-        return json.loads(s) if s else None
-    except Exception:
-        return None
 
 # ── Builders ──────────────────────────────────────────────
-def _text(text: str)            -> dict: return {"type": "text_response", "text": text}
-def _empty()                    -> dict: return {"type": "empty_state", "message": "Đang xử lý..."}
-def _result(components: list)   -> dict: return {"components": components}
+
+def _text(text: str)          -> dict: return {"type": "text_response", "text": text}
+def _empty()                  -> dict: return {"type": "empty_state", "message": "Đang xử lý..."}
+def _result(components: list) -> dict: return {"components": components}
 
 def _error(e: Exception | None) -> dict:
     if isinstance(e, TimeoutError):
@@ -76,27 +107,22 @@ def _snapshot_to_result(snapshot, error: Exception | None, **ctx) -> dict:
     state = snapshot.values or {}
 
     if any(bool(t.interrupts) for t in (snapshot.tasks or [])):
-        draft = ""
         for task in (snapshot.tasks or []):
             if task.interrupts:
                 val = task.interrupts[0].value
                 draft = (val.get("draft") or val.get("text", "")) if isinstance(val, dict) else ""
-                break
-        return _result([_human_review(
-            draft=draft,
-            instruction="Review nội dung. Chọn Duyệt hoặc Từ chối.",
-            **ctx,
-        )])
+                return _result([_human_review(draft=draft,
+                    instruction="Review nội dung. Chọn Duyệt hoặc Từ chối.", **ctx)])
 
-    final = state.get("final_response")
-    if isinstance(final, dict):
-        payload = final.get("payload", {})
-        if text := payload.get("text"):
+    if isinstance(final := state.get("final_response"), dict):
+        if text := final.get("payload", {}).get("text"):
             return _result([_text(text)])
 
     return _result([_empty()])
 
+
 # ── DB helpers ────────────────────────────────────────────
+
 async def _save_user_msg(db: AsyncSession, conv_id: uuid.UUID, content: str, msg_id: str) -> None:
     db.add(Message(id=msg_id, conversation_id=conv_id,
                    role="user", status="completed", content=content))
@@ -109,7 +135,7 @@ async def _save_assistant_pending(db: AsyncSession, conv_id: uuid.UUID, msg_id: 
 
 async def _update_msg(db: AsyncSession, msg_id: str, payload: dict,
                       status: str = "completed", error: str = "") -> None:
-    content = next((c.get("text","") for c in payload.get("components",[])
+    content = next((c.get("text", "") for c in payload.get("components", [])
                     if c.get("type") == "text_response"), "")
     await db.execute(update(Message).where(Message.id == msg_id).values(
         content=content, html=json.dumps(payload, ensure_ascii=False),
@@ -124,30 +150,29 @@ async def _touch(db: AsyncSession, conv_id: uuid.UUID) -> None:
 
 async def _history(db: AsyncSession, conv_id: uuid.UUID, limit: int = 10) -> list[dict]:
     rows = await db.execute(
-        select(Message).where(Message.conversation_id == conv_id,
-                               Message.status == "completed")
-                       .order_by(Message.created_at.desc()).limit(limit)
+        select(Message)
+        .where(Message.conversation_id == conv_id, Message.status == "completed")
+        .order_by(Message.created_at.desc()).limit(limit)
     )
     return [{"role": m.role, "content": m.content}
             for m in reversed(rows.scalars().all()) if m.content]
 
+
 # ── Core stream ───────────────────────────────────────────
+
 async def _run_stream(
-    board, thread_id: str, graph_input,
+    thread_id: str, graph_input,
     session_id: str, msg_id: str = "",
     assistant_msg_id: str = "", conversation_id: str = "",
     db: AsyncSession | None = None,
 ) -> AsyncGenerator[str, None]:
     step, pipeline_error = 0, None
+
     try:
-        async for event_type, value in stream_guarded(board, graph_input, thread_id):
+        async for event_type, value in _stream_guarded(main_v7, graph_input, thread_id):
             if event_type == "node":
                 step += 1
                 yield _sse("node", {"label": _node_label(value), "step": step})
-            elif event_type in ("token", "message_chunk"):
-                token = value if isinstance(value, str) else value.get("token") or value.get("content", "")
-                if token:
-                    yield _sse("token", {"token": token})
             elif event_type == "interrupt":
                 val = json.loads(value) if isinstance(value, str) else value
                 result = _result([_human_review(
@@ -164,10 +189,10 @@ async def _run_stream(
             elif event_type == "done":
                 break
 
-        snapshot = await _safe_get_snapshot(board, thread_id)
-        result = _snapshot_to_result(snapshot, pipeline_error,
-                                     session_id=session_id, msg_id=msg_id,
-                                     conversation_id=conversation_id)
+        snapshot = await _get_snapshot(main_v7, thread_id)
+        result   = _snapshot_to_result(snapshot, pipeline_error,
+                                       session_id=session_id, msg_id=msg_id,
+                                       conversation_id=conversation_id)
         if assistant_msg_id and db:
             await _update_msg(db, assistant_msg_id, result,
                               status="error" if pipeline_error else "completed",
@@ -175,7 +200,7 @@ async def _run_stream(
         yield _sse("result", result)
 
     except Exception as e:
-        logger.exception("[stream] crash thread=%s", thread_id)
+        logger.exception("[run_stream] crash thread=%s", thread_id)
         err = _result([_error(e)])
         if assistant_msg_id and db:
             await _update_msg(db, assistant_msg_id, err, status="error", error=str(e))
@@ -183,12 +208,15 @@ async def _run_stream(
     finally:
         yield _sse("done", {})
 
+
 # ── ChatService ───────────────────────────────────────────
+
 class ChatService:
+
     async def stream_graph(self, message: str, session_id: str,
                            msg_id: str = "", conversation_id: str = "",
                            db: AsyncSession | None = None) -> AsyncGenerator[str, None]:
-        msg_id         = msg_id or str(uuid.uuid4())
+        msg_id          = msg_id or str(uuid.uuid4())
         conversation_id = conversation_id or str(uuid.uuid4())
         assistant_msg_id, history = "", []
 
@@ -204,9 +232,8 @@ class ChatService:
             except Exception:
                 logger.exception("[stream_graph] DB setup failed")
 
-        board = await get_mainboard()
         async for chunk in _run_stream(
-            board, _thread_id(conversation_id, session_id),
+            _thread_id(conversation_id, session_id),
             {"user_input": message, "language": "vi", "budget_limit": 2.0,
              "conversation_id": conversation_id, "msg_id": msg_id, "chat_history": history},
             session_id, msg_id=msg_id,
@@ -229,9 +256,8 @@ class ChatService:
             except Exception:
                 logger.exception("[resume_graph] DB setup failed")
 
-        board = await get_mainboard()
         async for chunk in _run_stream(
-            board, _thread_id(conversation_id, session_id),
+            _thread_id(conversation_id, session_id),
             Command(resume={"action": action.strip().lower(), "feedback": feedback.strip()}),
             session_id, msg_id=msg_id,
             assistant_msg_id=assistant_msg_id,
@@ -243,6 +269,5 @@ class ChatService:
                                db: AsyncSession | None = None):
         if db and conversation_id:
             return await _history(db, uuid.UUID(conversation_id), limit=50)
-        board = await get_mainboard()
-        snapshot = await safe_get_snapshot(board, _thread_id(conversation_id, session_id))
+        snapshot = await _get_snapshot(main_v7, _thread_id(conversation_id, session_id))
         return _snapshot_to_result(snapshot, None) if snapshot else None

@@ -1,14 +1,21 @@
-"""DocumentLoaderService v2.1 — Tải và làm sạch tài liệu cho RAG ZERO v2.1.
-Không phụ thuộc llama-index. Trả về plain dict để pipeline RAG xử lý.
+"""DocumentLoaderService v2.2 — Production-grade document loader cho RAG ZERO v2.1.
+
+Fixes so với v2.1:
+- load_web: retry đúng khi fetch trả None (không exception)
+- _iter_files: gọi _should_skip để bỏ hidden/venv/cache dirs
+- load_directory: dùng _should_skip nhất quán
+- Bỏ target_language="vi" trong trafilatura (tránh lọc nhầm content tiếng Anh xen kẽ)
+- source_id nhất quán: dùng file_name hoặc URL để RAG dedup đúng
 """
 
 from __future__ import annotations
-import re
+
 import logging
-from pathlib import Path
+import re
 from dataclasses import dataclass, field
-from typing import List, Dict, Iterator
+from pathlib import Path
 from time import sleep
+from typing import Dict, Iterator, List
 
 import trafilatura
 
@@ -17,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class LoadedDocument:
-    """Thay thế llama_index.Document — chỉ cần text + metadata."""
+    """Đại diện cho một tài liệu đã tải — text + metadata."""
 
     text: str
     metadata: Dict = field(default_factory=dict)
@@ -26,53 +33,91 @@ class LoadedDocument:
 class DocumentLoader:
     """
     Dịch vụ tải tài liệu chuẩn hóa cho RAG ZERO v2.1.
-    Không phụ thuộc llama-index. Xử lý tiền kỳ dữ liệu thô.
+    Hỗ trợ: web, PDF, DOCX, XLSX, TXT, CSV, Markdown.
+    Không phụ thuộc llama-index.
     """
 
     SUPPORTED_EXTENSIONS: List[str] = [".pdf", ".docx", ".txt", ".csv", ".xlsx", ".md"]
     MAX_FILE_SIZE_MB: int = 50
 
-    _EXCESS_NEWLINE_PATTERN: re.Pattern = re.compile(r"\n{3,}")
+    # Patterns thư mục/file nên bỏ qua
+    _SKIP_PATTERNS = (
+        "/.git/",
+        "/.venv/",
+        "/venv/",
+        "/node_modules/",
+        "/__pycache__/",
+        "/dist/",
+        "/build/",
+    )
+    _SKIP_PREFIXES = (".", "~")
 
-    def __init__(self, request_timeout_seconds: int = 15, max_retries: int = 3) -> None:
+    _EXCESS_NEWLINE_RE: re.Pattern = re.compile(r"\n{3,}")
+
+    def __init__(
+        self,
+        request_timeout_seconds: int = 15,
+        max_retries: int = 3,
+    ) -> None:
         self._timeout = request_timeout_seconds
         self._max_retries = max_retries
 
-    def _clean_text(self, raw_text: str) -> str:
-        """Làm sạch văn bản thô, giữ ranh giới đoạn văn."""
-        if not raw_text:
+    # ── Text Cleaning ─────────────────────────────────────────────────────────
+
+    def _clean_text(self, raw: str) -> str:
+        """Chuẩn hoá whitespace, giữ ranh giới đoạn văn."""
+        if not raw:
             return ""
-        lines = [line.strip() for line in raw_text.split("\n")]
+        lines = [line.strip() for line in raw.split("\n")]
         joined = "\n".join(lines)
-        cleaned = self._EXCESS_NEWLINE_PATTERN.sub("\n\n", joined)
-        return cleaned.strip()
+        return self._EXCESS_NEWLINE_RE.sub("\n\n", joined).strip()
 
     # ── Web Loading ───────────────────────────────────────────────────────────
 
     def load_web(self, url: str) -> LoadedDocument:
-        """Cào web với retry + backoff."""
-        last_exc = None
+        """
+        Tải và trích xuất nội dung từ URL với retry + exponential backoff.
+        Retry cả khi fetch trả None (không chỉ khi có exception).
+        """
+        downloaded = None
+        last_exc: Exception | None = None
+
         for attempt in range(self._max_retries):
             try:
-                downloaded = trafilatura.fetch_url(url, timeout=self._timeout)
+                downloaded = trafilatura.fetch_url(url)
                 if downloaded:
                     break
+                # Fetch thành công nhưng không có content → thử lại
+                logger.warning(
+                    "[Loader] fetch_url trả None lần %d/%d: %s",
+                    attempt + 1,
+                    self._max_retries,
+                    url,
+                )
             except Exception as exc:
                 last_exc = exc
-                if attempt < self._max_retries - 1:
-                    sleep(2**attempt)  # exponential backoff: 1s, 2s, 4s
-                continue
-        else:
+                logger.warning(
+                    "[Loader] fetch_url exception lần %d/%d: %s — %s",
+                    attempt + 1,
+                    self._max_retries,
+                    url,
+                    exc,
+                )
+
+            if attempt < self._max_retries - 1:
+                sleep(2**attempt)  # 1s → 2s → 4s
+
+        if not downloaded:
             raise ValueError(
                 f"Không thể tải URL sau {self._max_retries} lần thử: {url}"
             ) from last_exc
 
+        # Trích xuất nội dung — không ép target_language để tránh lọc nhầm
         extracted = trafilatura.extract(
             downloaded,
             include_comments=False,
             include_tables=True,
             no_fallback=False,
-            target_language="vi",  # ← tối ưu: chỉ extract tiếng Việt
         )
 
         if not extracted:
@@ -81,95 +126,115 @@ class DocumentLoader:
         return LoadedDocument(
             text=self._clean_text(extracted),
             metadata={
+                "source_id": url,
                 "source_url": url,
                 "document_type": "web_page",
-                "storage_layer": "external_crawl",
             },
         )
 
-    # ── File Loading ──────────────────────────────────────────────────────────
+    # ── File Reading (by type) ────────────────────────────────────────────────
 
-    def _check_file_size(self, file_path: Path) -> None:
-        """Giới hạn file size để tránh OOM."""
-        size_mb = file_path.stat().st_size / (1024 * 1024)
+    def _check_file_size(self, path: Path) -> None:
+        size_mb = path.stat().st_size / (1024 * 1024)
         if size_mb > self.MAX_FILE_SIZE_MB:
             raise ValueError(
-                f"File {file_path.name} ({size_mb:.1f}MB) vượt quá giới hạn {self.MAX_FILE_SIZE_MB}MB"
+                f"File {path.name} ({size_mb:.1f} MB) vượt giới hạn {self.MAX_FILE_SIZE_MB} MB"
             )
 
     def _read_pdf(self, path: Path) -> str:
-        """Đọc PDF bằng pypdf — nhẹ, không cần llama-index."""
         try:
-            from pypdf import PdfReader
+            import fitz
         except ImportError:
-            raise ImportError("Cài đặt pypdf: pip install pypdf")
+            raise ImportError("uv add pymupdf")
 
-        reader = PdfReader(str(path))
-        texts = []
-        for page in reader.pages:
-            text = page.extract_text()
-            if text:
-                texts.append(text)
-        return "\n".join(texts)
+        doc = fitz.open(str(path))
+        pages = []
+        for page in doc:
+            # Thử lấy text thường trước
+            text = page.get_text("text")
+            if text.strip():
+                pages.append(text)
+                continue
+            # Thử lấy theo blocks (tốt hơn cho bảng/cột)
+            blocks = page.get_text("blocks")
+            block_text = "\n".join(b[4] for b in blocks if b[4].strip())
+            if block_text.strip():
+                pages.append(block_text)
+                continue
+            # Scan ảnh → OCR
+            try:
+                import pytesseract
+                from PIL import Image
+                import io
+                pix = page.get_pixmap(dpi=200)
+                img = Image.open(io.BytesIO(pix.tobytes("png")))
+                ocr_text = pytesseract.image_to_string(img, lang="vie+eng")
+                if ocr_text.strip():
+                    pages.append(ocr_text)
+                    logger.info("[Loader] Page %d OCR thành công", page.number + 1)
+            except Exception as e:
+                logger.warning("[Loader] OCR page %d thất bại: %s", page.number + 1, e)
+
+        if not pages:
+            raise ValueError(f"Không đọc được nội dung (kể cả OCR): {path.name}")
+
+        return "\n\n".join(pages)
 
     def _read_docx(self, path: Path) -> str:
-        """Đọc Word bằng python-docx."""
         try:
             from docx import Document
         except ImportError:
-            raise ImportError("Cài đặt python-docx: pip install python-docx")
+            raise ImportError("Cài đặt: pip install python-docx")
 
         doc = Document(str(path))
         return "\n".join(p.text for p in doc.paragraphs if p.text.strip())
 
     def _read_xlsx(self, path: Path) -> str:
-        """Đọc Excel bằng openpyxl."""
         try:
             from openpyxl import load_workbook
         except ImportError:
-            raise ImportError("Cài đặt openpyxl: pip install openpyxl")
+            raise ImportError("Cài đặt: pip install openpyxl")
 
         wb = load_workbook(str(path), data_only=True)
-        texts = []
+        rows: List[str] = []
         for sheet in wb.worksheets:
             for row in sheet.iter_rows(values_only=True):
-                row_text = " | ".join(str(cell) for cell in row if cell is not None)
+                row_text = " | ".join(str(c) for c in row if c is not None)
                 if row_text.strip():
-                    texts.append(row_text)
-        return "\n".join(texts)
+                    rows.append(row_text)
+        return "\n".join(rows)
 
     def _read_txt(self, path: Path) -> str:
-        """Đọc text file với encoding detection đơn giản."""
-        for encoding in ["utf-8", "utf-16", "cp1252", "iso-8859-1"]:
+        for enc in ("utf-8", "utf-16", "cp1252", "iso-8859-1"):
             try:
-                return path.read_text(encoding=encoding)
+                return path.read_text(encoding=enc)
             except UnicodeDecodeError:
                 continue
         raise ValueError(f"Không thể decode file: {path}")
 
-    def _read_file_by_type(self, path: Path) -> str:
-        """Router đọc file theo định dạng."""
-        suffix = path.suffix.lower()
-        readers = {
-            ".pdf": self._read_pdf,
-            ".docx": self._read_docx,
-            ".xlsx": self._read_xlsx,
-            ".txt": self._read_txt,
-            ".csv": self._read_txt,
-            ".md": self._read_txt,
-        }
-        reader = readers.get(suffix)
+    _READERS = {
+        ".pdf": _read_pdf,
+        ".docx": _read_docx,
+        ".xlsx": _read_xlsx,
+        ".txt": _read_txt,
+        ".csv": _read_txt,
+        ".md": _read_txt,
+    }
+
+    def _read_file(self, path: Path) -> str:
+        reader = self._READERS.get(path.suffix.lower())
         if not reader:
-            raise ValueError(f"Không có reader cho định dạng: {suffix}")
-        return reader(path)
+            raise ValueError(f"Không có reader cho định dạng: {path.suffix}")
+        return reader(self, path)
+
+    # ── Single File Loading ───────────────────────────────────────────────────
 
     def load_file(self, path: str) -> List[LoadedDocument]:
-        """Đọc file đơn lẻ với kiểm tra nghiêm ngặt."""
+        """Đọc một file, trả về list (để đồng nhất interface với load_directory)."""
         file_path = Path(path)
 
         if not file_path.exists():
             raise FileNotFoundError(f"Không tìm thấy file: {path}")
-
         if file_path.suffix.lower() not in self.SUPPORTED_EXTENSIONS:
             raise ValueError(
                 f"Định dạng '{file_path.suffix}' không được hỗ trợ. "
@@ -177,9 +242,8 @@ class DocumentLoader:
             )
 
         self._check_file_size(file_path)
-
-        raw_text = self._read_file_by_type(file_path)
-        cleaned = self._clean_text(raw_text)
+        raw = self._read_file(file_path)
+        cleaned = self._clean_text(raw)
 
         if not cleaned:
             raise ValueError(f"Không trích xuất được nội dung từ: {file_path.name}")
@@ -187,62 +251,66 @@ class DocumentLoader:
         return [
             LoadedDocument(
                 text=cleaned,
-                metadata={
-                    "file_name": file_path.name,
-                    "file_extension": file_path.suffix.lower().lstrip("."),
-                    "file_size_bytes": file_path.stat().st_size,
-                    "absolute_path": str(file_path.resolve()),
-                    "document_type": "file",
-                },
+                metadata=self._file_metadata(file_path),
             )
         ]
+
+    def _file_metadata(self, path: Path) -> Dict:
+        return {
+            "source_id": path.name,          # dùng làm key dedup trong RAG Store
+            "file_name": path.name,
+            "file_extension": path.suffix.lower().lstrip("."),
+            "file_size_bytes": path.stat().st_size,
+            "absolute_path": str(path.resolve()),
+            "document_type": "file",
+        }
 
     # ── Directory Loading ─────────────────────────────────────────────────────
 
     def _should_skip(self, path: Path) -> bool:
-        """Kiểm tra path có nên bỏ qua không (hidden, venv, etc.)."""
-        name = path.name
-        skip_patterns = (".", "~", "node_modules", ".venv", "__pycache__", ".git")
-        return any(pattern in str(path) for pattern in skip_patterns)
+        """Trả True nếu path thuộc hidden dir, venv, cache, v.v."""
+        posix = path.as_posix()
+        if any(pat in posix for pat in self._SKIP_PATTERNS):
+            return True
+        # File/dir bắt đầu bằng '.' hoặc '~'
+        if any(part.startswith(self._SKIP_PREFIXES) for part in path.parts):
+            return True
+        return False
 
     def _iter_files(self, dir_path: Path) -> Iterator[Path]:
         for file_path in dir_path.rglob("*"):
             if (
                 file_path.is_file()
+                and not self._should_skip(file_path)
                 and file_path.suffix.lower() in self.SUPPORTED_EXTENSIONS
             ):
                 yield file_path
 
     def load_directory(self, path: str) -> List[LoadedDocument]:
-        """Quét đệ quy thư mục, stream từng file."""
+        """
+        Quét đệ quy thư mục.
+        Bỏ qua hidden dirs, venv, cache, file lỗi.
+        """
         dir_path = Path(path)
         if not dir_path.is_dir():
             raise NotADirectoryError(f"Không phải thư mục: {path}")
 
-        processed_docs: List[LoadedDocument] = []
+        docs: List[LoadedDocument] = []
 
         for file_path in self._iter_files(dir_path):
             try:
                 self._check_file_size(file_path)
-                raw_text = self._read_file_by_type(file_path)
-                cleaned = self._clean_text(raw_text)
-
+                raw = self._read_file(file_path)
+                cleaned = self._clean_text(raw)
                 if cleaned:
-                    processed_docs.append(
+                    docs.append(
                         LoadedDocument(
                             text=cleaned,
-                            metadata={
-                                "file_name": file_path.name,
-                                "file_extension": file_path.suffix.lower().lstrip("."),
-                                "file_size_bytes": file_path.stat().st_size,
-                                "absolute_path": str(file_path.resolve()),
-                                "document_type": "file",
-                            },
+                            metadata=self._file_metadata(file_path),
                         )
                     )
             except Exception as exc:
-                logger.warning("Bỏ qua file lỗi %s: %s", file_path, exc)
-                continue
+                logger.warning("[Loader] Bỏ qua %s: %s", file_path, exc)
 
-        logger.info("[Loader] Đã nạp %s tài liệu từ %s", len(processed_docs), path)
-        return processed_docs
+        logger.info("[Loader] Nạp %d tài liệu từ %s", len(docs), path)
+        return docs

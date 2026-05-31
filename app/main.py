@@ -1,13 +1,13 @@
 from contextlib import asynccontextmanager
 import logging
-
+import os
+import psutil
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.chat.router import router as chat_router
 from app.rag.router import router as rag_router
 from app.db import init_db
-from app.container import lifespan as services_lifespan
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,15 +18,10 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. DB trước
     logger.info("🚀 Khởi động server...")
     await init_db()
     logger.info("✅ Database ready.")
-
-    # 2. Services (ModelRegistry, RAG, ...) sau
-    async with services_lifespan(app):
-        yield
-
+    yield
     logger.info("🛑 Server shutting down.")
 
 
@@ -46,3 +41,16 @@ app.add_middleware(
 
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(rag_router, prefix="/api/v1")
+
+
+@app.get("/metrics/system", tags=["Monitoring"])
+def system_metrics():
+    proc = psutil.Process(os.getpid())
+    mem  = proc.memory_info()
+    return {
+        "cpu_percent":  proc.cpu_percent(interval=1),
+        "ram_used_mb":  round(mem.rss / 1024 / 1024, 1),
+        "ram_used_vms": round(mem.vms / 1024 / 1024, 1),
+        "threads":      proc.num_threads(),
+        "open_files":   len(proc.open_files()),
+    }

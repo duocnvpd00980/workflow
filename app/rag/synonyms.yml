@@ -1,34 +1,78 @@
-# Query expansion — thêm/sửa từ đồng nghĩa tại đây, không cần đụng code
-# Cấu trúc: canonical_term: [variant1, variant2, ...]
+# RAG ZERO v3.0 — Bidirectional Synonyms
+# Generic aliases only, no answer values
 
-thưởng tháng 13:
-  - tiền thưởng cuối năm
-  - bonus tết
-  - lương tháng 13
-  - thưởng tết
+bidirectional:
+  # Roles
+  - [giám đốc điều hành, ceo, chief executive officer, tổng giám đốc, người đại diện điều hành]
+  - [giám đốc tài chính, cfo, chief financial officer]
+  - [giám đốc công nghệ, cto, chief technology officer]
+  - [trưởng phòng, team lead, head of, trưởng bộ phận]
+  - [người đại diện, đại diện pháp luật, legal representative]
 
-nghỉ phép năm:
-  - annual leave
-  - phép năm
-  - ngày phép hưởng lương
+  # Infrastructure / Locations
+  - [trung tâm dữ liệu, datacenter, data center, server farm]
+  - [trung tâm điều phối, command center, control center]
+  - [hạ tầng, infrastructure, cơ sở hạ tầng]
+  - [cơ sở, facility, campus, center]
+  - [trụ sở, headquarters, head office]
 
-nghỉ phép:
-  - ngày phép
-  - leave
-  - day off
-  - xin nghỉ
+  # Finance
+  - [ngân sách, chi phí, kinh phí, nguồn vốn, budget, cost]
+  - [doanh thu, revenue, turnover, income]
+  - [lợi nhuận, profit, earnings]
+  - [đầu tư, investment, capital expenditure]
 
-public code:
-  - public mã nguồn
-  - đăng github
-  - upload source
-  - chia sẻ code
+  # Projects / Programs
+  - [dự án, project, dự án triển khai, chương trình]
+  - [dự án chiến lược, strategic project, flagship project]
+  - [nền tảng, platform, hệ thống nền tảng]
+  - [hệ thống, system, giải pháp, solution]
+  - [chiến dịch, campaign, chiến dịch marketing, chiến dịch tuyển sinh]
 
-lương:
-  - tiền công
-  - thu nhập
+  # AI / Tech
+  - [trí tuệ nhân tạo, artificial intelligence, ai]
+  - [học máy, machine learning, ml]
+  - [tìm kiếm tài liệu, document retrieval, rag]
+  - [tác tử, agent, ai agent]
+  - [phân tích dữ liệu, data analysis, analytics]
+  - [lập trình viên, programmer, developer, software engineer, coder]
+  - [cloud computing, điện toán đám mây, cloud]
+  - [devops, ci/cd, kubernetes, k8s]
 
-bảo mật:
-  - security
-  - an ninh
-  - confidential
+  # Security
+  - [bảo mật, security, an toàn thông tin, information security]
+  - [mã hóa, encryption, cipher]
+  - [xác thực, authentication, verify]
+  - [tài liệu mật, confidential, classified, secret document]
+  - [mã xác thực, verification code, auth code, secret code]
+  - [mật danh, codename, secret name]
+  - [khóa, key, password, secret key]
+
+  # HR
+  - [nhân sự, human resources, hr, số lượng nhân viên]
+  - [kỹ sư, engineer, developer, lập trình viên]
+  - [giảng viên, instructor, teacher, lecturer, trainer]
+  - [nhân viên, employee, staff, worker]
+  - [nghỉ phép, ngày phép, phép năm, ngày nghỉ, annual leave, leave]
+  - [tuyển dụng, recruitment, hiring]
+  - [làm việc từ xa, remote work, work from home, wfh]
+
+  # Marketing / Business
+  - [triển khai, rollout, deployment, launch, implement]
+  - [quý, quarter, q]
+  - [khách hàng, customer, client, người dùng, user]
+  - [học viên, student, learner, trainee]
+  - [doanh nghiệp, enterprise, company, business, corporation]
+
+  # Data
+  - [dữ liệu, data, thông tin, information]
+  - [lưu trữ, storage, archive, backup, save]
+  - [bản sao, copy, replica, duplicate, backup copy]
+  - [xử lý, process, handle, compute]
+  - [phân tích, analyze, analysis]
+
+  # Education
+  - [đào tạo, training, education, teach, instruct]
+  - [giáo trình, curriculum, syllabus, course material]
+  - [khóa học, course, class, program]
+  - [học trực tuyến, online learning, e-learning, online course]

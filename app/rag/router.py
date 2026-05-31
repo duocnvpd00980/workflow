@@ -1,4 +1,3 @@
-# rag/router.py
 from __future__ import annotations
 
 import logging
@@ -10,9 +9,11 @@ from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_llm, Services
+from app.core.deps import get_rag, get_loader
 from app.db import get_db
 from app.rag.schemas import DocOut, SearchOut, UploadOut
+from app.rag.service import RAG
+from app.rag.loader import DocumentLoader
 from .models import DocumentSource
 
 logger = logging.getLogger(__name__)
@@ -46,12 +47,13 @@ async def upload(
     title: str = Form(...),
     file: UploadFile = ...,
     db: AsyncSession = Depends(get_db),
-    svc: Services = Depends(get_llm),
+    rag: RAG = Depends(get_rag),
+    loader: DocumentLoader = Depends(get_loader),
 ):
     if not title.strip():
         raise HTTPException(400, "Tiêu đề trống.")
 
-    suffix = Path(file.filename).suffix if file.filename else ""
+    suffix  = Path(file.filename).suffix if file.filename else ""
     content = await file.read()
 
     doc = DocumentSource(title=title.strip(), status="processing")
@@ -59,7 +61,7 @@ async def upload(
     await db.commit()
     await db.refresh(doc)
 
-    # Lưu tạm ra disk rồi gọi load_file
+    tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=suffix, prefix=f"{uuid.uuid4().hex}_"
@@ -67,25 +69,24 @@ async def upload(
             tmp.write(content)
             tmp_path = tmp.name
 
-        docs = svc.loader.load_file(tmp_path)
-        Path(tmp_path).unlink(missing_ok=True)  # xóa file tạm
+        docs = loader.load_file(tmp_path)
+        Path(tmp_path).unlink(missing_ok=True)
 
         if not docs:
             raise ValueError("Không trích xuất được nội dung.")
 
-        await svc.rag.add(docs[0].text, **docs[0].metadata)
+        await rag.add(docs[0].text, **docs[0].metadata)
 
-        doc.status = "completed"
+        doc.status      = "completed"
         doc.chunk_count = len(docs)
         await db.commit()
-        return UploadOut(
-            id=doc.id, title=doc.title,
-            status="completed", message="Đã ingest thành công.",
-        )
+        return UploadOut(id=doc.id, title=doc.title,
+                         status="completed", message="Đã ingest thành công.")
 
     except Exception as e:
-        Path(tmp_path).unlink(missing_ok=True) if "tmp_path" in locals() else None
-        doc.status = "failed"
+        if tmp_path:
+            Path(tmp_path).unlink(missing_ok=True)
+        doc.status        = "failed"
         doc.error_message = str(e)
         await db.commit()
         logger.error("[upload] %s: %s", doc.id, e)
@@ -96,18 +97,15 @@ async def upload(
 async def search(
     query: str = Form(...),
     top_k: int = Form(3),
-    svc: Services = Depends(get_llm),
+    rag: RAG = Depends(get_rag),
 ):
     if not query.strip():
         return SearchOut(query="", results=[], source="empty")
 
-    result = await svc.rag.search(query.strip(), top_k=top_k)
+    result = await rag.search(query.strip(), top_k=top_k)
     return SearchOut(
         query=result.query,
-        results=[
-            {"text": c.text, "score": c.score, "meta": c.meta}
-            for c in result.chunks
-        ],
+        results=[{"text": c.text, "score": c.score, "meta": c.meta} for c in result.chunks],
         source=result.source,
     )
 

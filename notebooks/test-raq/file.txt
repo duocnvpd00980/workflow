@@ -1,0 +1,151 @@
+CÔNG TY GIÁO DỤC TRÍ TUỆ XANH
+
+Hồ sơ nội bộ phiên bản 2026.
+
+1. THÔNG TIN CHUNG
+
+Tên doanh nghiệp: Tri Tue Xanh Education JSC.
+
+Mã doanh nghiệp nội bộ: TTX-2026-G88.
+
+Ngày thành lập: 20/08/2019.
+
+Trụ sở chính đặt tại thành phố Đà Nẵng.
+
+Tổng số nhân sự hiện tại: 156 người.
+
+Người đại diện điều hành là Phạm Thị Lan Hương.
+
+Email điều hành: ceo@trituexanh.edu.vn.
+
+2. HỆ THỐNG CƠ SỞ
+
+Tri Tue Xanh hiện sửu dụng bốn cơ sở đào tạo.
+
+Cơ sở Kim Mã đặt tại Hà Nội.
+
+Cơ sở Nguyễn Văn Linh đặt tại Đà Nẵng.
+
+Cơ sở Lê Lợi đặt tại TP. Hồ Chí Minh.
+
+Cơ sở Trần Phú đặt tại Cần Thơ.
+
+Cơ sở Kim Mã chuyên đào tạo lập trình viên AI và data science.
+
+Cơ sở Nguyễn Văn Linh tập trung đào tạo khóa học online và hybrid.
+
+Cơ sở Lê Lợi đào tạo chuyên sâu về cloud computing và DevOps.
+
+Cơ sở Trần Phú phụ trách đào tạo nghiệp vụ cho doanh nghiệp vừa và nhỏ.
+
+3. CHƯƠNG TRÌNH ĐÀO TẠO
+
+Trong năm 2026 công ty triển khai năm chương trình đào tạo chính.
+
+Chương trình AI Foundation.
+
+Chương trình Data Master.
+
+Chương trình Cloud Expert.
+
+Chương trình DevOps Pro.
+
+Chương trình Business Analyst.
+
+AI Foundation là khóa học cơ bản về trí tuệ nhân tạo dành cho người mới bắt đầu.
+
+Data Master là chương trình chuyên sâu về phân tích dữ liệu lớn và machine learning.
+
+Cloud Expert đào tạo chuyên gia triển khai hệ thống trên AWS, Azure và GCP.
+
+DevOps Pro là khóa học về CI/CD, Kubernetes và infrastructure as code.
+
+Business Analyst đào tạo kỹ năng phân tích nghiệp vụ và thiết kế giải pháp phần mềm.
+
+Mã nội bộ của chương trình AI Foundation là AI-FND-2026.
+
+Mã nội bộ của chương trình Data Master là DM-PRO-8844.
+
+Mã nội bộ của chương trình Cloud Expert là CE-CLOUD-1199.
+
+Mã nội bộ của chương trình DevOps Pro là DO-K8S-3377.
+
+Mã nội bộ của chương trình Business Analyst là BA-BIZ-5566.
+
+4. THÔNG TIN TÀI CHÍNH
+
+Ngân sách năm 2026 là 45.678.901.234 đồng.
+
+Ngân sách dành cho phát triển giáo trình là 8.500.000.000 đồng.
+
+Ngân sách dành cho marketing và thu hút học viên là 6.200.000.000 đồng.
+
+Ngân sách dành cho đầu tư cơ sở vật chất là 12.300.000.000 đồng.
+
+Chi phí vận hành dự kiến là 9.800.000.000 đồng.
+
+Doanh thu quý I đạt 10.5 tỷ đồng.
+
+Doanh thu quý II đạt 12.3 tỷ đồng.
+
+5. BỘ PHẬN
+
+Bộ phận Giảng dạy có 45 giảng viên.
+
+Bộ phận Nội dung có 22 biên tập viên.
+
+Bộ phận Kỹ thuật có 18 kỹ sư phần mềm.
+
+Bộ phận Tư vấn có 35 chuyên viên tư vấn.
+
+Bộ phận Hành chính có 12 nhân sự.
+
+Bộ phận Marketing có 14 nhân sự.
+
+Bộ phận Chăm sóc học viên có 10 nhân viên.
+
+Trưởng bộ phận Giảng dạy là Đỗ Minh Khôi.
+
+Trưởng bộ phận Nội dung là Vũ Thị Hồng Nhung.
+
+Trưởng bộ phận Kỹ thuật là Bùi Văn Thành.
+
+6. QUY ĐỊNH NỘI BỘ
+
+Giảng viên được cấp 20 ngày nghỉ phép mỗi năm.
+
+Nhân viên văn phòng được cấp 15 ngày nghỉ phép mỗi năm.
+
+Làm việc từ xa tối đa 2 ngày mỗi tuần.
+
+Tài liệu giảng dạy phải được cập nhật 6 tháng một lần.
+
+Dữ liệu học viên phải mã hóa AES-256 trước khi lưu trữ.
+
+Bản quyền giáo trình thuộc sở hữu của công ty, không được chia sẻ ngoài.
+
+7. THÔNG TIN BẢO MẬT
+
+Mã xác thực nội bộ: TTX-SECRET-2026-XYZ.
+
+Khóa hệ thống dự phòng: GREEN-DRAGON-77.
+
+Tên chiến dịch tuyển sinh quý III: TTX-RECRUIT-FALL.
+
+Mật danh trung tâm điều phối: WISDOM-9.
+
+Chuỗi kiểm thử duy nhất: EDU-CHECK-2026-998877.
+
+Không công bố các mã trên ra bên ngoài doanh nghiệp.
+
+8. KẾ HOẠCH NĂM 2027
+
+Mục tiêu doanh thu là 120 tỷ đồng.
+
+Tuyển mới thêm 50 giảng viên và 15 kỹ sư.
+
+Mở cơ sở thứ năm tại thành phố Hải Phòng.
+
+Triển khai nền tảng học trực tuyến AI-powered phục vụ 10.000 học viên.
+
+Hợp tác với 20 doanh nghiệp công nghệ để đào tạo nhân sự theo yêu cầu.

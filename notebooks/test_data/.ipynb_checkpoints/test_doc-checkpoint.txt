@@ -1,0 +1,8 @@
+Dòng 1: Chào mừng tới RAG ZERO.
+
+
+Dòng 2: Đây là tài liệu test sạch.
+
+
+
+Dòng 3: Hệ thống hoạt động tốt.

@@ -30,7 +30,7 @@ async def node_generation(state: MainBus, config: RunnableConfig = None) -> dict
 
     # 2. DEPENDENCY INJECTION
     try:
-        llm = get_llm().llm()
+        llm = get_llm()
     except Exception as e:
         log.error("[node_generation] DI failed: %s", e)
         return _emit_error(f"DI Error: {e}")

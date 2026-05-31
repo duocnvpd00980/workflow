@@ -1,10 +1,29 @@
-from langchain_core.tools import tool
+# app/tools/google_search.py
+
 import logging
+from langchain_core.tools import tool
 
-from app.tools.web_search import web_search_tool
+from app.tools.research_tool import research  # hàm convenience
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
-# Danh sách các tool mà cậu sẽ bind vào LLM
-tools = [web_search_tool]
+@tool
+async def google_search(query: str, max_results: int = 5) -> str:
+    """Search Google and read webpage content. Input: query string."""
+    result = await research(query, n_results=max_results, n_crawl=3)
+    
+    lines = [
+        f"Query: {result['query']}\n",
+        "Sources:",
+    ]
+    for src in result["sources"]:
+        lines.append(f"  - {src}")
+    
+    if result["content"]:
+        lines.extend(["\nContent:", result["content"][:10000]])
+    
+    return "\n".join(lines)
+
+
+tools = [google_search]
