@@ -98,7 +98,113 @@ const PromptInputAttachmentsDisplay = () => {
     </Attachments>
   );
 };
+// ─── Component render từng node như message bubble ─────────────────────────────
 
+function NodeMessageCard({
+  nodeId,
+  nodeLabel,
+  step,
+  status,
+  text,
+  state,
+  metrics,
+}: {
+  nodeId: string;
+  nodeLabel: string;
+  step: number;
+  status: string;
+  text: string;
+  state: Record<string, unknown>;
+  metrics: Record<string, unknown>;
+}) {
+  const isDone = status === "success" || status === "SUCCESS";
+  const isRunning = !isDone && status !== "error";
+  
+  // Màu theo trạng thái
+  const colors = isDone
+    ? { bg: "bg-emerald-50/30", border: "border-emerald-200", text: "text-emerald-800", badge: "bg-emerald-100 text-emerald-700" }
+    : isRunning
+    ? { bg: "bg-indigo-50/30", border: "border-indigo-300", text: "text-indigo-900", badge: "bg-indigo-100 text-indigo-700" }
+    : { bg: "bg-red-50/30", border: "border-red-200", text: "text-red-800", badge: "bg-red-100 text-red-700" };
+
+  return (
+    <div className={`flex gap-4 items-start w-full ${isRunning ? "animate-pulse" : ""}`}>
+      {/* Avatar */}
+      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-md ${
+        isDone ? "bg-emerald-500 text-white" :
+        isRunning ? "bg-indigo-600 text-white" :
+        "bg-red-500 text-white"
+      }`}>
+        {isDone ? "✓" : isRunning ? <Terminal size={14} /> : "✗"}
+      </div>
+      
+      {/* Bubble */}
+      <div className={`flex-1 ${colors.bg} border ${colors.border} rounded-2xl p-5 shadow-sm space-y-3`}>
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <h4 className={`font-bold text-[13px] ${colors.text}`}>
+            {isDone ? "✓" : isRunning ? "▶" : "✗"} Bước {step} {isDone ? "hoàn thành" : isRunning ? "đang chạy" : "lỗi"} — {nodeLabel}
+          </h4>
+          <Badge className={`${colors.badge} border-none font-bold text-[10px]`}>
+            {isDone ? "✓ Xong" : isRunning ? "▶ Đang chạy..." : "✗ Lỗi"}
+          </Badge>
+        </div>
+        
+        {/* Content text */}
+        {text && text !== "string" && (
+          <p className="text-[13px] text-slate-700 leading-relaxed">
+            {text}
+          </p>
+        )}
+        
+        {/* Special render cho research results (card grid) */}
+        {nodeId === "knowledge_base" && isDone && state?.retrieved_chunks && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+            {/* Parse retrieved chunks thành cards */}
+            {Array.from({ length: (state.retrieved_chunks as number) || 3 }).map((_, i) => (
+              <div key={i} className="bg-white border border-slate-100 p-3 rounded-xl shadow-xs">
+                <span className="text-[10px] text-slate-300 font-mono block mb-0.5">#{i + 1}</span>
+                <p className="font-bold text-[12px] text-slate-800">Kết quả {i + 1}</p>
+                <p className="text-[10px] text-slate-500">Đã truy xuất</p>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {/* Metrics bar */}
+        {Object.keys(metrics).length > 0 && (
+          <div className="flex gap-4 pt-2 border-t border-slate-200/60">
+            {Object.entries(metrics).map(([k, v]) => (
+              <div key={k} className="text-center">
+                <p className="text-[9px] text-slate-400 uppercase">{k}</p>
+                <p className="text-[13px] font-bold text-slate-800">
+                  {typeof v === "number" ? v.toFixed(2) : String(v)}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        {/* State toggle (manager kiểm tra) */}
+        {Object.keys(state).length > 0 && (
+          <details className="mt-2">
+            <summary className="text-[10px] text-slate-400 cursor-pointer hover:text-slate-600">
+              Chi tiết kiểm tra ({Object.keys(state).length} fields)
+            </summary>
+            <pre className="text-[10px] text-slate-600 bg-white border border-slate-100 rounded p-2 mt-1 overflow-x-auto">
+              {JSON.stringify(state, null, 2)}
+            </pre>
+          </details>
+        )}
+        
+        {/* Timestamp */}
+        <div className="text-[10px] text-slate-400 mt-1">
+          {new Date().toLocaleTimeString("vi-VN")} • {nodeId}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 
 
@@ -139,7 +245,7 @@ export default function ChatPage() {
   useEffect(() => { createConvMutation.mutate(); }, []);
 
   // ── Stream ───────────────────────────────────────────────────────────────
-  const { messages, nodes, suggestions, status, error: streamError, sendMessage, stop, reset } = useChatStream({
+    const { messages, nodes, nodeDetails, suggestions, status, error: streamError, sendMessage, stop, reset } = useChatStream({
     api:            `${API_BASE_URL}/chat/stream`,
     sessionId:      SESSION_ID,
     conversationId: convId ?? "",
@@ -294,135 +400,148 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           <div className="max-w-[800px] mx-auto space-y-6">
 
-            {/* Khối 0: User Prompt Rendered (Giống ảnh 2) */}
-            <div className="flex gap-4 items-start">
-              <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-600 font-bold text-[11px] flex items-center justify-center shrink-0 shadow-xs">Bạn</div>
-              <div className="flex-1 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm relative">
-                <p className="text-[13px] leading-relaxed text-slate-700 font-medium">
-                  "Tạo chiến dịch marketing tháng 6 cho sản phẩm mới. Cần: 1 blog về AI trends, 3 ảnh banner, 2 bộ ads Facebook, và lên lịch đăng tuần tới. Target: startup tech."
-                </p>
-                <div className="text-[10px] text-slate-400 mt-2 flex items-center gap-2">
-                  <span>14:32:05</span><span>•</span><span>Bạn vừa ra lệnh</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Khối 1: Bảng kế hoạch 5 bước (Giống y hệt hình 2) */}
-            <div className="flex gap-4 items-start">
-              <div className="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
-                <Terminal size={14} />
-              </div>
-              <div className="flex-1 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
-                <p className="text-[13px] font-medium text-slate-800">Đã phân tích yêu cầu. Tôi sẽ thực hiện <strong className="text-indigo-600 font-bold">5 bước</strong>:</p>
-                
-                <div className="space-y-2">
-                  {/* Step 1 */}
-                  <div className="flex items-center justify-between p-2.5 rounded-xl border border-emerald-100 bg-emerald-50/20 transition-all">
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-emerald-500 text-white text-[11px] font-bold flex items-center justify-center">1</div>
-                      <span className="text-[12px] font-medium text-slate-700">Research AI trends 2025</span>
-                    </div>
-                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none font-bold text-[10px] px-2 py-0">✓ Xong</Badge>
-                  </div>
-
-                  {/* Step 2 */}
-                  <div className="flex items-center justify-between p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/40 shadow-xs animate-pulse">
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">2</div>
-                      <span className="text-[12px] font-bold text-indigo-900">Viết blog 1,500 từ</span>
-                    </div>
-                    <Badge className="bg-indigo-100 text-indigo-700 border-none font-bold text-[10px] px-2 py-0">▶ Đang viết...</Badge>
-                  </div>
-
-                  {/* Steps 3,4,5 (Pending) */}
-                  {["Tạo 3 ảnh banner", "Tạo 2 bộ ads Facebook", "Lên lịch đăng tuần tới"].map((lbl, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 opacity-60">
-                      <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 rounded-full bg-slate-200 text-slate-500 text-[11px] font-bold flex items-center justify-center">{idx + 3}</div>
-                        <span className="text-[12px] text-slate-500 font-medium">{lbl}</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-slate-400 pr-2">Chờ</span>
-                    </div>
-                  ))}
+            {/* ─── Agent Steps — Render từ nodeDetails thật ─── */}
+            {nodeDetails.length > 0 && (
+              <div className="flex gap-4 items-start">
+                <div className="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                  <Terminal size={14} />
                 </div>
-                <div className="text-[10px] text-slate-400 pt-1 border-t flex items-center gap-1.5">
-                  <span>14:32:08</span><span>•</span><span>Hệ thống đã lập kế hoạch</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Khối 2: Kết quả Thực tế Bước 1 (Research) (Giống y hệt hình 1) */}
-            <div className="flex gap-4 items-start">
-              <div className="w-9 h-9 rounded-full bg-emerald-500 text-white font-bold text-[14px] flex items-center justify-center shrink-0 shadow-md">✓</div>
-              <div className="flex-1 bg-emerald-50/20 border border-emerald-200 rounded-2xl p-5 shadow-xs">
-                <div className="flex flex-col gap-1 mb-3">
-                  <h4 className="font-bold text-[13px] text-emerald-800">✓ Bước 1 hoàn thành — Research</h4>
-                  <p className="text-[12px] text-emerald-700/90 font-medium">Đã tìm được 5 xu hướng AI hot nhất 2025 từ 12 nguồn:</p>
-                </div>
-
-                {/* Sub Cards inside Step 1 */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {[
-                    { title: "Agentic AI", metric: "2.4M mentions" },
-                    { title: "Multimodal LLM", metric: "1.8M mentions" },
-                    { title: "Edge AI", metric: "980K mentions" },
-                  ].map((card, idx) => (
-                    <div key={idx} className="bg-white border border-emerald-100 p-3 rounded-xl shadow-xs hover:shadow-sm transition-shadow">
-                      <span className="text-[10px] text-slate-300 font-mono block mb-0.5">#{idx + 1}</span>
-                      <p className="font-bold text-[12px] text-slate-800 tracking-tight leading-tight mb-1">{card.title}</p>
-                      <p className="text-[10px] text-emerald-600 font-medium">{card.metric}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="text-[10px] text-emerald-600/70 mt-3 font-medium">14:32:45 • 40 giây</div>
-              </div>
-            </div>
-
-            {/* Khối 3: Trạng thái thực thi Bước 2 (Viết blog) (Giống y hệt hình 1) */}
-            <div className="flex gap-4 items-start">
-              <div className="w-9 h-9 rounded-full bg-indigo-500/20 border border-indigo-400 text-indigo-600 font-bold flex items-center justify-center shrink-0 shadow-xs">
-                <FileText size={16} />
-              </div>
-              <div className="flex-1 border-2 border-indigo-500 bg-white rounded-2xl shadow-sm overflow-hidden">
-                <div className="bg-indigo-50/50 border-b border-indigo-100 px-4 py-2.5 flex justify-between items-center">
-                  <span className="text-[12px] font-bold text-indigo-900 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-ping" />
-                    ▶ Bước 2 đang chạy — Viết blog
-                  </span>
-                  <span className="text-[10px] font-mono font-bold bg-indigo-100/80 px-2 py-0.5 rounded text-indigo-700">1,247/1,500 từ</span>
-                </div>
-                
-                <div className="p-5 space-y-3">
-                  <h3 className="font-bold text-[14px] text-slate-800 tracking-tight">5 Xu hướng AI định hình 2025</h3>
-                  <p className="text-[12px] text-slate-600 leading-relaxed">
-                    Năm 2025 đánh dấu bước ngoặt khi AI không còn chỉ là công cụ hỗ trợ mà trở thành <strong className="text-indigo-600 font-semibold underline decoration-wavy decoration-indigo-300">đồng nghiệp ảo</strong> thực thụ. Dưới đây là 5 xu hướng đang thay đổi ngành công nghiệp...
+                <div className="flex-1 bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+                  <p className="text-[13px] font-medium text-slate-800">
+                    Đã phân tích yêu cầu. Tôi sẽ thực hiện <strong className="text-indigo-600 font-bold">{nodeDetails.length} bước</strong>:
                   </p>
-                  <div className="space-y-1.5 pt-1">
-                    <div className="h-1.5 bg-slate-100 rounded-full w-full animate-pulse" />
-                    <div className="h-1.5 bg-slate-100 rounded-full w-[85%] animate-pulse" />
+                  
+                  {/* Danh sách steps */}
+                  <div className="space-y-2">
+                    {nodeDetails.map((node) => (
+                      <div 
+                        key={node.node_id} 
+                        className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                          node.status === "SUCCESS" ? "border-emerald-100 bg-emerald-50/20" :
+                          node.status === "FAILED" ? "border-red-100 bg-red-50/20" :
+                          "border-indigo-200 bg-indigo-50/40 shadow-xs"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-6 h-6 rounded-full text-white text-[11px] font-bold flex items-center justify-center ${
+                            node.status === "SUCCESS" ? "bg-emerald-500" :
+                            node.status === "FAILED" ? "bg-red-500" :
+                            "bg-indigo-600"
+                          }`}>
+                            {node.status === "SUCCESS" ? "✓" : node.step}
+                          </div>
+                          <span className={`text-[12px] font-medium ${
+                            node.status === "SUCCESS" ? "text-slate-700" :
+                            node.status === "FAILED" ? "text-red-700" :
+                            "text-indigo-900 font-bold"
+                          }`}>
+                            {node.node_label}
+                          </span>
+                        </div>
+                        <Badge className={`border-none font-bold text-[10px] px-2 py-0 ${
+                          node.status === "SUCCESS" ? "bg-emerald-100 text-emerald-700" :
+                          node.status === "FAILED" ? "bg-red-100 text-red-700" :
+                          "bg-indigo-100 text-indigo-700"
+                        }`}>
+                          {node.status === "SUCCESS" ? "✓ Xong" :
+                           node.status === "FAILED" ? "✗ Lỗi" :
+                           "▶ Đang chạy..."}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ─── Chi tiết từng node cho manager kiểm tra ─── */}
+                  <div className="mt-4 space-y-3 border-t border-slate-100 pt-4">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                      Chi tiết kiểm tra chất lượng
+                    </p>
+                    
+                    {nodeDetails.map((node) => (
+                      <div key={`detail-${node.node_id}`} className="border border-slate-100 rounded-lg p-3 bg-slate-50/50">
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-[11px] font-bold text-slate-700">{node.node_label}</span>
+                          <span className="text-[10px] font-mono text-slate-400">Step {node.step} • {node.node_id}</span>
+                        </div>
+                        
+                        {/* Output text */}
+                        {node.text && node.text !== "string" && (
+                          <div className="mb-2">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Output</p>
+                            <p className="text-[11px] text-slate-700 bg-white border border-slate-100 rounded p-1.5 max-h-24 overflow-y-auto">
+                              {node.text}
+                            </p>
+                          </div>
+                        )}
+                        
+                        {/* State */}
+                        {Object.keys(node.state).length > 0 && (
+                          <div className="mb-2">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">State</p>
+                            <pre className="text-[10px] text-slate-600 bg-white border border-slate-100 rounded p-1.5 overflow-x-auto">
+                              {JSON.stringify(node.state, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                        
+                        {/* Metrics */}
+                        {Object.keys(node.metrics).length > 0 && (
+                          <div>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Metrics</p>
+                            <pre className="text-[10px] text-slate-600 bg-white border border-slate-100 rounded p-1.5 overflow-x-auto">
+                              {JSON.stringify(node.metrics, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+
 
             {!isEmpty && (
             <div className="border-t pt-4 space-y-4">
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Hội thoại bổ sung</p>
-                <Conversation>
-                <ConversationContent>
+                                <Conversation>
+                  <ConversationContent>
                     {messages.map((msg) => (
-                    <MessageBranch key={msg.id} defaultBranch={0}>
+                      <MessageBranch key={msg.id} defaultBranch={0}>
                         <MessageBranchContent>
-                        <Message from={msg.role}>
-                            <MessageContent>
-                            <MessageResponse>{msg.text}</MessageResponse>
-                            </MessageContent>
-                        </Message> {/* <--- Đóng sai thứ tự ở đây */}
+                          {msg.role === "user" ? (
+                            // User message giữ nguyên
+                            <Message from="user">
+                              <MessageContent>
+                                <MessageResponse>{msg.text}</MessageResponse>
+                              </MessageContent>
+                            </Message>
+                          ) : msg.result?.node_id ? (
+                            // Node detail message — render theo loại node
+                            <NodeMessageCard 
+                              nodeId={msg.result.node_id as string}
+                              nodeLabel={msg.result.node_label as string}
+                              step={msg.result.step as number}
+                              status={(msg.result as any).status || "streaming"}
+                              text={msg.text}
+                              state={(msg.result as any).state || {}}
+                              metrics={(msg.result as any).metrics || {}}
+                            />
+                          ) : (
+                            // Final result message
+                            <Message from="assistant">
+                              <MessageContent>
+                                <MessageResponse>{msg.text}</MessageResponse>
+                              </MessageContent>
+                            </Message>
+                          )}
                         </MessageBranchContent>
-                    </MessageBranch>
+                      </MessageBranch>
                     ))}
-                </ConversationContent>
-                <ConversationScrollButton />
+                  </ConversationContent>
+                  <ConversationScrollButton />
                 </Conversation>
             </div>
             )}

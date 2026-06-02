@@ -248,6 +248,8 @@ async def _history(
 
 # ── Core stream ───────────────────────────────────────────
 
+# ── Core stream ───────────────────────────────────────────
+
 async def _run_stream(
     thread_id:        str,
     graph_input,
@@ -293,6 +295,29 @@ async def _run_stream(
                         step += 1
                         yield _sse("node", {"label": _node_label(key), "step": step})
 
+                        # ── THÊM: Emit chi tiết node từ snapshot ──
+                        # Đọc StandardFrame của node vừa chạy từ snapshot
+                        try:
+                            # Lấy snapshot hiện tại để đọc kết quả node
+                            snapshot = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
+                            node_frame = snapshot.values.get(key) if snapshot else None
+                            
+                            if node_frame:
+                                payload = _read(node_frame, "payload")
+                                if payload:
+                                    yield _sse("node_detail", {
+                                        "node_id": key,
+                                        "node_label": _node_label(key),
+                                        "step": step,
+                                        "status": _read(payload, "status", "UNKNOWN"),
+                                        "text": _read(payload, "text", ""),
+                                        "state": _read(payload, "state", {}),
+                                        "metrics": _read(payload, "metrics", {}),
+                                        "timestamp": getattr(node_frame, "timestamp", None),
+                                    })
+                        except Exception:
+                            log.warning("[_run_stream] failed to get node_detail for %s", key, exc_info=True)
+
     except asyncio.TimeoutError:
         log.error("[stream] timeout thread=%s", thread_id)
         pipeline_error = TimeoutError()
@@ -309,12 +334,33 @@ async def _run_stream(
 
     result = _build_result(snapshot, pipeline_error)
 
+    # ── THÊM: node_history để frontend render lại khi restore ──
+    if snapshot:
+        node_history = []
+        for key, value in (snapshot.values or {}).items():
+            if key in NODE_LABELS and value and key != "final_response":
+                try:
+                    payload = _read(value, "payload")
+                    if payload:
+                        node_history.append({
+                            "node_id": key,
+                            "node_label": _node_label(key),
+                            "status": _read(payload, "status", "UNKNOWN"),
+                            "text": _read(payload, "text", ""),
+                            "state": _read(payload, "state", {}),
+                            "metrics": _read(payload, "metrics", {}),
+                            "timestamp": getattr(value, "timestamp", None),
+                        })
+                except Exception:
+                    pass
+        result["node_history"] = node_history
+
     if assistant_msg_id and db:
         await _update_msg(db, assistant_msg_id, result)
 
     yield _sse("result", result)
     yield _sse("done", {})
-
+    
 
 # ── ChatService ───────────────────────────────────────────
 
