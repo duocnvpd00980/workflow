@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Command — Hệ thống thực thi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Smooth slide */
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-up { animation: slide-up 0.5s ease-out; }
+        
+        /* Pulse ring */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+        .pulse-ring::before {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            border: 2px solid currentColor;
+            animation: pulse-ring 2s infinite;
+        }
+        
+        /* Conveyor */
+        @keyframes conveyor {
+            0% { background-position: 0 0; }
+            100% { background-position: 30px 0; }
+        }
+        .conveyor {
+            background: repeating-linear-gradient(90deg, #cbd5e1 0px, #cbd5e1 15px, transparent 15px, transparent 30px);
+            background-size: 30px 100%;
+            animation: conveyor 1s linear infinite;
+        }
+        
+        /* Shimmer */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .shimmer {
+            background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+        
+        /* Typing */
+        @keyframes bounce {
+            0%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-6px); }
+        }
+        .dot-bounce { animation: bounce 1.4s infinite ease-in-out both; }
+        .dot-bounce:nth-child(2) { animation-delay: -0.16s; }
+        
+        /* Hide scrollbar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white h-screen flex overflow-hidden">
+
+    <!-- LEFT: Mission Queue -->
+    <aside class="hidden lg:flex w-80 bg-slate-800 border-r border-slate-700 flex-col shrink-0">
+        <div class="h-16 flex items-center px-5 border-b border-slate-700">
+            <div class="w-9 h-9 bg-indigo-500 rounded-xl flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <h1 class="font-bold text-sm">Agent Command</h1>
+                <p class="text-[10px] text-slate-400">Hệ thống thực thi</p>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-3">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Đang thực thi</p>
+            
+            <!-- Active Mission -->
+            <div class="bg-slate-700/50 border border-indigo-500/50 rounded-xl p-4 cursor-pointer">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="w-2 h-2 rounded-full bg-indigo-400 relative pulse-ring text-indigo-400"></span>
+                    <span class="text-xs font-bold text-indigo-300">ĐANG CHẠY</span>
+                </div>
+                <p class="text-sm font-semibold text-white mb-1">Chiến dịch tháng 6</p>
+                <p class="text-[11px] text-slate-400">Blog + Ảnh + Ads + Lên lịch</p>
+                <div class="mt-3 h-1.5 bg-slate-600 rounded-full overflow-hidden">
+                    <div class="h-full bg-indigo-500 w-[60%] rounded-full relative">
+                        <div class="absolute inset-0 shimmer"></div>
+                    </div>
+                </div>
+                <p class="text-[10px] text-indigo-400 mt-1.5">Bước 3/5: Tạo ảnh</p>
+            </div>
+
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-4">Chờ thực thi</p>
+            <div class="bg-slate-700/30 border border-slate-600 rounded-xl p-4 opacity-60">
+                <p class="text-sm font-semibold text-slate-300">Research đối thủ</p>
+                <p class="text-[11px] text-slate-500 mt-1">4 nguồn dữ liệu</p>
+                <p class="text-[10px] text-slate-500 mt-2">Dự kiến: sau 8 phút</p>
+            </div>
+
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 mt-4">Đã hoàn thành</p>
+            <div class="bg-slate-700/30 border border-slate-600 rounded-xl p-4 opacity-50">
+                <div class="flex items-center gap-2 mb-1">
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    <p class="text-sm font-semibold text-slate-300">Báo cáo Q2</p>
+                </div>
+                <p class="text-[10px] text-slate-500">Hoàn thành 14:32</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- CENTER: Execution Theater -->
+    <main class="flex-1 flex flex-col min-w-0 relative">
+        
+        <!-- Top Bar -->
+        <header class="h-16 bg-slate-800/80 backdrop-blur border-b border-slate-700 flex items-center justify-between px-6 shrink-0 z-20">
+            <div class="flex items-center gap-3">
+                <button class="lg:hidden p-2 text-slate-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                <div>
+                    <h2 class="font-bold text-sm">Chiến dịch tháng 6</h2>
+                    <div class="flex items-center gap-2 text-[11px] text-slate-400">
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                        <span>Agent đang làm việc • Bạn có thể can thiệp</span>
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button class="px-3 py-1.5 text-xs bg-slate-700 hover:bg-slate-600 rounded-lg transition">Tạm dừng</button>
+                <button class="px-3 py-1.5 text-xs bg-red-900/50 text-red-400 hover:bg-red-900/70 rounded-lg transition">Hủy</button>
+            </div>
+        </header>
+
+        <!-- Execution Flow -->
+        <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            
+            <!-- Original Command -->
+            <div class="slide-up">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center shrink-0">
+                        <span class="text-sm font-bold">Bạn</span>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-slate-800 rounded-2xl rounded-tl-sm px-5 py-4 border border-slate-700">
+                            <p class="text-sm text-slate-200">"Tạo chiến dịch marketing tháng 6 cho sản phẩm mới. Cần: 1 blog về AI trends, 3 ảnh banner, 2 bộ ads Facebook, và lên lịch đăng tuần tới. Target: startup tech."</p>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1.5">14:32:05 • Bạn vừa ra lệnh</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System: Plan Generated -->
+            <div class="slide-up">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-slate-800 rounded-2xl rounded-tl-sm px-5 py-4 border border-slate-700">
+                            <p class="text-sm text-slate-300 mb-3">Đã phân tích yêu cầu. Tôi sẽ thực hiện <span class="text-white font-bold">5 bước</span>:</p>
+                            <div class="space-y-2">
+                                <div class="flex items-center gap-3 p-2 bg-slate-700/50 rounded-lg">
+                                    <span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">1</span>
+                                    <span class="text-sm text-slate-300">Research AI trends 2025</span>
+                                    <span class="ml-auto text-[10px] text-emerald-400 font-medium">✓ Xong</span>
+                                </div>
+                                <div class="flex items-center gap-3 p-2 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
+                                    <span class="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold">2</span>
+                                    <span class="text-sm text-white">Viết blog 1,500 từ</span>
+                                    <span class="ml-auto text-[10px] text-indigo-400 font-medium animate-pulse">▶ Đang viết...</span>
+                                </div>
+                                <div class="flex items-center gap-3 p-2 bg-slate-700/30 rounded-lg opacity-50">
+                                    <span class="w-6 h-6 rounded-full bg-slate-600 text-slate-400 flex items-center justify-center text-xs font-bold">3</span>
+                                    <span class="text-sm text-slate-500">Tạo 3 ảnh banner</span>
+                                    <span class="ml-auto text-[10px] text-slate-500">Chờ</span>
+                                </div>
+                                <div class="flex items-center gap-3 p-2 bg-slate-700/30 rounded-lg opacity-50">
+                                    <span class="w-6 h-6 rounded-full bg-slate-600 text-slate-400 flex items-center justify-center text-xs font-bold">4</span>
+                                    <span class="text-sm text-slate-500">Tạo 2 bộ ads Facebook</span>
+                                    <span class="ml-auto text-[10px] text-slate-500">Chờ</span>
+                                </div>
+                                <div class="flex items-center gap-3 p-2 bg-slate-700/30 rounded-lg opacity-50">
+                                    <span class="w-6 h-6 rounded-full bg-slate-600 text-slate-400 flex items-center justify-center text-xs font-bold">5</span>
+                                    <span class="text-sm text-slate-500">Lên lịch đăng tuần tới</span>
+                                    <span class="ml-auto text-[10px] text-slate-500">Chờ</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1.5">14:32:08 • Hệ thống đã lập kế hoạch</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 1 Complete: Research Results -->
+            <div class="slide-up">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-emerald-900/20 border border-emerald-500/30 rounded-2xl rounded-tl-sm px-5 py-4">
+                            <p class="text-sm font-semibold text-emerald-400 mb-2">✓ Bước 1 hoàn thành — Research</p>
+                            <p class="text-sm text-emerald-300/80 mb-3">Đã tìm được 5 xu hướng AI hot nhất 2025 từ 12 nguồn:</p>
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                <div class="bg-slate-800/50 rounded-lg p-2.5">
+                                    <p class="text-[10px] text-slate-400">#1</p>
+                                    <p class="text-xs font-medium text-white mt-0.5">Agentic AI</p>
+                                    <p class="text-[10px] text-emerald-400 mt-1">2.4M mentions</p>
+                                </div>
+                                <div class="bg-slate-800/50 rounded-lg p-2.5">
+                                    <p class="text-[10px] text-slate-400">#2</p>
+                                    <p class="text-xs font-medium text-white mt-0.5">Multimodal LLM</p>
+                                    <p class="text-[10px] text-emerald-400 mt-1">1.8M mentions</p>
+                                </div>
+                                <div class="bg-slate-800/50 rounded-lg p-2.5">
+                                    <p class="text-[10px] text-slate-400">#3</p>
+                                    <p class="text-xs font-medium text-white mt-0.5">Edge AI</p>
+                                    <p class="text-[10px] text-emerald-400 mt-1">980K mentions</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-emerald-500/60 mt-1.5">14:32:45 • 40 giây</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2 Active: Writing Blog with LIVE preview -->
+            <div class="slide-up">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center shrink-0 relative">
+                        <div class="absolute inset-0 bg-indigo-500 rounded-full animate-ping opacity-30"></div>
+                        <svg class="w-5 h-5 text-white relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-slate-800 border border-indigo-500/40 rounded-2xl rounded-tl-sm overflow-hidden">
+                            <!-- Header -->
+                            <div class="px-5 py-3 bg-indigo-500/10 border-b border-indigo-500/20 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse"></span>
+                                    <p class="text-sm font-semibold text-indigo-300">▶ Bước 2 đang chạy — Viết blog</p>
+                                </div>
+                                <span class="text-[11px] bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-full font-bold">1,247/1,500 từ</span>
+                            </div>
+                            
+                            <!-- Live Preview -->
+                            <div class="p-5">
+                                <div class="bg-slate-900 rounded-xl p-4 border border-slate-700">
+                                    <h3 class="text-lg font-bold text-white mb-3">5 Xu hướng AI định hình 2025</h3>
+                                    <div class="space-y-2">
+                                        <p class="text-sm text-slate-300 leading-relaxed">
+                                            Năm 2025 đánh dấu bước ngoặt khi AI không còn chỉ là công cụ hỗ trợ mà trở thành <span class="text-indigo-400 font-medium">đồng nghiệp ảo</span> thực thụ. Dưới đây là 5 xu hướng đang thay đổi ngành công nghiệp...
+                                        </p>
+                                        <div class="h-2 bg-indigo-500/20 rounded-full w-3/4 animate-pulse"></div>
+                                        <div class="h-2 bg-indigo-500/20 rounded-full w-1/2 animate-pulse"></div>
+                                    </div>
+                                    
+                                    <!-- Writing indicator -->
+                                    <div class="flex items-center gap-2 mt-4 pt-3 border-t border-slate-700">
+                                        <div class="flex gap-1">
+                                            <div class="w-2 h-2 bg-indigo-400 rounded-full dot-bounce"></div>
+                                            <div class="w-2 h-2 bg-indigo-400 rounded-full dot-bounce"></div>
+                                            <div class="w-2 h-2 bg-indigo-400 rounded-full dot-bounce"></div>
+                                        </div>
+                                        <span class="text-[11px] text-indigo-400">Đang viết phần kết luận...</span>
+                                    </div>
+                                </div>
+
+                                <!-- Real-time stats -->
+                                <div class="grid grid-cols-3 gap-3 mt-4">
+                                    <div class="bg-slate-700/30 rounded-lg p-3 text-center">
+                                        <p class="text-[10px] text-slate-400">Tốc độ</p>
+                                        <p class="text-lg font-bold text-white mt-0.5">45 từ/giây</p>
+                                    </div>
+                                    <div class="bg-slate-700/30 rounded-lg p-3 text-center">
+                                        <p class="text-[10px] text-slate-400">SEO Score</p>
+                                        <p class="text-lg font-bold text-emerald-400 mt-0.5">87/100</p>
+                                    </div>
+                                    <div class="bg-slate-700/30 rounded-lg p-3 text-center">
+                                        <p class="text-[10px] text-slate-400">Thời gian</p>
+                                        <p class="text-lg font-bold text-white mt-0.5">~30s</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1.5">Đang cập nhật realtime...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Conveyor: Next steps waiting -->
+            <div class="slide-up">
+                <div class="flex items-start gap-4">
+                    <div class="w-10 h-10 bg-slate-700 rounded-full flex items-center justify-center shrink-0">
+                        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-slate-800 rounded-2xl rounded-tl-sm px-5 py-4 border border-slate-700">
+                            <p class="text-sm text-slate-400 mb-3">Các bước tiếp theo đang chờ:</p>
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-xs text-slate-500">3 Ảnh banner</div>
+                                <div class="w-8 h-0.5 bg-slate-600 conveyor"></div>
+                                <div class="flex-1 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-xs text-slate-500">2 Bộ ads</div>
+                                <div class="w-8 h-0.5 bg-slate-600 conveyor"></div>
+                                <div class="flex-1 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-xs text-slate-500">Lên lịch</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- BOTTOM: Command Input -->
+        <div class="bg-slate-800/90 backdrop-blur border-t border-slate-700 p-4 shrink-0">
+            <div class="max-w-3xl mx-auto">
+                <!-- Quick Commands -->
+                <div class="flex gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
+                    <button class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-slate-300 transition whitespace-nowrap flex items-center gap-1.5">
+                        <span>⚡</span> Làm nhanh hơn
+                    </button>
+                    <button class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-slate-300 transition whitespace-nowrap flex items-center gap-1.5">
+                        <span>🎯</span> Focus vào AI Agentic
+                    </button>
+                    <button class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-slate-300 transition whitespace-nowrap flex items-center gap-1.5">
+                        <span>✋</span> Dừng bước 3
+                    </button>
+                    <button class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs text-slate-300 transition whitespace-nowrap flex items-center gap-1.5">
+                        <span>📎</span> Thêm yêu cầu
+                    </button>
+                </div>
+
+                <!-- Input -->
+                <div class="flex items-end gap-3">
+                    <div class="flex-1 bg-slate-700 rounded-2xl border border-slate-600 focus-within:border-indigo-500 focus-within:bg-slate-800 transition p-3">
+                        <textarea 
+                            placeholder="Ra lệnh cho hệ thống... (ví dụ: 'Tập trung vào xu hướng Agentic AI', 'Thêm phần so sánh giá', 'Dừng lại tôi muốn xem lại')"
+                            class="w-full bg-transparent outline-none text-sm text-white placeholder-slate-400 resize-none max-h-24"
+                            rows="1"
+                        ></textarea>
+                    </div>
+                    <button class="w-12 h-12 bg-indigo-600 hover:bg-indigo-500 rounded-2xl flex items-center justify-center transition shadow-lg shadow-indigo-500/20 shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                    </button>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-2 text-center">Hệ thống tự động thực thi nhiều bước. Bạn có thể can thiệp bất cứ lúc nào.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- RIGHT: Live Inspector -->
+    <aside class="hidden xl:flex w-72 bg-slate-800 border-l border-slate-700 flex-col shrink-0">
+        <div class="h-14 border-b border-slate-700 flex items-center px-4">
+            <h3 class="font-bold text-sm text-slate-300">Trạng thái hệ thống</h3>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            <!-- System Health -->
+            <div class="bg-slate-700/30 rounded-xl p-3">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Agent đang chạy</p>
+                <div class="space-y-2">
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-400">Writer Agent</span>
+                        <span class="text-indigo-400 font-medium">Active</span>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-400">Research Agent</span>
+                        <span class="text-emerald-400 font-medium">Done</span>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-400">Designer Agent</span>
+                        <span class="text-slate-500">Idle</span>
+                    </div>
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-400">Ads Agent</span>
+                        <span class="text-slate-500">Idle</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resources -->
+            <div class="bg-slate-700/30 rounded-xl p-3">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Tài nguyên</p>
+                <div class="space-y-2">
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">API Calls</span>
+                            <span class="text-slate-300">47/100</span>
+                        </div>
+                        <div class="h-1 bg-slate-600 rounded-full">
+                            <div class="h-full bg-indigo-500 w-[47%] rounded-full"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-400">Tokens</span>
+                            <span class="text-slate-300">4.2K/8K</span>
+                        </div>
+                        <div class="h-1 bg-slate-600 rounded-full">
+                            <div class="h-full bg-amber-500 w-[52%] rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log -->
+            <div class="bg-slate-900 rounded-xl p-3 mono text-[11px] text-slate-400 space-y-1">
+                <p><span class="text-slate-600">[14:32:01]</span> Mission started</p>
+                <p><span class="text-slate-600">[14:32:02]</span> Plan generated</p>
+                <p><span class="text-emerald-500">[14:32:03]</span> ✓ Research complete</p>
+                <p><span class="text-indigo-400">[14:32:45]</span> ▶ Writing blog...</p>
+                <p class="text-indigo-400 animate-pulse">_ Processing...</p>
+            </div>
+        </div>
+    </aside>
+
+</body>
+</html>

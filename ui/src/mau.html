@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Assembly Line</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Conveyor belt animation */
+        @keyframes conveyor {
+            0% { background-position: 0 0; }
+            100% { background-position: 40px 0; }
+        }
+        .conveyor-belt {
+            background: repeating-linear-gradient(
+                90deg,
+                #334155 0px,
+                #334155 20px,
+                #475569 20px,
+                #475569 40px
+            );
+            background-size: 40px 100%;
+            animation: conveyor 1s linear infinite;
+        }
+        .conveyor-belt.paused {
+            animation-play-state: paused;
+        }
+        
+        /* Gear rotation */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .gear-spin { animation: spin 3s linear infinite; }
+        .gear-spin-fast { animation: spin 1s linear infinite; }
+        
+        /* Pulse for active nodes */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            50% { box-shadow: 0 0 20px 5px rgba(99, 102, 241, 0.2); }
+        }
+        .node-active { animation: pulse-glow 2s ease-in-out infinite; }
+        
+        /* Progress fill */
+        @keyframes fill-up {
+            from { width: 0%; }
+        }
+        
+        /* Terminal cursor */
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .cursor-blink { animation: blink 1s step-end infinite; }
+        
+        /* Slide in results */
+        @keyframes slide-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-in { animation: slide-in 0.5s ease-out forwards; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        
+        /* Machine panel texture */
+        .machine-panel {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        /* LED indicators */
+        .led-green { box-shadow: 0 0 8px #10b981; }
+        .led-amber { box-shadow: 0 0 8px #f59e0b; }
+        .led-red { box-shadow: 0 0 8px #ef4444; }
+        .led-blue { box-shadow: 0 0 8px #6366f1; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 h-screen overflow-hidden flex flex-col">
+
+    <!-- TOP CONTROL DECK -->
+    <header class="h-16 bg-slate-900 border-b border-slate-700 flex items-center justify-between px-6 shrink-0">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center border border-slate-600">
+                <svg class="w-6 h-6 text-indigo-400 gear-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="font-bold text-slate-100 text-sm tracking-wide">AGENT ASSEMBLY LINE</h1>
+                <p class="text-[10px] text-slate-500 mono">SYSTEM v2.4.1 • ONLINE</p>
+            </div>
+        </div>
+        
+        <div class="flex items-center gap-6">
+            <!-- System Metrics -->
+            <div class="flex gap-4 text-xs mono">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 led-green"></span>
+                    <span class="text-emerald-400">CPU 34%</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 led-amber"></span>
+                    <span class="text-amber-400">MEM 2.4GB</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 led-blue"></span>
+                    <span class="text-blue-400">LAT 1.2s</span>
+                </div>
+            </div>
+            
+            <div class="h-8 w-px bg-slate-700"></div>
+            
+            <!-- Control Buttons -->
+            <div class="flex gap-2">
+                <button class="px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-700 transition flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                    PAUSE
+                </button>
+                <button class="px-4 py-2 bg-red-900/50 border border-red-700 rounded-lg text-xs font-semibold text-red-400 hover:bg-red-900/70 transition flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                    ABORT
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- LEFT: COMMAND CONSOLE -->
+        <aside class="w-96 bg-slate-900 border-r border-slate-700 flex flex-col shrink-0">
+            <!-- Mission Brief -->
+            <div class="p-5 border-b border-slate-700">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nhiệm vụ đang thực thi</span>
+                    <span class="px-2 py-0.5 bg-indigo-500/20 text-indigo-400 text-[10px] rounded font-bold">LIVE</span>
+                </div>
+                <h2 class="font-bold text-slate-100 text-sm leading-snug mb-2">Phân tích SaaS Q3 — Đánh giá hiệu suất thị trường & Đối thủ cạnh tranh</h2>
+                <div class="flex items-center gap-2 text-[10px] text-slate-500 mono">
+                    <span>ID: AGENT-8829-X</span>
+                    <span>•</span>
+                    <span>Started: 14:32:05</span>
+                </div>
+            </div>
+            
+            <!-- Conveyor Status -->
+            <div class="p-4 border-b border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[10px] text-slate-500 uppercase font-bold">Tiến độ tổng thể</span>
+                    <span class="text-xs font-bold text-indigo-400 mono">67%</span>
+                </div>
+                <div class="h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                    <div class="h-full bg-gradient-to-r from-indigo-600 to-indigo-400 w-2/3 relative">
+                        <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+                    </div>
+                </div>
+                <div class="mt-2 flex justify-between text-[10px] text-slate-500 mono">
+                    <span>Node 2/4: Data Extraction</span>
+                    <span>ETA: 2m 14s</span>
+                </div>
+            </div>
+            
+            <!-- Active Stations List -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Trạm thực thi</p>
+                
+                <!-- Station 1: DONE -->
+                <div class="machine-panel rounded-lg p-4 opacity-70">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/50 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-emerald-400">STATION 01</p>
+                                <p class="text-[10px] text-slate-500">Input Parsing</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-emerald-500 mono font-bold">DONE</span>
+                    </div>
+                    <div class="bg-slate-950 rounded p-2 text-[10px] mono text-slate-400 space-y-1">
+                        <p>> Parsed 3 intent layers</p>
+                        <p>> Extracted 14 keywords</p>
+                        <p class="text-emerald-400">> Output validated ✓</p>
+                    </div>
+                    <div class="mt-2 text-[10px] text-slate-500 text-right">14:32:18 • 13s</div>
+                </div>
+                
+                <!-- Station 2: ACTIVE -->
+                <div class="machine-panel rounded-lg p-4 node-active border-indigo-500/50">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500 flex items-center justify-center gear-spin-fast">
+                                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-indigo-400">STATION 02</p>
+                                <p class="text-[10px] text-slate-400">Data Extraction</p>
+                            </div>
+                        </div>
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse led-blue"></span>
+                            <span class="text-[10px] text-indigo-400 mono font-bold">RUNNING</span>
+                        </span>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-[10px] text-slate-400">
+                            <span>API Connections</span>
+                            <span class="text-indigo-400 mono">3/4</span>
+                        </div>
+                        <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-indigo-500 w-3/4 animate-pulse"></div>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-400">
+                            <span>Records Processed</span>
+                            <span class="text-indigo-400 mono">1,247/2,100</span>
+                        </div>
+                        <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-indigo-500 w-[59%]"></div>
+                        </div>
+                    </div>
+                    <div class="mt-3 bg-slate-950 rounded p-2 text-[10px] mono text-slate-400">
+                        <p>> Connecting to Bloomberg API... <span class="text-emerald-400">[OK]</span></p>
+                        <p>> Fetching Q3 filings... <span class="text-amber-400">[IN PROGRESS]</span></p>
+                        <p class="text-indigo-400 animate-pulse">> _ Processing batch 42...</p>
+                    </div>
+                </div>
+                
+                <!-- Station 3: QUEUED -->
+                <div class="machine-panel rounded-lg p-4 opacity-50">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center">
+                                <span class="text-xs font-bold text-slate-500">3</span>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-500">STATION 03</p>
+                                <p class="text-[10px] text-slate-600">Analysis Engine</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-slate-600 mono font-bold">QUEUED</span>
+                    </div>
+                    <div class="h-1 bg-slate-800 rounded-full"></div>
+                </div>
+                
+                <!-- Station 4: QUEUED -->
+                <div class="machine-panel rounded-lg p-4 opacity-50">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center">
+                                <span class="text-xs font-bold text-slate-500">4</span>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-500">STATION 04</p>
+                                <p class="text-[10px] text-slate-600">Report Generation</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-slate-600 mono font-bold">QUEUED</span>
+                    </div>
+                    <div class="h-1 bg-slate-800 rounded-full"></div>
+                </div>
+            </div>
+            
+            <!-- Command Input -->
+            <div class="p-4 border-t border-slate-700 bg-slate-900">
+                <div class="flex gap-2 mb-2">
+                    <button class="px-2 py-1 bg-slate-800 rounded text-[10px] text-slate-400 hover:text-slate-200">@speedup</button>
+                    <button class="px-2 py-1 bg-slate-800 rounded text-[10px] text-slate-400 hover:text-slate-200">@focus</button>
+                    <button class="px-2 py-1 bg-slate-800 rounded text-[10px] text-slate-400 hover:text-slate-200">@pause</button>
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" placeholder="Nhập chỉ thị can thiệp..." class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-indigo-500 mono">
+                    <button class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-bold text-white transition">⏎</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- CENTER: ASSEMBLY LINE VISUALIZATION -->
+        <main class="flex-1 flex flex-col bg-slate-950 relative overflow-hidden">
+            <!-- Background Grid -->
+            <div class="absolute inset-0 opacity-5" style="background-image: linear-gradient(#475569 1px, transparent 1px), linear-gradient(90deg, #475569 1px, transparent 1px); background-size: 40px 40px;"></div>
+            
+            <!-- Assembly Line Track -->
+            <div class="relative h-32 shrink-0 flex items-center px-8 mt-8">
+                <!-- Conveyor Belt -->
+                <div class="absolute inset-x-8 top-1/2 -translate-y-1/2 h-16 conveyor-belt rounded-lg border-y-4 border-slate-700"></div>
+                
+                <!-- Stations on Belt -->
+                <div class="relative z-10 flex items-center justify-between w-full px-4">
+                    <!-- Station 1: Completed -->
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="w-16 h-16 rounded-xl bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                            <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <span class="text-[10px] font-bold text-emerald-400 mono bg-slate-900 px-2 py-1 rounded">INPUT</span>
+                    </div>
+                    
+                    <!-- Arrow -->
+                    <div class="flex-1 h-0.5 bg-emerald-500/30 mx-4 relative">
+                        <div class="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 border-t-2 border-r-2 border-emerald-500/30 rotate-45"></div>
+                    </div>
+                    
+                    <!-- Station 2: Active (with animation) -->
+                    <div class="flex flex-col items-center gap-2">
+                        <div class="w-20 h-20 rounded-xl bg-indigo-500/20 border-2 border-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/30 node-active relative">
+                            <div class="absolute -inset-1 bg-indigo-500/20 rounded-xl animate-ping"></div>
+                            <svg class="w-10 h-10 text-indigo-400 gear-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                            </svg>
+                        </div>
+                        <span class="text-[10px] font-bold text-indigo-400 mono bg-slate-900 px-2 py-1 rounded border border-indigo-500/50">EXTRACT</span>
+                    </div>
+                    
+                    <!-- Arrow (dashed - in progress) -->
+                    <div class="flex-1 h-0.5 border-t-2 border-dashed border-slate-600 mx-4 relative">
+                        <div class="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 border-t-2 border-r-2 border-slate-600 rotate-45"></div>
+                    </div>
+                    
+                    <!-- Station 3: Pending -->
+                    <div class="flex flex-col items-center gap-2 opacity-40">
+                        <div class="w-16 h-16 rounded-xl bg-slate-800 border-2 border-slate-600 flex items-center justify-center">
+                            <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-500 mono bg-slate-900 px-2 py-1 rounded">ANALYZE</span>
+                    </div>
+                    
+                    <!-- Arrow -->
+                    <div class="flex-1 h-0.5 bg-slate-700 mx-4"></div>
+                    
+                    <!-- Station 4: Pending -->
+                    <div class="flex flex-col items-center gap-2 opacity-40">
+                        <div class="w-16 h-16 rounded-xl bg-slate-800 border-2 border-slate-600 flex items-center justify-center">
+                            <svg class="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-500 mono bg-slate-900 px-2 py-1 rounded">REPORT</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Live Output Stream -->
+            <div class="flex-1 px-8 py-6 overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                        Live Output Stream — Station 02
+                    </h3>
+                    <div class="flex gap-2">
+                        <button class="px-3 py-1 bg-slate-800 rounded text-[10px] text-slate-400 hover:text-slate-200 border border-slate-700">Raw</button>
+                        <button class="px-3 py-1 bg-indigo-500/20 rounded text-[10px] text-indigo-400 border border-indigo-500/50">Formatted</button>
+                    </div>
+                </div>
+                
+                <div class="flex-1 bg-slate-900/50 rounded-xl border border-slate-700 overflow-hidden flex">
+                    <!-- Terminal Side -->
+                    <div class="w-1/2 border-r border-slate-700 p-4 overflow-y-auto mono text-xs space-y-1">
+                        <div class="text-slate-500">[14:33:01] Station 02 initialized</div>
+                        <div class="text-slate-500">[14:33:02] Loading API credentials...</div>
+                        <div class="text-emerald-400">[14:33:03] ✓ Bloomberg API connected</div>
+                        <div class="text-emerald-400">[14:33:04] ✓ Yahoo Finance API connected</div>
+                        <div class="text-emerald-400">[14:33:05] ✓ SEC EDGAR API connected</div>
+                        <div class="text-amber-400">[14:33:06] ⚠ Alpha Vantage API rate limited (retry in 60s)</div>
+                        <div class="text-slate-400">[14:33:07] Fetching Q3 2025 filings for sector: SaaS...</div>
+                        <div class="text-slate-400">[14:33:08] Found 2,100 relevant records</div>
+                        <div class="text-indigo-400">[14:33:09] ▶ Processing batch 1/21 (100 records)...</div>
+                        <div class="text-slate-400">[14:33:10] Extracting: revenue, growth, churn, CAC, LTV</div>
+                        <div class="text-emerald-400">[14:33:11] ✓ Batch 1 complete — 98 valid records</div>
+                        <div class="text-indigo-400 animate-pulse">[14:33:12] ▶ Processing batch 2/21... <span class="cursor-blink">_</span></div>
+                    </div>
+                    
+                    <!-- Preview Side -->
+                    <div class="w-1/2 p-4 overflow-y-auto">
+                        <div class="slide-in">
+                            <h4 class="text-xs font-bold text-slate-300 mb-3">Kết quả trung gian — Batch 1</h4>
+                            <div class="space-y-3">
+                                <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-[10px] font-bold text-slate-400">Market Overview</span>
+                                        <span class="text-[10px] text-emerald-400">✓ Validated</span>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2 text-center">
+                                        <div>
+                                            <div class="text-lg font-bold text-slate-200">$312B</div>
+                                            <div class="text-[10px] text-slate-500">Total Cap</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-lg font-bold text-emerald-400">+14.2%</div>
+                                            <div class="text-[10px] text-slate-500">YoY Growth</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-lg font-bold text-indigo-400">98.4%</div>
+                                            <div class="text-[10px] text-slate-500">Confidence</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-slate-800/50 rounded-lg p-3 border border-slate-700">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="text-[10px] font-bold text-slate-400">Top Performers Detected</span>
+                                        <span class="text-[10px] text-amber-400">Processing...</span>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <div class="flex justify-between text-xs">
+                                            <span class="text-slate-300">Salesforce (CRM)</span>
+                                            <span class="text-emerald-400">+23.4%</span>
+                                        </div>
+                                        <div class="h-1 bg-slate-700 rounded-full">
+                                            <div class="h-full bg-emerald-500 w-[80%]"></div>
+                                        </div>
+                                        <div class="flex justify-between text-xs">
+                                            <span class="text-slate-300">ServiceNow (NOW)</span>
+                                            <span class="text-emerald-400">+18.7%</span>
+                                        </div>
+                                        <div class="h-1 bg-slate-700 rounded-full">
+                                            <div class="h-full bg-emerald-500 w-[65%]"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Bottom Status Bar -->
+            <div class="h-10 bg-slate-900 border-t border-slate-700 flex items-center px-8 justify-between shrink-0">
+                <div class="flex items-center gap-4 text-[10px] mono text-slate-500">
+                    <span class="flex items-center gap-1">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        System Normal
+                    </span>
+                    <span>Queue: 1 task</span>
+                    <span>Threads: 4 active</span>
+                </div>
+                <div class="text-[10px] mono text-slate-500">
+                    Last update: 14:33:12 • Auto-refresh: 1s
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
