@@ -167,16 +167,35 @@ async function createConversation(): Promise<string> {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-const AttachmentItem = ({ a, onRemove }: { a: { id: string; name: string; type: string; url: string }; onRemove: (id: string) => void }) => (
-  <Attachment data={a} onRemove={() => onRemove(a.id)}><AttachmentPreview /><AttachmentRemove /></Attachment>
-);
+const AttachmentItem = ({ a, onRemove }: { 
+  a: { id: string; name?: string; type?: string; url?: string }; 
+  onRemove: (id: string) => void 
+}) => {
+  // Tạo một object mới clone từ 'a' và bổ sung 'mediaType' để thỏa mãn component <Attachment>
+  const attachmentData = {
+    ...a,
+    mediaType: a.type || "unknown" // Lấy trường type làm mediaType
+  };
+
+  return (
+    <Attachment data={attachmentData as any} onRemove={() => onRemove(a.id)}>
+      <AttachmentPreview />
+      <AttachmentRemove />
+    </Attachment>
+  );
+};
 
 const PromptInputAttachmentsDisplay = () => {
   const { files, remove } = usePromptInputAttachments();
   if (!files.length) return null;
-  return <Attachments variant="inline">{files.map((f) => <AttachmentItem key={f.id} a={f} onRemove={remove} />)}</Attachments>;
+  return (
+    <Attachments variant="inline">
+      {files.map((f) => (
+        <AttachmentItem key={f.id} a={f as any} onRemove={remove} />
+      ))}
+    </Attachments>
+  );
 };
-
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
 function Sidebar({
