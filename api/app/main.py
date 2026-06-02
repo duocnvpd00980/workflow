@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.chat.router import router as chat_router
 from app.rag.router import router as rag_router
-from app.chat.ai_sdk_adapter import router_ai_sdk
 
 from app.db import init_db
 
@@ -44,7 +43,6 @@ app.add_middleware(
 
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(rag_router, prefix="/api/v1")
-app.include_router(router_ai_sdk, prefix="/api/v1")
 
 @app.get("/metrics/system", tags=["Monitoring"])
 def system_metrics():

@@ -4,7 +4,7 @@ dev:
 	uv run python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 jupyter:
-	uv run jupyter lab --notebook-dir=notebooks
+	HF_HUB_OFFLINE=1 uv run python -m jupyterlab --notebook-dir=notebooks
 
 test:
 	uv run pytest
