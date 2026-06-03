@@ -13,8 +13,22 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 
+from datetime import datetime, timezone
+from sqlalchemy import event
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
 class Base(DeclarativeBase):
     pass
+
+# ── Tự động gắn UTC timezone cho mọi datetime khi load từ DB ──
+@event.listens_for(Base, "load", propagate=True)
+def _localize_datetimes(target, context):
+    for attr in target.__mapper__.column_attrs:
+        col = attr.columns[0]
+        if isinstance(col.type, DateTime):
+            val = getattr(target, attr.key)
+            if isinstance(val, datetime) and val.tzinfo is None:
+                setattr(target, attr.key, val.replace(tzinfo=timezone.utc))
 
 
 # ── Conversation ──────────────────────────────────────────

@@ -141,13 +141,25 @@ def expand_query(text: str) -> List[str]:
 
 # ── Async embed helper ────────────────────────────────────────────────────────
 
-async def _aembed(embed_model: SentenceTransformer, texts: List[str]) -> np.ndarray:
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(
-        None, lambda: embed_model.encode(texts, normalize_embeddings=True)
-    )
 
+class Embedder:
+    def __init__(self):
+        self._model = None
 
+    def _load(self):
+        if self._model is not None:
+            return
+        log.info(f"[embed] loading {EMBED_MODEL}...")
+        self._model = SentenceTransformer(EMBED_MODEL)
+        log.info("[embed] loaded")
+
+    async def encode(self, texts: List[str]) -> np.ndarray:
+        self._load()
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: self._model.encode(texts, normalize_embeddings=True)
+        )
+    
 # ── Reranker (lazy-load) ──────────────────────────────────────────────────────
 
 # [PATCH 1] Lazy-load: không load model lúc startup, chỉ load khi gọi lần đầu.
@@ -283,7 +295,7 @@ class Cache:
 # ── Store ─────────────────────────────────────────────────────────────────────
 
 class Store:
-    def __init__(self, embed: SentenceTransformer):
+    def __init__(self, embed: Embedder):
         self._embed = embed
         self._idx = faiss.IndexFlatIP(DIM)
         self._texts: List[str] = []
@@ -291,10 +303,8 @@ class Store:
         self._bm25_corpus: List[List[str]] = []
         self._bm25: Optional[BM25Okapi] = None
         self._hashes: Set[str] = set()
-        # [PATCH 4] Lock để tránh concurrent add() corrupt BM25 + file save.
         self._lock = asyncio.Lock()
         PERSIST_DIR.mkdir(exist_ok=True)
-        self._load()
 
     async def add(self, doc: Doc) -> str:
         text = doc.text.strip()
@@ -312,7 +322,7 @@ class Store:
             chunks = self._chunk(text)
             meta = {"source_id": doc.metadata.get("source_id", h), **doc.metadata}
 
-            embs_list = await _aembed(self._embed, chunks)
+            embs_list = await self._embed.encode(chunks)
             embs = np.array(embs_list, dtype=np.float32)
             faiss.normalize_L2(embs)
             self._idx.add(embs)
@@ -369,7 +379,7 @@ class Store:
     async def vector(self, query: str, k: int) -> List[Chunk]:
         if not self._idx.ntotal:
             return []
-        emb = await _aembed(self._embed, [query])
+        emb = await self._embed.encode([query])
         v = _vec(emb[0])
         scores, ids = self._idx.search(v, k)
         return [
@@ -443,15 +453,26 @@ class Store:
 
 class RAG:
     def __init__(self):
-        self._embed = SentenceTransformer(EMBED_MODEL)
+        self._embed = Embedder()
         self._reranker = Reranker()          # lazy: không load model ở đây
-        self._store = Store(self._embed)
+        self._store = None
         self._cache = Cache()
 
+    async def _lazy_init(self):
+        """Gọi 1 lần đầu tiên, sau đó dùng lại"""
+        if self._store is None:
+            self._store = Store(self._embed)
+            self._store._load()            # load disk nếu có
+
     async def add(self, text: str, **meta) -> str:
+        if self._store is None:
+            await self._lazy_init()
         return await self._store.add(Doc(text, meta))
 
     async def search(self, query: str, top_k: int = FINAL_K) -> Result:
+        if self._store is None:
+            await self._lazy_init()
+
         query = query.strip()
         intent = _detect_intent(query)
 
@@ -492,7 +513,7 @@ class RAG:
 
     def stats(self) -> dict:
         return {
-            "store": self._store.stats(),
+            "store": self._store.stats() if self._store else {"chunks": 0, "hashes": 0, "faiss_vectors": 0},
             "cache": self._cache.stats(),
             "embed_model": EMBED_MODEL,
             "rerank_model": RERANK_MODEL,

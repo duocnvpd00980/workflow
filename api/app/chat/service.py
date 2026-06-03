@@ -45,33 +45,20 @@ def _thread_id(conversation_id: str, session_id: str) -> str:
     return f"conv_{conversation_id}" if conversation_id else f"sess_{session_id}"
 
 def _read(obj: object | dict, key: str, default=None):
-    """Đọc field từ Pydantic object hoặc dict — an toàn cả hai dạng."""
     if isinstance(obj, dict):
         return obj.get(key, default)
     return getattr(obj, key, default)
+
+def _to_uuid(val: str | uuid.UUID) -> uuid.UUID:
+    """Chuyển str hoặc UUID về uuid.UUID an toàn."""
+    if isinstance(val, uuid.UUID):
+        return val
+    return uuid.UUID(val)
 
 
 # ── Result builder ────────────────────────────────────────
 
 def _build_result(snapshot, pipeline_error: Exception | None) -> dict:
-    """
-    Đọc StandardFrame[BodyFrame] từ MainBus.final_response và serialize
-    thành SSE result dict.
-
-    MainBus.final_response kiểu BusFrame = StandardFrame[BodyFrame] | None.
-    LangGraph có thể trả về object hoặc dict — _read() xử lý cả hai.
-
-    Contract đầu ra:
-        status        : "success" | "fallback" | "review" | "error"
-        text          : câu trả lời (BodyFrame.text)
-        answer_source : "cache"|"rag"|"llm"|"search"  (BodyFrame.state)
-        confidence    : float                          (BodyFrame.state)
-        sources       : list[{...}]                   (BodyFrame.records)
-        metrics       : {latency_ms, model, ...}      (BodyFrame.metrics)
-        error         : {code, message, retryable} | None
-    """
-
-    # ── Pipeline crash / timeout trước khi graph emit ─────────────────────
     if pipeline_error or not snapshot:
         code = "TIMEOUT" if isinstance(pipeline_error, TimeoutError) else "PIPELINE_CRASH"
         msg  = "Hệ thống quá tải, thử lại." if isinstance(pipeline_error, TimeoutError) \
@@ -88,7 +75,6 @@ def _build_result(snapshot, pipeline_error: Exception | None) -> dict:
 
     state = snapshot.values or {}
 
-    # ── Human-in-the-loop interrupt ───────────────────────────────────────
     for task in (snapshot.tasks or []):
         if task.interrupts:
             val = task.interrupts[0].value if task.interrupts else {}
@@ -105,9 +91,6 @@ def _build_result(snapshot, pipeline_error: Exception | None) -> dict:
                 },
             }
 
-    # ── Đọc StandardFrame từ MainBus.final_response ───────────────────────
-    # snapshot.values["final_response"] = StandardFrame object hoặc dict
-    # tuỳ theo LangGraph version và cách Pydantic validate BusFrame field
     fr = state.get("final_response")
 
     log.debug("[_build_result] state keys=%s", list(state.keys()))
@@ -128,7 +111,6 @@ def _build_result(snapshot, pipeline_error: Exception | None) -> dict:
             },
         }
 
-    # ── Lấy payload từ StandardFrame (object hoặc dict) ───────────────────
     payload = _read(fr, "payload")
 
     log.debug("[_build_result] payload type=%s", type(payload))
@@ -148,7 +130,6 @@ def _build_result(snapshot, pipeline_error: Exception | None) -> dict:
             },
         }
 
-    # ── Đọc BodyFrame fields ──────────────────────────────────────────────
     bf_status  = _read(payload, "status",  "FAILED")
     bf_text    = _read(payload, "text",    "")
     bf_records = _read(payload, "records", [])
@@ -163,7 +144,6 @@ def _build_result(snapshot, pipeline_error: Exception | None) -> dict:
         bf_state.get("confidence", "?"),
     )
 
-    # ── Map BodyFrame → SSE status ────────────────────────────────────────
     finish_reason = bf_state.get("finish_reason", "")
     if bf_status == "SUCCESS":
         sse_status = "fallback" if finish_reason == "fallback" else "success"
@@ -197,26 +177,34 @@ async def _save_user_msg(
     db: AsyncSession, conv_id: uuid.UUID, content: str, msg_id: str,
 ) -> None:
     db.add(Message(
-        id=msg_id, conversation_id=conv_id,
-        role="user", status="completed", content=content,
+        id=_to_uuid(msg_id),        # ← str → uuid.UUID
+        conversation_id=conv_id,
+        role="user",
+        status="completed",
+        content=content,
     ))
     await db.commit()
+
 
 async def _save_assistant_pending(
     db: AsyncSession, conv_id: uuid.UUID, msg_id: str,
 ) -> None:
     db.add(Message(
-        id=msg_id, conversation_id=conv_id,
-        role="assistant", status="streaming", content="",
+        id=_to_uuid(msg_id),        # ← str → uuid.UUID
+        conversation_id=conv_id,
+        role="assistant",
+        status="streaming",
+        content="",
     ))
     await db.commit()
 
+
 async def _update_msg(db: AsyncSession, msg_id: str, result: dict) -> None:
-    # "success" | "fallback" | "review" → completed
-    # "error"                           → error
     db_status = "completed" if result["status"] in ("success", "fallback", "review") else "error"
     await db.execute(
-        update(Message).where(Message.id == msg_id).values(
+        update(Message)
+        .where(Message.id == _to_uuid(msg_id))  # ← str → uuid.UUID
+        .values(
             content    = result.get("text", ""),
             status     = db_status,
             updated_at = func.now(),
@@ -224,29 +212,34 @@ async def _update_msg(db: AsyncSession, msg_id: str, result: dict) -> None:
     )
     await db.commit()
 
+
 async def _touch(db: AsyncSession, conv_id: uuid.UUID) -> None:
     await db.execute(
-        update(Conversation).where(Conversation.id == conv_id)
+        update(Conversation)
+        .where(Conversation.id == conv_id)
         .values(last_message_at=func.now(), updated_at=func.now())
     )
     await db.commit()
+
 
 async def _history(
     db: AsyncSession, conv_id: uuid.UUID, limit: int = 10,
 ) -> list[dict]:
     rows = await db.execute(
         select(Message)
-        .where(Message.conversation_id == conv_id, Message.status == "completed")
+        .where(
+            Message.conversation_id == conv_id,
+            Message.status == "completed",
+        )
         .order_by(Message.created_at.desc())
         .limit(limit)
     )
     return [
         {"role": m.role, "content": m.content}
-        for m in reversed(rows.scalars().all()) if m.content
+        for m in reversed(rows.scalars().all())
+        if m.content
     ]
 
-
-# ── Core stream ───────────────────────────────────────────
 
 # ── Core stream ───────────────────────────────────────────
 
@@ -262,7 +255,7 @@ async def _run_stream(
     step           = 0
     pipeline_error: Exception | None = None
     config = {
-        "configurable":   {"thread_id": thread_id},
+        "configurable":    {"thread_id": thread_id},
         "recursion_limit": _RECURSION_LIMIT,
     }
 
@@ -270,7 +263,6 @@ async def _run_stream(
         async with asyncio.timeout(_TIMEOUT):
             async for chunk in main_v7.astream(graph_input, config=config):
 
-                # interrupt — xử lý ngay, không đợi snapshot
                 if "__interrupt__" in chunk:
                     val = chunk["__interrupt__"][0].value
                     result = {
@@ -295,25 +287,22 @@ async def _run_stream(
                         step += 1
                         yield _sse("node", {"label": _node_label(key), "step": step})
 
-                        # ── THÊM: Emit chi tiết node từ snapshot ──
-                        # Đọc StandardFrame của node vừa chạy từ snapshot
                         try:
-                            # Lấy snapshot hiện tại để đọc kết quả node
-                            snapshot = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
+                            snapshot   = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
                             node_frame = snapshot.values.get(key) if snapshot else None
-                            
+
                             if node_frame:
                                 payload = _read(node_frame, "payload")
                                 if payload:
                                     yield _sse("node_detail", {
-                                        "node_id": key,
+                                        "node_id":    key,
                                         "node_label": _node_label(key),
-                                        "step": step,
-                                        "status": _read(payload, "status", "UNKNOWN"),
-                                        "text": _read(payload, "text", ""),
-                                        "state": _read(payload, "state", {}),
-                                        "metrics": _read(payload, "metrics", {}),
-                                        "timestamp": getattr(node_frame, "timestamp", None),
+                                        "step":       step,
+                                        "status":     _read(payload, "status",  "UNKNOWN"),
+                                        "text":       _read(payload, "text",    ""),
+                                        "state":      _read(payload, "state",   {}),
+                                        "metrics":    _read(payload, "metrics", {}),
+                                        "timestamp":  getattr(node_frame, "timestamp", None),
                                     })
                         except Exception:
                             log.warning("[_run_stream] failed to get node_detail for %s", key, exc_info=True)
@@ -325,7 +314,6 @@ async def _run_stream(
         log.exception("[stream] crash thread=%s", thread_id)
         pipeline_error = e
 
-    # ── Lấy snapshot sau khi stream kết thúc hoặc crash ──────────────────
     try:
         snapshot = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
     except Exception:
@@ -334,7 +322,6 @@ async def _run_stream(
 
     result = _build_result(snapshot, pipeline_error)
 
-    # ── THÊM: node_history để frontend render lại khi restore ──
     if snapshot:
         node_history = []
         for key, value in (snapshot.values or {}).items():
@@ -343,13 +330,13 @@ async def _run_stream(
                     payload = _read(value, "payload")
                     if payload:
                         node_history.append({
-                            "node_id": key,
+                            "node_id":    key,
                             "node_label": _node_label(key),
-                            "status": _read(payload, "status", "UNKNOWN"),
-                            "text": _read(payload, "text", ""),
-                            "state": _read(payload, "state", {}),
-                            "metrics": _read(payload, "metrics", {}),
-                            "timestamp": getattr(value, "timestamp", None),
+                            "status":     _read(payload, "status",  "UNKNOWN"),
+                            "text":       _read(payload, "text",    ""),
+                            "state":      _read(payload, "state",   {}),
+                            "metrics":    _read(payload, "metrics", {}),
+                            "timestamp":  getattr(value, "timestamp", None),
                         })
                 except Exception:
                     pass
@@ -360,7 +347,7 @@ async def _run_stream(
 
     yield _sse("result", result)
     yield _sse("done", {})
-    
+
 
 # ── ChatService ───────────────────────────────────────────
 
@@ -380,7 +367,7 @@ class ChatService:
 
         if db:
             try:
-                conv = await db.get(Conversation, uuid.UUID(conversation_id))
+                conv = await db.get(Conversation, _to_uuid(conversation_id))
                 if conv:
                     await _save_user_msg(db, conv.id, message, msg_id)
                     assistant_msg_id = str(uuid.uuid4())
@@ -420,7 +407,7 @@ class ChatService:
         assistant_msg_id = ""
         if db and conversation_id:
             try:
-                conv = await db.get(Conversation, uuid.UUID(conversation_id))
+                conv = await db.get(Conversation, _to_uuid(conversation_id))
                 if conv:
                     assistant_msg_id = str(uuid.uuid4())
                     await _save_assistant_pending(db, conv.id, assistant_msg_id)
@@ -445,11 +432,9 @@ class ChatService:
         conversation_id: str = "",
         db:              AsyncSession | None = None,
     ):
-        # Ưu tiên DB — đầy đủ, không phụ thuộc LangGraph memory
         if db and conversation_id:
-            return await _history(db, uuid.UUID(conversation_id), limit=50)
+            return await _history(db, _to_uuid(conversation_id), limit=50)
 
-        # Fallback: đọc snapshot từ LangGraph checkpointer
         try:
             snapshot = await main_v7.aget_state(
                 {"configurable": {"thread_id": _thread_id(conversation_id, session_id)}}
