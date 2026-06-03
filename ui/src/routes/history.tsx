@@ -3,15 +3,15 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { useQuery } from "@tanstack/react-query";
 import { 
-  Zap, History, Settings, BarChart3, MenuIcon, LogOut, MessageSquarePlus,
+ History, MenuIcon, MessageSquarePlus,
   Search, SlidersHorizontal, CheckCircle2, AlertCircle, PlayCircle, StopCircle,
-  Calendar, Clock, HardDrive, ArrowUpRight, ChevronRight, FileText, Download, Trash2
+  Calendar, Clock, ArrowUpRight, ChevronRight, FileText, Download, Trash2
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { fetchConversations, queryKeys, type Conv } from "../lib/api";
+import {  queryKeys, type Conv } from "../lib/api";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import SidebarNav from '@/components/layout/navbar';
+import SidebarNav from '@/layout/navbar';
 
 // ─── Mock Data cho Lịch sử công việc chi tiết ───────────────────────────────
 const MOCK_JOB_HISTORY = [

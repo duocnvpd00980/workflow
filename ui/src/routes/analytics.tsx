@@ -1,18 +1,14 @@
-import { createFileRoute } from '@tanstack/react-router'
-"use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { 
-  Zap, History, Settings, BarChart3, MenuIcon, LogOut, MessageSquarePlus,
+"use client";
+import { createFileRoute } from '@tanstack/react-router'
+import { MenuIcon, MessageSquarePlus,
   TrendingUp, Clock, DollarSign, CheckCircle2, AlertTriangle, ArrowUpRight,
-  TrendingDown, Calendar, RefreshCw, FileSpreadsheet, Layers, HelpCircle
+  TrendingDown, RefreshCw, FileSpreadsheet, Layers, HelpCircle
 } from "lucide-react";
-import { useState, useMemo } from "react";
-import { fetchConversations, queryKeys, type Conv } from "../lib/api";
+import { useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import ArtifactsPage from "./artifacts";
-import SidebarNav from '@/components/layout/navbar';
+import SidebarNav from '@/layout/navbar';
 
 // ─── Mock Data cho Analytics ────────────────────────────────────────────────
 const MOCK_OVERVIEW_METRICS = {
@@ -47,13 +43,6 @@ export const Route = createFileRoute('/analytics')({
 export default function AnalyticsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [timeRange, setTimeRange] = useState("7d");
-
-  // Đồng bộ danh sách công việc ở sidebar trái từ API thực tế
-  const { data: conversations = [] } = useQuery<Conv[]>({
-    queryKey: queryKeys.conversations,
-    staleTime: 30_000,
-  });
-
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#fafbfc] text-slate-900 select-none antialiased font-sans">
       

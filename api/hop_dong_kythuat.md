@@ -867,3 +867,18 @@ with open('/mnt/agents/output/technical_contract_agent_ui_v1.md', 'w', encoding=
 print("✅ Đã tạo hợp đồng kỹ thuật")
 print(f"📄 File: /mnt/agents/output/technical_contract_agent_ui_v1.md")
 print(f"📊 Kích thước: {len(contract)} ký tự")
+
+
+
+
+
+Phương án C: "Phased Incremental" — Chia 3 giai đoạn nhỏ
+Mô tả:
+Phase 1 (Week 1): BE thêm agent_start + agent_plan. FE thêm AgentPlanCard. Test.
+Phase 2 (Week 2): BE thêm step_start + tối ưu node_detail. FE thêm real-time step status (running/done). Test.
+Phase 3 (Week 3): BE thêm step_result + step_progress. FE thêm StepResultMessage + Right Sidebar real-time. Test.
+Tech Lead (Alex): "Best of both worlds. Mỗi phase có deliverable chạy được, rollback dễ. Nhưng cần discipline — không scope creep giữa phase."
+Backend (Binh): "Phase 1: 2 giờ. Phase 2: 4 giờ. Phase 3: 6 giờ. Tổng 12 giờ BE, chia 3 tuần."
+Frontend (Chi): "Phase 1: thêm component. Phase 2: update hook state. Phase 3: restructure render. Mỗi phase FE có thể test độc lập."
+UX (Dung): "Mỗi phase UX tốt hơn — user thấy tiến bộ. Phase 1: có plan. Phase 2: thấy running. Phase 3: thấy chi tiết. Gradual delight."
+QA (Em): "Test từng phase, không accumulate. Phase 1: 5 case. Phase 2: 10 case. Phase 3: 15 case. Tổng 30, nhưng chia nhỏ."

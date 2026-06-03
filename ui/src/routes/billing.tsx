@@ -1,20 +1,15 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { 
-  Zap, History, Settings, BarChart3, MenuIcon, MessageSquarePlus,
-  CreditCard, DollarSign, PiggyBank, ShieldAlert, Sliders, RefreshCw,
-  TrendingUp, ArrowUpRight, ArrowDownRight, Layers, Building2, HelpCircle,
+import { MenuIcon, PiggyBank, ShieldAlert, Sliders, 
+ArrowDownRight,  Building2, HelpCircle,
   FileDown, Plus, CheckCircle2,
-  BrainCircuit
 } from "lucide-react";
-import { useState, useMemo } from "react";
-import { fetchConversations, queryKeys, type Conv } from "../lib/api";
+import { useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
-import SidebarNav from "@/components/layout/navbar";
+import SidebarNav from "@/layout/navbar";
 
 // ─── Mock Data cho Hệ thống Kế toán & Hạn mức ──────────────────────────────
 const MOCK_BILLING_SUMMARY = {
@@ -44,12 +39,6 @@ export const Route = createFileRoute('/billing')({
 export default function BillingBudgetingPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [globalHardLimit, setGlobalHardLimit] = useState(150);
-
-  // Đồng bộ sidebar trái với API hệ thống
-  const { data: conversations = [] } = useQuery<Conv[]>({
-    queryKey: queryKeys.conversations,
-    staleTime: 30_000,
-  });
 
   const handleDeposit = () => {
     toast.success("Đang chuyển hướng đến cổng thanh toán Stripe / VNPay...");
@@ -207,7 +196,7 @@ export default function BillingBudgetingPage() {
             <div className="flex justify-between items-center text-[11px]">
               <span className="font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                 Giới hạn cứng / Tháng
-                <HelpCircle size={12} className="text-slate-300 cursor-help" title="Khi chạm ngưỡng này, tất cả Agent sẽ bị ép dừng hoạt động ngay lập tức." />
+                <HelpCircle size={12} className="text-slate-300 cursor-help" />
               </span>
               <span className="font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.2 rounded text-[12px]">${globalHardLimit}</span>
             </div>

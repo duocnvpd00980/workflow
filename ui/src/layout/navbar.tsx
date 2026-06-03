@@ -101,6 +101,19 @@ export default function SidebarNav() {
           )}
         </Link>
 
+         <Link 
+          to="/artifacts" 
+          className={`${baseLinkClass} ${inactiveClass}`}
+          activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
+        >
+          {({ isActive }) => (
+            <>
+              <CreditCard size={16} className={isActive ? "text-indigo-600" : "text-slate-400"} />
+              <span>Kho sản phẩm của Agent</span>
+            </>
+          )}
+        </Link>
+
         {/* 6. CHI PHÍ & HÓA ĐƠN (Map vào file src/routes/budget.tsx hoặc billing.tsx tùy bạn đặt tên file con) */}
         <Link 
           to="/billing" 
@@ -114,6 +127,9 @@ export default function SidebarNav() {
             </>
           )}
         </Link>
+
+
+        
 
       </div>
     </>

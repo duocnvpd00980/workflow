@@ -2,11 +2,6 @@ import { useState, useRef, useCallback } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface NodeEvent {
-  label: string;
-  step: number;
-}
-
 export interface NodeDetail {
   node_id: string;
   node_label: string;
@@ -16,6 +11,20 @@ export interface NodeDetail {
   state: Record<string, unknown>;
   metrics: Record<string, unknown>;
   timestamp: number | null;
+  duration_ms?: number;
+}
+
+export interface NodeResultData {
+  nodeId: string;
+  nodeLabel: string;
+  order: number;
+  status: "done" | "error";
+  output: {
+    text: string;
+    state: Record<string, unknown>;
+    metrics: Record<string, unknown>;
+  };
+  timestamp: number;
 }
 
 export interface ResultEvent {
@@ -43,8 +52,10 @@ export interface ResultEvent {
 export interface ChatMsg {
   id: string;
   role: "user" | "assistant";
+  type?: "user" | "node_result" | "final_result";
   text: string;
   result?: ResultEvent;
+  nodeResult?: NodeResultData;
 }
 
 export type StreamStatus = "idle" | "streaming" | "done" | "error";
@@ -59,7 +70,6 @@ interface UseChatStreamOpts {
 
 export function useChatStream({ api, sessionId, conversationId }: UseChatStreamOpts) {
   const [messages, setMessages]       = useState<ChatMsg[]>([]);
-  const [nodes, setNodes]             = useState<NodeEvent[]>([]);
   const [nodeDetails, setNodeDetails] = useState<NodeDetail[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [status, setStatus]           = useState<StreamStatus>("idle");
@@ -85,16 +95,13 @@ export function useChatStream({ api, sessionId, conversationId }: UseChatStreamO
     async (text: string) => {
       if (!text.trim() || status === "streaming") return;
 
-      const userMsgId      = crypto.randomUUID();
-      const assistantMsgId = crypto.randomUUID();
+      const userMsgId = crypto.randomUUID();
 
-      // Optimistically append user + empty assistant bubble
+      // Append user message
       setMessages((prev) => [
         ...prev,
-        { id: userMsgId,      role: "user",      text },
-        { id: assistantMsgId, role: "assistant",  text: "" },
+        { id: userMsgId, role: "user", type: "user", text },
       ]);
-      setNodes([]);
       setNodeDetails([]);
       setSuggestions([]);
       setError(null);
@@ -147,23 +154,50 @@ export function useChatStream({ api, sessionId, conversationId }: UseChatStreamO
               const payload = JSON.parse(dataLine);
 
               switch (eventType) {
-                case "node":
-                  setNodes((prev) => [...prev, payload as NodeEvent]);
-                  break;
+                case "node_detail": {
+                  const detail = payload as NodeDetail;
+                  upsertNodeDetail(detail);
 
-                case "node_detail":
-                  upsertNodeDetail(payload as NodeDetail);
+                  // Tạo message NODE RESULT riêng
+                  const nodeResult: NodeResultData = {
+                    nodeId: payload.node_id,
+                    nodeLabel: payload.node_label,
+                    order: payload.step,
+                    status: payload.status === "SUCCESS" ? "done" : "error",
+                    output: {
+                      text: payload.text,
+                      state: payload.state,
+                      metrics: payload.metrics,
+                    },
+                    timestamp: payload.timestamp,
+                  };
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: `node-${payload.node_id}-${Date.now()}`,
+                      role: "assistant",
+                      type: "node_result",
+                      text: payload.text || "",
+                      nodeResult,
+                    },
+                  ]);
                   break;
+                }
 
                 case "result": {
                   const result = payload as ResultEvent;
 
-                  // Update assistant bubble with final text
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMsgId ? { ...m, text: result.text, result } : m
-                    )
-                  );
+                  // Tạo message FINAL RESULT riêng
+                  setMessages((prev) => [
+                    ...prev,
+                    {
+                      id: `final-${Date.now()}`,
+                      role: "assistant",
+                      type: "final_result",
+                      text: result.text,
+                      result,
+                    },
+                  ]);
 
                   if (result.node_history?.length) {
                     setNodeDetails(result.node_history);
@@ -197,13 +231,17 @@ export function useChatStream({ api, sessionId, conversationId }: UseChatStreamO
         const msg = e instanceof Error ? e.message : "Stream failed";
         setError(msg);
         setStatus("error");
-        setMessages((prev) =>
-          prev.map((m) => m.id === assistantMsgId ? { ...m, text: `⚠ ${msg}` } : m)
-        );
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `error-${Date.now()}`,
+            role: "assistant",
+            type: "final_result",
+            text: `⚠ ${msg}`,
+          },
+        ]);
       }
     },
-    // conversationId intentionally excluded — we want the ref value at call time,
-    // not a stale closure. The parent always passes the current value.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [api, sessionId, conversationId, status, upsertNodeDetail]
   );
@@ -218,24 +256,21 @@ export function useChatStream({ api, sessionId, conversationId }: UseChatStreamO
   const reset = useCallback(() => {
     abortRef.current?.abort();
     setMessages([]);
-    setNodes([]);
     setNodeDetails([]);
     setSuggestions([]);
     setStatus("idle");
     setError(null);
   }, []);
 
-  // ── Hydrate from DB history (called when switching conversations) ─────────
-  // Accepts raw DB messages: { id, role, content, ... }
-  // Normalizes to ChatMsg shape.
+  // ── Hydrate from DB history ──────────────────────────────────────────────
   const hydrate = useCallback((raw: any[]) => {
     const normalized: ChatMsg[] = raw.map((m) => ({
       id:   m.id   ?? crypto.randomUUID(),
       role: m.role === "user" ? "user" : "assistant",
+      type: m.role === "user" ? "user" : "final_result",
       text: m.text ?? m.content ?? "",
     }));
     setMessages(normalized);
-    setNodes([]);
     setNodeDetails([]);
     setSuggestions([]);
     setStatus("idle");
@@ -244,7 +279,6 @@ export function useChatStream({ api, sessionId, conversationId }: UseChatStreamO
 
   return {
     messages,
-    nodes,
     nodeDetails,
     suggestions,
     status,

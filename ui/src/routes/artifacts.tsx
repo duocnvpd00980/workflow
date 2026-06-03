@@ -1,17 +1,15 @@
-import { createFileRoute } from '@tanstack/react-router'
-"use client";
 
-import { useQuery } from "@tanstack/react-query";
+"use client";
+import { createFileRoute } from '@tanstack/react-router'
 import { 
-  Zap, History, Settings, BarChart3, MenuIcon, MessageSquarePlus,
-  FolderOpen, Search, Filter, FileText, Image, FileSpreadsheet, Code,
-  Download, Eye, ExternalLink, Copy, Share2, Trash2, Calendar, HardDrive, User
+MenuIcon, MessageSquarePlus,Search, Filter, FileText, Image, FileSpreadsheet, Code,
+  Download,Copy, Share2, Trash2, Calendar, HardDrive
 } from "lucide-react";
 import { useState, useMemo } from "react";
-import { fetchConversations, queryKeys, type Conv } from "../lib/api";
+
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import SidebarNav from '@/components/layout/navbar';
+import SidebarNav from '@/layout/navbar';
 
 // ─── Mock Data danh sách sản phẩm được tạo ra từ Agent ──────────────────────
 const MOCK_ARTIFACTS = [
@@ -76,11 +74,6 @@ export default function ArtifactsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [selectedId, setSelectedId] = useState("ART-0092");
 
-  // Đồng bộ sidebar trái với API thực tế
-  const { data: conversations = [] } = useQuery<Conv[]>({
-    queryKey: queryKeys.conversations,
-    staleTime: 30_000,
-  });
 
   // Tìm sản phẩm đang chọn để hiển thị Preview ở cột phải
   const selectedArtifact = useMemo(() => {

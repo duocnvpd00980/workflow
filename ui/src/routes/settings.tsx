@@ -1,18 +1,16 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { 
-  Zap, History, Settings, BarChart3, MenuIcon, MessageSquarePlus,
+import {
+  MenuIcon, MessageSquarePlus,
   Save, Sliders, Shield, Key, Cpu, HelpCircle, AlertCircle, Eye, EyeOff,
   CheckCircle2, Info, Plus, Trash2, ToggleLeft, ToggleRight
 } from "lucide-react";
 import { useState } from "react";
-import { fetchConversations, queryKeys, type Conv } from "../lib/api";
-import { Progress } from "@/components/ui/progress";
+
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
-import SidebarNav from "@/components/layout/navbar";
+import SidebarNav from "@/layout/navbar";
 
 // ─── Mock Data cấu hình các Sub-Agents ───────────────────────────────────────
 const INITIAL_SUB_AGENTS = [
@@ -29,7 +27,7 @@ export const Route = createFileRoute('/settings')({
 
 export default function AgentSettingsPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   // ── States cấu hình Agent chính ───────────────────────────────────────────
   const [agentName, setAgentName] = useState("Hệ thống thực thi Marketing tổng lực");
   const [systemPrompt, setSystemPrompt] = useState(
@@ -39,12 +37,6 @@ export default function AgentSettingsPage() {
   const [maxTokens, setMaxTokens] = useState(4096);
   const [showApiKey, setShowApiKey] = useState(false);
   const [subAgents, setSubAgents] = useState(INITIAL_SUB_AGENTS);
-
-  // Đồng bộ danh sách công việc ở sidebar trái từ API thực tế
-  const { data: conversations = [] } = useQuery<Conv[]>({
-    queryKey: queryKeys.conversations,
-    staleTime: 30_000,
-  });
 
   const handleSave = () => {
     toast.success("Đã lưu toàn bộ cấu hình Agent thành công!");
@@ -57,10 +49,10 @@ export default function AgentSettingsPage() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#fafbfc] text-slate-900 select-none antialiased font-sans">
-      
+
       {/* ─── 1. SIDEBAR TRÁI (Đồng bộ cấu trúc 100% từ các trang trước) ─── */}
       <aside className={`fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col border-r bg-white transition-transform duration-200 md:relative md:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        
+
         <SidebarNav />
 
         <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col min-h-0">
@@ -220,13 +212,13 @@ export default function AgentSettingsPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-6 flex flex-col min-h-0">
-          
+
           {/* Slider 1: Temperature */}
           <div className="space-y-2.5 shrink-0">
             <div className="flex justify-between items-center text-[11px]">
               <span className="font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
                 Temperature
-                <HelpCircle size={12} className="text-slate-300 cursor-help" title="Giá trị thấp giúp câu trả lời logic, giá trị cao tăng tính sáng tạo." />
+                <HelpCircle size={12} className="text-slate-300 cursor-help" />
               </span>
               <span className="font-mono font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.2 rounded text-[12px]">{temperature}</span>
             </div>

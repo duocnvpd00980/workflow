@@ -119,6 +119,17 @@
   }
 }
 
+
+
+/* Chặn bounce scroll iOS và pull-to-refresh Android ở cấp độ trang */
+html, body {
+  width: 100%;
+  height: 100%;
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y; 
+}
+
+/* Đóng vai trò làm viewport mới, cuộn độc lập bên trong màn hình đã khóa */
 #root {
   max-width: 100%;
   margin: 0 auto;
@@ -128,7 +139,15 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch; /* Giúp cuộn mượt mà trên thiết bị iOS cũ */
+  overscroll-behavior: none;
+  touch-action: pan-x pan-y; 
 }
+
 
 body {
   margin: 0;

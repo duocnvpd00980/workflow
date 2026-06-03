@@ -1,19 +1,15 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { 
-  Zap, History, Settings, BarChart3, MenuIcon, MessageSquarePlus,
-  BrainCircuit, UploadCloud, Globe, Search, Database, FileText, 
-  RefreshCw, Trash2, Link2, Plus, CheckCircle2, AlertCircle, HelpCircle,
-  ToggleLeft, ToggleRight, ArrowUpRight, HardDrive, ShieldCheck
+import { MenuIcon, UploadCloud, Globe, Search, Database, FileText, 
+  RefreshCw, Trash2, Link2, Plus, AlertCircle,
+  ToggleLeft, ToggleRight, ShieldCheck
 } from "lucide-react";
 import { useState, useMemo } from "react";
-import { fetchConversations, queryKeys, type Conv } from "../lib/api";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
-import SidebarNav from "@/components/layout/navbar";
+import SidebarNav from "@/layout/navbar";
 
 // ─── Mock Data Hệ Thống RAG ─────────────────────────────────────────────────
 const MOCK_KNOWLEDGE_SOURCES = [
@@ -39,12 +35,6 @@ export default function KnowledgePage() {
   const [enableGoogleSearch, setEnableGoogleSearch] = useState(true);
   const [enableTavily, setEnableTavily] = useState(false);
 
-  // Đồng bộ danh sách từ API thực tế ở sidebar trái
-  const { data: conversations = [] } = useQuery<Conv[]>({
-    queryKey: queryKeys.conversations,
-    staleTime: 30_000,
-  });
-
   // Lọc nguồn dữ liệu tri thức
   const filteredSources = useMemo(() => {
     return MOCK_KNOWLEDGE_SOURCES.filter(src => {
@@ -53,10 +43,6 @@ export default function KnowledgePage() {
       return matchesSearch && matchesTab;
     });
   }, [searchQuery, activeTab]);
-
-  const selectedSource = useMemo(() => {
-    return MOCK_KNOWLEDGE_SOURCES.find(src => src.id === selectedSrcId) || MOCK_KNOWLEDGE_SOURCES[0];
-  }, [selectedSrcId]);
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#fafbfc] text-slate-900 select-none antialiased font-sans">

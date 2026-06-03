@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 import uuid
 from typing import AsyncGenerator
 
@@ -24,12 +25,47 @@ NODE_LABELS: dict[str, str] = {
     "input_guard":      "Kiểm duyệt đầu vào",
     "heuristic_router": "Định tuyến",
     "cache_read":       "Đọc cache",
+    "knowledge_base":   "Knowledge",
     "knowledgebase":    "Knowledge",
     "relevance_check":  "Đánh giá",
     "generation":       "Sinh câu trả lời",
     "fallback_search":  "Tìm kiếm dự phòng",
     "output_guard":     "Kiểm duyệt đầu ra",
+    "cache_write":      "Ghi cache",
     "final_response":   "Hoàn tất",
+}
+
+
+# ── Plan builder ──────────────────────────────────────────
+
+PLANS: dict[str, list[dict]] = {
+    "rag_knowledge": [
+        {"id": "input_guard", "label": "Kiểm duyệt đầu vào"},
+        {"id": "heuristic_router", "label": "Định tuyến"},
+        {"id": "cache_read", "label": "Đọc cache"},
+        {"id": "knowledge_base", "label": "Knowledge"},
+        {"id": "relevance_check", "label": "Đánh giá"},
+        {"id": "generation", "label": "Sinh câu trả lời"},
+        {"id": "output_guard", "label": "Kiểm duyệt đầu ra"},
+        {"id": "cache_write", "label": "Ghi cache"},
+        {"id": "final_response", "label": "Hoàn tất"},
+    ],
+    "smalltalk": [
+        {"id": "input_guard", "label": "Kiểm duyệt đầu vào"},
+        {"id": "heuristic_router", "label": "Định tuyến"},
+        {"id": "cache_read", "label": "Đọc cache"},
+        {"id": "final_response", "label": "Hoàn tất"},
+    ],
+    "fallback_search": [
+        {"id": "input_guard", "label": "Kiểm duyệt đầu vào"},
+        {"id": "heuristic_router", "label": "Định tuyến"},
+        {"id": "cache_read", "label": "Đọc cache"},
+        {"id": "fallback_search", "label": "Tìm kiếm dự phòng"},
+        {"id": "generation", "label": "Sinh câu trả lời"},
+        {"id": "output_guard", "label": "Kiểm duyệt đầu ra"},
+        {"id": "cache_write", "label": "Ghi cache"},
+        {"id": "final_response", "label": "Hoàn tất"},
+    ],
 }
 
 
@@ -50,10 +86,13 @@ def _read(obj: object | dict, key: str, default=None):
     return getattr(obj, key, default)
 
 def _to_uuid(val: str | uuid.UUID) -> uuid.UUID:
-    """Chuyển str hoặc UUID về uuid.UUID an toàn."""
     if isinstance(val, uuid.UUID):
         return val
     return uuid.UUID(val)
+
+def _build_plan(route_to: str) -> list[dict]:
+    """Tạo plan từ route_to. Fallback về rag_knowledge nếu không match."""
+    return PLANS.get(route_to, PLANS["rag_knowledge"])
 
 
 # ── Result builder ────────────────────────────────────────
@@ -93,9 +132,6 @@ def _build_result(snapshot, pipeline_error: Exception | None) -> dict:
 
     fr = state.get("final_response")
 
-    log.debug("[_build_result] state keys=%s", list(state.keys()))
-    log.debug("[_build_result] final_response type=%s", type(fr))
-
     if fr is None:
         return {
             "status":        "error",
@@ -112,8 +148,6 @@ def _build_result(snapshot, pipeline_error: Exception | None) -> dict:
         }
 
     payload = _read(fr, "payload")
-
-    log.debug("[_build_result] payload type=%s", type(payload))
 
     if payload is None:
         return {
@@ -136,13 +170,6 @@ def _build_result(snapshot, pipeline_error: Exception | None) -> dict:
     bf_state   = _read(payload, "state",   {})
     bf_metrics = _read(payload, "metrics", {})
     bf_error   = _read(payload, "error",   None)
-
-    log.debug(
-        "[_build_result] bf_status=%s text_len=%d source=%s confidence=%s",
-        bf_status, len(bf_text),
-        bf_state.get("answer_source", "?"),
-        bf_state.get("confidence", "?"),
-    )
 
     finish_reason = bf_state.get("finish_reason", "")
     if bf_status == "SUCCESS":
@@ -177,7 +204,7 @@ async def _save_user_msg(
     db: AsyncSession, conv_id: uuid.UUID, content: str, msg_id: str,
 ) -> None:
     db.add(Message(
-        id=_to_uuid(msg_id),        # ← str → uuid.UUID
+        id=_to_uuid(msg_id),
         conversation_id=conv_id,
         role="user",
         status="completed",
@@ -190,7 +217,7 @@ async def _save_assistant_pending(
     db: AsyncSession, conv_id: uuid.UUID, msg_id: str,
 ) -> None:
     db.add(Message(
-        id=_to_uuid(msg_id),        # ← str → uuid.UUID
+        id=_to_uuid(msg_id),
         conversation_id=conv_id,
         role="assistant",
         status="streaming",
@@ -203,7 +230,7 @@ async def _update_msg(db: AsyncSession, msg_id: str, result: dict) -> None:
     db_status = "completed" if result["status"] in ("success", "fallback", "review") else "error"
     await db.execute(
         update(Message)
-        .where(Message.id == _to_uuid(msg_id))  # ← str → uuid.UUID
+        .where(Message.id == _to_uuid(msg_id))
         .values(
             content    = result.get("text", ""),
             status     = db_status,
@@ -259,6 +286,13 @@ async def _run_stream(
         "recursion_limit": _RECURSION_LIMIT,
     }
 
+    # ── EMIT agent_start ──────────────────────────────────
+    yield _sse("agent_start", {
+        "message": "Đang phân tích yêu cầu của bạn...",
+        "run_id": thread_id,
+        "timestamp": time.time(),
+    })
+
     try:
         async with asyncio.timeout(_TIMEOUT):
             async for chunk in main_v7.astream(graph_input, config=config):
@@ -285,27 +319,79 @@ async def _run_stream(
                 for key in chunk:
                     if not key.startswith("__"):
                         step += 1
+
+                        # ── EMIT step_start ─────────────────────────────
+                        yield _sse("step_start", {
+                            "step_id": key,
+                            "step_label": _node_label(key),
+                            "order": step,
+                            "timestamp": time.time(),
+                        })
+
+                        # ── EMIT node (giữ nguyên) ─────────────────────
                         yield _sse("node", {"label": _node_label(key), "step": step})
 
-                        try:
-                            snapshot   = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
-                            node_frame = snapshot.values.get(key) if snapshot else None
+                        # ── EMIT node_detail ───────────────────────────
+                        payload = None
+                        node_data = chunk[key]
+                        timestamp = time.time()
 
-                            if node_frame:
-                                payload = _read(node_frame, "payload")
-                                if payload:
-                                    yield _sse("node_detail", {
-                                        "node_id":    key,
-                                        "node_label": _node_label(key),
-                                        "step":       step,
-                                        "status":     _read(payload, "status",  "UNKNOWN"),
-                                        "text":       _read(payload, "text",    ""),
-                                        "state":      _read(payload, "state",   {}),
-                                        "metrics":    _read(payload, "metrics", {}),
-                                        "timestamp":  getattr(node_frame, "timestamp", None),
-                                    })
+                        # Thử 1: Trích từ chunk trực tiếp
+                        try:
+                            if isinstance(node_data, dict):
+                                if "payload" in node_data:
+                                    payload = node_data["payload"]
+                                    timestamp = node_data.get("timestamp", timestamp)
+                                elif "status" in node_data:
+                                    payload = node_data
+                            elif hasattr(node_data, "payload"):
+                                payload = node_data.payload
+                                timestamp = getattr(node_data, "timestamp", timestamp)
                         except Exception:
-                            log.warning("[_run_stream] failed to get node_detail for %s", key, exc_info=True)
+                            pass
+
+                        # Thử 2: Fallback aget_state
+                        if not payload:
+                            try:
+                                snapshot = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
+                                node_frame = snapshot.values.get(key) if snapshot else None
+                                if node_frame:
+                                    payload = _read(node_frame, "payload")
+                                    timestamp = getattr(node_frame, "timestamp", timestamp)
+                            except Exception:
+                                log.warning("[_run_stream] fallback aget_state failed for %s", key)
+
+                        if payload:
+                            yield _sse("node_detail", {
+                                "node_id":    key,
+                                "node_label": _node_label(key),
+                                "step":       step,
+                                "status":     _read(payload, "status",  "UNKNOWN"),
+                                "text":       _read(payload, "text",    ""),
+                                "state":      _read(payload, "state",   {}),
+                                "metrics":    _read(payload, "metrics", {}),
+                                "timestamp":  timestamp,
+                                "duration_ms": 0,
+                            })
+
+                        # ── EMIT agent_plan từ heuristic_router ─
+                        if key == "heuristic_router":
+                            try:
+                                snapshot = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
+                                hr_frame = snapshot.values.get("heuristic_router") if snapshot else None
+                                if hr_frame:
+                                    hr_payload = _read(hr_frame, "payload")
+                                    if hr_payload:
+                                        route_to = _read(hr_payload, "state", {}).get("route_to", "rag_knowledge")
+                                        plan_steps = _build_plan(route_to)
+                                        yield _sse("agent_plan", {
+                                            "message": f"Đã phân tích yêu cầu. Tôi sẽ thực hiện {len(plan_steps)} bước:",
+                                            "steps": plan_steps,
+                                            "route_to": route_to,
+                                            "timestamp": time.time(),
+                                        })
+                            except Exception:
+                                log.warning("[_run_stream] failed to emit agent_plan", exc_info=True)
 
     except asyncio.TimeoutError:
         log.error("[stream] timeout thread=%s", thread_id)
@@ -314,6 +400,7 @@ async def _run_stream(
         log.exception("[stream] crash thread=%s", thread_id)
         pipeline_error = e
 
+    # ── Final result ──────────────────────────────────────
     try:
         snapshot = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
     except Exception:
