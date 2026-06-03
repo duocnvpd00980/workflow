@@ -359,6 +359,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const initDone = useRef(false);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
 
   // ── Fetch history ──────────────────────────────────────────────────────────
   const { data: historyData } = useQuery({
@@ -420,7 +421,14 @@ export default function ChatPage() {
   const isLoading = status === "streaming";
   const selected = useMemo(() => MODELS.find((m) => m.id === model) ?? MODELS[0], [model]);
   const isEmpty = messages.length === 0 && !isLoading && !isLoadingHistory;
-
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      messagesContainerRef.current?.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    });
+  }, [messages.at(-1)?.text]);
   // ── Handlers ───────────────────────────────────────────────────────────────
   const submit = useCallback(
     (text: string) => {
@@ -498,10 +506,10 @@ export default function ChatPage() {
 
 
       {/* ── Main Content ── */}
-      <main className="flex-1 flex flex-col min-w-0 bg-slate-50/60 overflow-hidden relative">
+      <main className="flex-1 flex flex-col min-w-0 bg-slate-50/60 overflow-hidden relative min-h-sreen">
 
         {/* Header */}
-        <header className="h-14 bg-white border-b flex items-center justify-between px-6 shrink-0 z-10 shadow-xs">
+        <header className="h-14 bg-white border-b flex items-center justify-between px-6 shrink-0 z-10 shadow-xs h-[8vh]">
           <div className="flex items-center gap-3 min-w-0">
             <Sheet>
               <SheetTrigger asChild>
@@ -553,7 +561,10 @@ export default function ChatPage() {
         </header>
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 h-full">
+        <div
+            ref={messagesContainerRef}
+            className="flex-1 overflow-y-auto p-6 space-y-6 h-[72vh]"
+          >
           <div className="max-w-[800px] mx-auto space-y-6">
 
             {isLoadingHistory && (
@@ -593,9 +604,9 @@ export default function ChatPage() {
         </div>
 
         {/* Prompt Input */}
-        <div className="shrink-0 border-t bg-white p-4 shadow-xl">
+        <div className="shrink-0 border-t bg-white p-4 shadow-xl md:h-[28vh] max-h-[150px] h-[42vh] fixed bottom-0 left-0 right-0 w-full md:static">
           <div className="max-w-[800px] mx-auto flex flex-col gap-3 mb-8">
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex-wrap gap-1.5 hidden md:flex">
               {[
                 { icon: <Sparkles size={12} className="text-amber-500" />, label: "Làm nhanh hơn" },
                 { icon: <Sparkles size={12} className="text-red-500" />, label: "Focus vào AI Agentic" },

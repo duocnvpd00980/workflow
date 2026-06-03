@@ -54,3 +54,37 @@ sudo systemctl daemon-reload
 sudo systemctl enable ngrok
 sudo systemctl restart ngrok
 sudo systemctl status ngrok
+
+
+
+
+
+sudo systemctl status nginx
+sudo systemctl restart nginx
+sudo nano /etc/nginx/sites-available/nginx_gateway.conf
+
+
+server {
+    listen 80;
+    server_name localhost;
+
+    # 1. Đường dẫn đến thư mục chứa UI tĩnh (Frontend)
+    location / {
+        root /home/duoc/workflow/ui/dist;
+        index index.html index.htm;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # 2. Đường dẫn Reverse Proxy sang API (FastAPI cổng 8000)
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+
+
+sudo ln -s /etc/nginx/sites-available/nginx_gateway.conf /etc/nginx/sites-enabled/
