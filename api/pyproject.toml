@@ -40,6 +40,7 @@ dependencies = [
     "ddgs>=9.14.4",
     "nodriver>=0.50.3",
     "beautifulsoup4>=4.14.3",
+    "groq>=1.4.0",
 ]
 
 [dependency-groups]

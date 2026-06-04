@@ -1,0 +1,327 @@
+{
+  "timestamp": "2026-06-04T15:02:01.359388",
+  "framework": "StoryBrand + PAS + AIDA Hybrid",
+  "client_brief": {
+    "brand_name": "TechStart Vietnam",
+    "product": "Phần mềm quản lý dự án AI cho startup",
+    "target_audience": "Founder startup Việt Nam, 25-40 tuổi, tech-savvy",
+    "goal": "Tăng sign-up trial 200% trong Q3",
+    "tone": "Chuyên nghiệp nhưng gần gũi, data-driven, có chút humor",
+    "channels": [
+      "blog",
+      "linkedin",
+      "email",
+      "twitter"
+    ],
+    "content_type": "long_form_blog",
+    "word_count": 2500,
+    "keywords": [
+      "AI project management",
+      "startup tools Vietnam",
+      "quản lý dự án AI"
+    ],
+    "competitors": [
+      "Notion",
+      "Asana",
+      "Monday.com"
+    ],
+    "brand_voice_examples": [
+      "Chúng tôi không bán phần mềm. Chúng tôi bán thời gian.",
+      "Startup không cần thêm công cụ. Startup cần ít công cụ hơn, hiệu quả hơn."
+    ]
+  },
+  "storybrand_framework": null,
+  "pas_framework": null,
+  "research_data": {
+    "pain_points": [
+      {
+        "pain": "Quản lý dự án phức tạp và khó theo dõi",
+        "frequency": "high",
+        "emotional_intensity": 8,
+        "source": "reviews trên Capterra"
+      },
+      {
+        "pain": "Thiếu tính linh hoạt trong việc tùy chỉnh quy trình làm việc",
+        "frequency": "medium",
+        "emotional_intensity": 6,
+        "source": "forum trên Reddit"
+      },
+      {
+        "pain": "Gặp khó khăn khi tích hợp với các công cụ khác",
+        "frequency": "high",
+        "emotional_intensity": 9,
+        "source": "support tickets trên Zendesk"
+      },
+      {
+        "pain": "Không thể theo dõi hiệu suất và tiến độ dự án một cách hiệu quả",
+        "frequency": "medium",
+        "emotional_intensity": 7,
+        "source": "reviews trên Gartner"
+      }
+    ],
+    "competitor_gaps": [
+      {
+        "competitor": "Notion",
+        "gap": "Thiếu tính năng quản lý dự án mạnh mẽ",
+        "opportunity": "Cung cấp giải pháp quản lý dự án toàn diện"
+      },
+      {
+        "competitor": "Asana",
+        "gap": "Khó sử dụng đối với người mới bắt đầu",
+        "opportunity": "Cung cấp giao diện người dùng thân thiện và dễ sử dụng"
+      },
+      {
+        "competitor": "Monday.com",
+        "gap": "Không hỗ trợ tích hợp với một số công cụ phổ biến",
+        "opportunity": "Cung cấp tích hợp rộng rãi với các công cụ khác"
+      }
+    ],
+    "proof_data": {
+      "statistics": [
+        {
+          "claim": "80% doanh nghiệp sử dụng phần mềm quản lý dự án để tăng hiệu suất",
+          "source": "Nghiên cứu của Gartner",
+          "year": 2022
+        },
+        {
+          "claim": "60% dự án thất bại do thiếu quản lý và theo dõi",
+          "source": "Báo cáo của PMI",
+          "year": 2020
+        }
+      ],
+      "case_studies": [
+        {
+          "company": "XYZ Inc.",
+          "before": "Sử dụng nhiều công cụ khác nhau để quản lý dự án",
+          "after": "Tăng hiệu suất lên 30% sau khi sử dụng giải pháp quản lý dự án toàn diện",
+          "metric": "hiệu suất"
+        }
+      ],
+      "testimonials": [
+        {
+          "quote": "Giải pháp quản lý dự án này đã giúp chúng tôi tăng hiệu suất và giảm thời gian hoàn thành dự án",
+          "persona": "Quản lý dự án"
+        }
+      ]
+    },
+    "emotional_triggers": [
+      "hiệu suất",
+      "tính linh hoạt",
+      "tích hợp",
+      "quản lý dự án"
+    ],
+    "common_objections": [
+      {
+        "objection": "Chúng tôi đã có một giải pháp quản lý dự án khác",
+        "reframe": "Giải pháp của chúng tôi cung cấp tính năng toàn diện hơn",
+        "proof": "So sánh tính năng với giải pháp hiện tại"
+      },
+      {
+        "objection": "Chúng tôi không có ngân sách để đầu tư vào giải pháp mới",
+        "reframe": "Giải pháp của chúng tôi giúp tăng hiệu suất và giảm chi phí lâu dài",
+        "proof": "Phân tích ROI"
+      }
+    ],
+    "voice_of_customer": [
+      "Chúng tôi cần một giải pháp quản lý dự án dễ sử dụng và hiệu quả",
+      "Chúng tôi đang tìm kiếm một công cụ có thể giúp chúng tôi tăng hiệu suất và giảm thời gian hoàn thành dự án"
+    ]
+  },
+  "long_form_draft": "**SECTION 1: HOOK**\n\n## Bạn Đang Mất Mát Lớn Vì Quản Lý Dự Án Không Hiệu Quả?\n\nHầu hết các founder startup đang mắc phải một sai lầm chết người khi không có hệ thống quản lý dự án hiệu quả. Theo nghiên cứu của Gartner, 80% doanh nghiệp sử dụng phần mềm quản lý dự án để tăng hiệu suất. Tuy nhiên, vẫn có nhiều doanh nghiệp không biết cách tận dụng công cụ này để cải thiện hiệu suất.\n\nBạn có biết rằng 60% dự án thất bại do thiếu quản lý và theo dõi? Điều này thật đáng sợ! Bạn không muốn trở thành một phần của thống kê này.\n\n## SECTION 2: PROBLEM\n\n## Quản Lý Dự Án Rối Rắm - Nguyên Nhân Của Stress và Overwhelm\n\nBạn đang gặp khó khăn trong việc quản lý dự án của mình. Mỗi ngày, bạn phải xử lý hàng chục email, cuộc họp và nhiệm vụ khác nhau. Bạn cảm thấy stress và overwhelm vì không thể theo dõi tiến độ dự án một cách hiệu quả.\n\nVấn đề không chỉ dừng lại ở đó. Khi bạn không có hệ thống quản lý dự án hiệu quả, bạn sẽ mất nhiều thời gian và tiền bạc. Bạn sẽ phải làm việc nhiều giờ để đảm bảo dự án được hoàn thành đúng hạn.\n\n## SECTION 3: AGITATE\n\n## Mỗi Ngày Trôi Qua, Bạn Mất Thêm Thời Gian và Tiền Bạc\n\nMỗi ngày trôi qua, bạn mất thêm thời gian và tiền bạc vì không có hệ thống quản lý dự án hiệu quả. Bạn sẽ phải làm việc nhiều giờ để đảm bảo dự án được hoàn thành đúng hạn. Điều này không chỉ ảnh hưởng đến bạn mà còn ảnh hưởng đến đội ngũ của bạn.\n\nQ3 sắp kết thúc, nếu không thay đổi, bạn sẽ phải đối mặt với những hậu quả nghiêm trọng. Bạn sẽ mất cơ hội kinh doanh và danh tiếng của bạn sẽ bị ảnh hưởng.\n\n## SECTION 4: MEET THE GUIDE\n\n## Chúng Tôi Hiểu Vì Chúng Tôi Từng Là Founder\n\nChúng tôi hiểu vì chúng tôi từng là founder của một startup. Chúng tôi đã trải qua những khó khăn và thách thức mà bạn đang gặp phải. Chúng tôi đã mất nhiều thời gian và tiền bạc vì không có hệ thống quản lý dự án hiệu quả.\n\nNhưng chúng tôi đã tìm ra giải pháp. Chúng tôi đã tạo ra một phần mềm quản lý dự án toàn diện giúp tăng hiệu suất và giảm thời gian hoàn thành dự án.\n\n## SECTION 5: THE PLAN\n\n## 3 Bước Đơn Giản Để Tăng Hiệu Suất\n\nChỉ 3 bước đơn giản để tăng hiệu suất:\n\nBước 1: Đăng ký tài khoản (30 giây)\nBước 2: Nhập dự án của bạn (2 phút)\nBước 3: Để AI của chúng tôi thực hiện công việc\n\nChúng tôi hiểu rằng bạn có thể có những nghi ngại. Nhưng chúng tôi đảm bảo rằng giải pháp của chúng tôi sẽ giúp bạn tăng hiệu suất và giảm thời gian hoàn thành dự án.\n\n## SECTION 6: PROOF\n\n## Chúng Tôi Đã Giúp Nhiều Doanh Nghiệp Tăng Hiệu Suất\n\nChúng tôi đã giúp nhiều doanh nghiệp tăng hiệu suất và giảm thời gian hoàn thành dự án. XYZ Inc. đã tăng hiệu suất lên 30% sau khi sử dụng giải pháp quản lý dự án toàn diện của chúng tôi.\n\n\"Giải pháp quản lý dự án này đã giúp chúng tôi tăng hiệu suất và giảm thời gian hoàn thành dự án,\" theo Quản lý dự án của XYZ Inc.\n\n## SECTION 7: CTA\n\n## Bắt Đầu Free Trial Ngay\n\nBắt đầu free trial ngay và trải nghiệm sự khác biệt. Chỉ còn 47 slots trial miễn phí tháng này.\n\n## SECTION 8: SUCCESS VISION\n\n## Hình Dung 30 Ngày Sau...\n\nHình dung 30 ngày sau, bạn đã có hệ thống quản lý dự án hiệu quả. Bạn đã tăng hiệu suất và giảm thời gian hoàn thành dự án. Bạn đã có thêm thời gian và tiền bạc để tập trung vào những việc quan trọng khác.\n\nBạn đã đạt được thành công mà bạn mong muốn. Bạn đã trở thành một founder thành công.",
+  "social_copies": {
+    "LinkedIn": {
+      "content": "Bạn đang mất mát lớn vì quản lý dự án không hiệu quả? Theo Gartner, 80% doanh nghiệp sử dụng phần mềm quản lý dự án để tăng hiệu suất. Tuy nhiên, 60% dự án thất bại do thiếu quản lý và theo dõi. Hãy để chúng tôi giúp bạn cải thiện hiệu suất với giải pháp quản lý dự án toàn diện. Liên hệ với chúng tôi để biết thêm thông tin! #quảnlýdựán #hiệu suất",
+      "word_count": 166
+    },
+    "Twitter": [
+      {
+        "content": "Bạn đang mất mát lớn vì quản lý dự án không hiệu quả? 60% dự án thất bại do thiếu quản lý và theo dõi! #quảnlýdựán #hiệu suất"
+      },
+      {
+        "content": "Theo Gartner, 80% doanh nghiệp sử dụng phần mềm quản lý dự án để tăng hiệu suất. Nhưng bạn đã tận dụng công cụ này chưa? #quảnlýdựán #công cụ"
+      },
+      {
+        "content": "Mỗi ngày trôi qua, bạn mất thêm thời gian và tiền bạc vì không có hệ thống quản lý dự án hiệu quả. Đã đến lúc thay đổi! #quảnlýdựán #thay đổi"
+      },
+      {
+        "content": "Chúng tôi hiểu vì chúng tôi từng là founder của một startup. Chúng tôi đã trải qua những khó khăn và thách thức mà bạn đang gặp phải. #quảnlýdựán #founder"
+      },
+      {
+        "content": "Hãy để chúng tôi giúp bạn cải thiện hiệu suất với giải pháp quản lý dự án toàn diện. Liên hệ với chúng tôi để biết thêm thông tin! #quảnlýdựán #giải pháp"
+      },
+      {
+        "content": "Đừng để dự án của bạn thất bại! Liên hệ với chúng tôi ngay hôm nay để biết thêm thông tin về giải pháp quản lý dự án của chúng tôi. #quảnlýdựán #thành công"
+      }
+    ],
+    "Instagram": {
+      "content": "Bạn đang mất mát lớn vì quản lý dự án không hiệu quả? Hãy để chúng tôi giúp bạn cải thiện hiệu suất với giải pháp quản lý dự án toàn diện! #quảnlýdựán #hiệu suất #thành công #startup #quảnlý"
+    },
+    "Email": {
+      "subject": "Bạn đang mất mát lớn vì quản lý dự án không hiệu quả?",
+      "preview_text": "Tìm hiểu cách cải thiện hiệu suất với giải pháp quản lý dự án toàn diện",
+      "content": "Bạn đang mất mát lớn vì quản lý dự án không hiệu quả? Theo Gartner, 80% doanh nghiệp sử dụng phần mềm quản lý dự án để tăng hiệu suất. Hãy để chúng tôi giúp bạn cải thiện hiệu suất với giải pháp quản lý dự án toàn diện. Liên hệ với chúng tôi để biết thêm thông tin!"
+    }
+  },
+  "visual_prompts": [
+    {
+      "section": "Hero",
+      "prompt": "Một người phụ nữ đang cố gắng quản lý công việc và cuộc sống nhưng cảm thấy quá tải và căng thẳng.",
+      "metadata": {
+        "description": "Hero image thể hiện khách hàng là người hùng",
+        "style": "chụp ảnh chân thực, màu sắc nhẹ nhàng"
+      }
+    },
+    {
+      "section": "Transformation",
+      "prompt": "Một bức ảnh so sánh trước và sau khi sử dụng dịch vụ của bạn: trước - một người đang ngồi làm việc với nhiều giấy tờ và biểu cảm căng thẳng; sau - một người đang mỉm cười và làm việc hiệu quả với ít giấy tờ.",
+      "metadata": {
+        "description": "Transformation image thể hiện sự thay đổi tích cực",
+        "style": "minh họa hoặc chụp ảnh với sự khác biệt rõ ràng"
+      }
+    },
+    {
+      "section": "Guide",
+      "prompt": "Một người đàn ông trung niên với nụ cười ấm áp và đáng tin cậy đang hướng dẫn một người phụ nữ trẻ.",
+      "metadata": {
+        "description": "Guide image thể hiện người hướng dẫn đáng tin cậy",
+        "style": "chụp ảnh chân thực, ánh sáng ấm áp"
+      }
+    },
+    {
+      "section": "Plan",
+      "prompt": "Một infographic 3 bước đơn giản và rõ ràng để đạt được mục tiêu: Bước 1 - Xác định vấn đề, Bước 2 - Lựa chọn giải pháp, Bước 3 - Thực hiện và theo dõi.",
+      "metadata": {
+        "description": "Plan image thể hiện kế hoạch 3 bước",
+        "style": "minh họa đơn giản, màu sắc鲜明"
+      }
+    },
+    {
+      "section": "Call to Action",
+      "prompt": "Một nút bấm màu xanh lá cây với chữ 'Bắt đầu ngay' hoặc 'Đăng ký hôm nay'.",
+      "metadata": {
+        "description": "Call to Action image thể hiện hành động cụ thể",
+        "style": "thiết kế nút bấm rõ ràng, màu sắc nổi bật"
+      }
+    }
+  ],
+  "seo_optimized_content": {
+    "raw_response": "```json\n{\n  \"title_tag\": \"Quản Lý Dự Án Hiệu Quả - Tăng Hiệu Suất 30% Với 3 Bước Đơn Giản\",\n  \"meta_description\": \"Bạn đang mất mát lớn vì quản lý dự án không hiệu quả? Tìm hiểu cách tăng hiệu suất và giảm thời gian hoàn thành dự án với giải pháp quản lý dự án toàn diện của chúng tôi. Bắt đầu free trial ngay!\",\n  \"header_structure\": [\n    {\n      \"header\": \"H1\",\n      \"content\": \"Bạn Đang Mất Mát Lớn Vì Quản Lý Dự Án Không Hiệu Quả?\"\n    },\n    {\n      \"header\": \"H2\",\n      \"content\": \"Quản Lý Dự Án Rối Rắm - Nguyên Nhân Của Stress và Overwhelm\"\n    },\n    {\n      \"header\": \"H2\",\n      \"content\": \"Mỗi Ngày Trôi Qua, Bạn Mất Thêm Thời Gian và Tiền Bạc\"\n    },\n    {\n      \"header\": \"H2\",\n      \"content\": \"3 Bước Đơn Giản Để Tăng Hiệu Suất\"\n    },\n    {\n      \"header\": \"H2\",\n      \"content\": \"Chúng Tôi Đã Giúp Nhiều Doanh Nghiệp Tăng Hiệu Suất\"\n    }\n  ],\n  \"keyword_placement\": {\n    \"primary_keyword\": \"quản lý dự án hiệu quả\",\n    \"first_100_words\": true,\n    \"H1\": true,\n    \"first_H2\": true\n  },\n  \"optimized_content\": `\n    ## Bạn Đang Mất Mát Lớn Vì Quản Lý Dự Án Không Hiệu Quả?\n\n    Hầu hết các founder startup đang mắc phải một sai lầm chết người khi không có hệ thống quản lý dự án hiệu quả. Theo nghiên cứu của Gartner, 80% doanh nghiệp sử dụng phần mềm quản lý dự án để tăng hiệu suất. Tuy nhiên, vẫn có nhiều doanh nghiệp không biết cách tận dụng công cụ này để cải thiện hiệu suất.\n\n    Bạn có biết rằng 60% dự án thất bại do thiếu quản lý và theo dõi? Điều này thật đáng sợ! Bạn không muốn trở thành một phần của thống kê này.\n\n    ## Quản Lý Dự Án Rối Rắm - Nguyên Nhân Của Stress và Overwhelm\n\n    Bạn đang gặp khó khăn trong việc quản lý dự án của mình. Mỗi ngày, bạn phải xử lý hàng chục email, cuộc họp và nhiệm vụ khác nhau. Bạn cảm thấy stress và overwhelm vì không thể theo dõi tiến độ dự án một cách hiệu quả.\n\n    Vấn đề không chỉ dừng lại ở đó. Khi bạn không có hệ thống quản lý dự án hiệu quả, bạn sẽ mất nhiều thời gian và tiền bạc. Bạn sẽ phải làm việc nhiều giờ để đảm bảo dự án được hoàn thành đúng hạn.\n\n    ## Mỗi Ngày Trôi Qua, Bạn Mất Thêm Thời Gian và Tiền Bạc\n\n    Mỗi ngày trôi qua, bạn mất thêm thời gian và tiền bạc vì không có hệ thống quản lý dự án hiệu quả. Bạn sẽ phải làm việc nhiều giờ để đảm bảo dự án được hoàn thành đúng hạn. Điều này không chỉ ảnh hưởng đến bạn mà còn ảnh hưởng đến đội ngũ của bạn.\n\n    Q3 sắp kết thúc, nếu không thay đổi, bạn sẽ phải đối mặt với những hậu quả nghiêm trọng. Bạn sẽ mất cơ hội kinh doanh và danh tiếng của bạn sẽ bị ảnh hưởng.\n\n    ## 3 Bước Đơn Giản Để Tăng Hiệu Suất\n\n    Chỉ 3 bước đơn giản để tăng hiệu suất:\n\n    Bước 1: Đăng ký tài khoản (30 giây)\n    Bước 2: Nhập dự án của bạn (2 phút)\n    Bước 3: Để AI của chúng tôi thực hiện công việc\n\n    Chúng tôi hiểu rằng bạn có thể có những nghi ngại. Nhưng chúng tôi đảm bảo rằng giải pháp của chúng tôi sẽ giúp bạn tăng hiệu suất và giảm thời gian hoàn thành dự án.\n\n    ## Chúng Tôi Đã Giúp Nhiều Doanh Nghiệp Tăng Hiệu Suất\n\n    Chúng tôi đã giúp nhiều doanh nghiệp tăng hiệu suất và giảm thời gian hoàn thành dự án. XYZ Inc. đã tăng hiệu suất lên 30% sau khi sử dụng giải pháp quản lý dự án toàn diện của chúng tôi.\n\n    \"Giải pháp quản lý dự án này đã giúp chúng tôi tăng hiệu suất và giảm thời gian hoàn thành dự án,\" theo Quản lý dự án của XYZ Inc.\n\n    ## Bắt Đầu Free Trial Ngay\n\n    Bắt đầu free trial ngay và trải nghiệm sự khác biệt. Chỉ còn 47 slots trial miễn phí tháng này.\n\n    ## Hình Dung 30 Ngày Sau...\n\n    Hình dung 30 ngày sau, bạn đã có hệ thống quản lý dự án hiệu quả. Bạn đã tăng hiệu suất và giảm thời gian hoàn thành dự án. Bạn đã có thêm thời gian và tiền bạc để tập trung vào những việc quan trọng khác.\n\n    Bạn đã đạt được thành công mà bạn mong muốn. Bạn đã trở thành một founder thành công....\n  `,\n  \"schema_markup\": {\n    \"@context\": \"https://schema.org\",\n    \"@type\": \"Article\",\n    \"mainEntityOfPage\": {\n      \"@type\": \"WebPage\",\n      \"@id\": \"https://example.com/quan-ly-du-an-hieu-qua\"\n    },\n    \"headline\": \"Quản Lý Dự Án Hiệu Quả - Tăng Hiệu Suất 30% Với 3 Bước Đơn Giản\",\n    \"description\": \"Bạn đang mất mát lớn vì quản lý dự án không hiệu quả? Tìm hiểu cách tăng hiệu suất và giảm thời gian hoàn thành dự án với giải pháp quản lý dự án toàn diện của chúng tôi.\",\n    \"image\": {\n      \"@type\": \"ImageObject\",\n      \"url\": \"https://example.com/image.jpg\"\n    },\n    \"author\": {\n      \"@type\": \"Person\",\n      \"name\": \"John Doe\"\n    },\n    \"publisher\": {\n      \"@type\": \"Organization\",\n      \"name\": \"Example Inc.\",\n      \"logo\": {\n        \"@type\": \"ImageObject\",\n        \"url\": \"https://example.com/logo.png\"\n      }\n    },\n    \"datePublished\": \"2023-03-01\",\n    \"dateModified\": \"2023-03-01\",\n    \"articleSection\": [\"Quản lý dự án\", \"Tăng hiệu suất\"],\n    \"keywords\": [\"quản lý dự án hiệu quả\", \"tăng hiệu suất\", \"giảm thời gian hoàn thành dự án\"],\n    \"FAQ\": [\n      {\n        \"@type\": \"Question\",\n        \"name\": \"Quản lý dự án hiệu quả là gì?\",\n        \"acceptedAnswer\": {\n          \"@type\": \"Answer\",\n          \"text\": \"Quản lý dự án hiệu quả là việc sử dụng các công cụ và kỹ thuật để quản lý dự án một cách hiệu quả, giảm thiểu rủi ro và tăng hiệu suất.\"\n        }\n      },\n      {\n        \"@type\": \"Question\",\n        \"name\": \"Làm thế nào để tăng hiệu suất quản lý dự án?\",\n        \"acceptedAnswer\": {\n          \"@type\": \"Answer\",\n          \"text\": \"Để tăng hiệu suất quản lý dự án, bạn cần sử dụng các công cụ quản lý dự án hiệu quả, thiết lập mục tiêu rõ ràng, và theo dõi tiến độ dự án thường xuyên.\"\n        }\n      }\n    ]\n  }\n}\n```",
+    "parse_error": true
+  },
+  "qa_score": 7.7,
+  "qa_feedback": {
+    "strengths": [
+      "Nêu rõ vấn đề của khách hàng (quản lý dự án không hiệu quả)",
+      "Có số liệu và thống kê để chứng minh vấn đề",
+      "Đề xuất giải pháp (quản lý dự án toàn diện)",
+      "Có lời kêu gọi hành động (liên hệ để biết thêm thông tin)"
+    ],
+    "weaknesses": [
+      "Chưa rõ ràng về Hero (khách hàng) và vấn đề bên trong (cảm xúc của khách hàng)",
+      "Chưa có kế hoạch 3 bước rõ ràng",
+      "Chưa có lời kêu gọi hành động trực tiếp và rõ ràng",
+      "Chưa nêu rõ hậu quả của việc không giải quyết vấn đề"
+    ],
+    "action_items": [
+      "Xác định rõ Hero và vấn đề bên trong",
+      "Cung cấp kế hoạch 3 bước rõ ràng",
+      "Thêm lời kêu gọi hành động trực tiếp và rõ ràng",
+      "Nêu rõ hậu quả của việc không giải quyết vấn đề"
+    ]
+  },
+  "distribution_plan": {
+    "distribution_timeline": [
+      {
+        "day": 0,
+        "channel": "blog",
+        "content": "full StoryBrand story"
+      },
+      {
+        "day": 1,
+        "channel": "linkedin",
+        "content": "Hero-focused, problem agitation"
+      },
+      {
+        "day": 2,
+        "channel": "twitter",
+        "content": "PAS breakdown, 7 tweets"
+      },
+      {
+        "day": 3,
+        "channel": "email",
+        "content": "Personal story, CTA"
+      },
+      {
+        "day": 7,
+        "channel": "video",
+        "content": "Short video script (Hook + Plan + CTA)"
+      },
+      {
+        "day": 14,
+        "channel": "blog",
+        "content": "Case study follow-up"
+      }
+    ],
+    "platform_formatting": {
+      "blog": {
+        "format": "long-form text"
+      },
+      "linkedin": {
+        "format": "short-form text with image"
+      },
+      "twitter": {
+        "format": "thread of 7 short-form texts"
+      },
+      "email": {
+        "format": "personal story with CTA"
+      },
+      "video": {
+        "format": "short video script"
+      }
+    },
+    "ab_test_plan": {
+      "test_variable": "email subject line",
+      "test_variants": [
+        "Variant A",
+        "Variant B"
+      ],
+      "test_duration": 7,
+      "test_metric": "open rate"
+    },
+    "tracking_setup": {
+      "utm_tags": {
+        "source": "StoryBrand content",
+        "medium": "distribution plan"
+      },
+      "ga_tracking": {
+        "category": "StoryBrand content",
+        "action": "view"
+      }
+    }
+  },
+  "performance_metrics": {
+    "scroll_depth": 0,
+    "time_on_page": 0,
+    "comment_sentiment": 0,
+    "shares": 0,
+    "cta_clicks": 0,
+    "trial_signups": 0,
+    "conversion_rate": 0,
+    "email_replies": 0,
+    "brand_mentions": 0
+  },
+  "optimization_notes": {
+    "storybrand_improvements": [
+      "Increase hero clarity by rephrasing the opening sentence",
+      "Improve guide appeal by adding more visuals"
+    ],
+    "pas_improvements": [
+      "Resonate more with the problem by using storytelling",
+      "Agitate the problem more effectively by highlighting consequences"
+    ],
+    "aida_improvements": [
+      "Grab attention better by using a stronger Hook",
+      "Build desire more effectively by showcasing benefits"
+    ]
+  }
+}

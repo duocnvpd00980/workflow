@@ -6,6 +6,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from pydantic import BaseModel, HttpUrl
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +21,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/rag", tags=["rag"])
 
 
+# ── GET /rag/ ─────────────────────────────────────────────
 @router.get("/", response_model=list[DocOut])
 async def list_docs(db: AsyncSession = Depends(get_db)):
     rows = await db.execute(
@@ -42,6 +44,7 @@ async def list_docs(db: AsyncSession = Depends(get_db)):
     ]
 
 
+# ── POST /rag/upload/ ─────────────────────────────────────
 @router.post("/upload/", response_model=UploadOut, status_code=201)
 async def upload(
     title: str = Form(...),
@@ -93,6 +96,45 @@ async def upload(
         raise HTTPException(400, f"Lỗi: {e}")
 
 
+# ── POST /rag/crawl/ ──────────────────────────────────────
+class CrawlIn(BaseModel):
+    url: HttpUrl
+    title: str = ""
+
+@router.post("/crawl/", response_model=UploadOut, status_code=201)
+async def crawl(
+    payload: CrawlIn,
+    db: AsyncSession = Depends(get_db),
+    rag: RAG = Depends(get_rag),
+    loader: DocumentLoader = Depends(get_loader),
+):
+    url_str = str(payload.url)
+    title   = payload.title.strip() or url_str
+
+    doc = DocumentSource(title=title, status="processing")
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+
+    try:
+        loaded  = loader.load_web(url_str)          # dùng load_web() có sẵn trong loader
+        await rag.add(loaded.text, **loaded.metadata)
+
+        doc.status      = "completed"
+        doc.chunk_count = 1                          # 1 doc, RAG tự chunk bên trong
+        await db.commit()
+        return UploadOut(id=doc.id, title=doc.title,
+                         status="completed", message="Đã crawl thành công.")
+
+    except Exception as e:
+        doc.status        = "failed"
+        doc.error_message = str(e)
+        await db.commit()
+        logger.error("[crawl] %s: %s", doc.id, e)
+        raise HTTPException(400, f"Lỗi crawl: {e}")
+
+
+# ── POST /rag/search/ ─────────────────────────────────────
 @router.post("/search/", response_model=SearchOut)
 async def search(
     query: str = Form(...),
@@ -110,6 +152,7 @@ async def search(
     )
 
 
+# ── DELETE /rag/{doc_id}/ ─────────────────────────────────
 @router.delete("/{doc_id}/", status_code=204)
 async def delete(doc_id: int, db: AsyncSession = Depends(get_db)):
     doc = await db.get(DocumentSource, doc_id)
