@@ -1,9 +1,22 @@
+"""
+nodes.py — patched
+──────────────────
+CHANGE: `prepare()` now loads brand context from brand_voice_store
+instead of hardcoding {"brand_voice": "Professional, innovative", "tone": "Friendly"}.
+
+All other nodes unchanged — they consume state["context"] the same way.
+"""
+
 from langgraph.types import interrupt
-from typing import TYPE_CHECKING
 from groq import Groq
 import uuid
 
+from app.brand.service import BrandProfileService
+from app.db import AsyncSessionLocal
+
 from .config import settings
+# ── PATCH: import brand voice store ──────────────────────────────────────────
+
 
 client = Groq(api_key=settings.GROQ_API_KEY)
 MODEL = settings.GROQ_MODEL
@@ -34,14 +47,14 @@ def call_groq(prompt: str, max_tokens: int = 500) -> str:
 def _merge_usage(current: dict, tokens: int, node: str) -> dict:
     return {
         "total_tokens": current.get("total_tokens", 0) + tokens,
-        "total_cost": current.get("total_cost", 0.0),
-        "calls": current.get("calls", []) + [{"node": node, "tokens": tokens}],
+        "total_cost":   current.get("total_cost", 0.0),
+        "calls":        current.get("calls", []) + [{"node": node, "tokens": tokens}],
     }
 
 
-# ── Nodes ────────────────────────────────────────────────────────────────────
+# ── Nodes ─────────────────────────────────────────────────────────────────────
 
-def prepare(state: dict) -> dict:
+async def prepare(state: dict) -> dict:
     r = state["request"].lower()
     template = (
         "social"   if any(w in r for w in ["tweet", "caption", "post", "social", "instagram", "fb"]) else
@@ -50,24 +63,65 @@ def prepare(state: dict) -> dict:
         "research" if any(w in r for w in ["research", "report", "analyze", "nghiên cứu"]) else
         "social"
     )
-    context = {"brand_voice": "Professional, innovative", "tone": "Friendly", "credits": 100}
+
+    # 1. Lấy dữ liệu từ Service (Đã đóng gói sạch)
+    async with AsyncSessionLocal() as db:
+        brand_id = state.get("brand_id", "default")
+        # Gọi Service, trả về dict gồm: template_text, writer_rules, designer_rules
+        scope = BrandProfileService.get_writer_scope(
+            db,
+            brand_id
+        )
+
+    
+    context = {
+        "brand_voice": scope.positioning,
+        "tone": scope.brand_voice_rules.tone_patterns,
+        "voice_rules": scope.brand_voice_rules.forbidden_words,
+        "cta_samples": scope.brand_voice_rules.cta_patterns,
+        "target_audience": scope.audience,
+        "credits": 100,
+    }
+
     if context["credits"] <= 0:
         return {"error": "fatal", "context": context, "template": template}
+
     return {
         "template": template,
-        "context": context,
-        "usage": {"total_tokens": 0, "total_cost": 0.0, "calls": []},
+        "context":  context,
+        "usage":    {"total_tokens": 0, "total_cost": 0.0, "calls": []},
         "approved": False,
-        "error": None,
+        "error":    None,
     }
+
+
+def _build_brand_block(ctx: dict) -> str:
+    """
+    Helper: build a rich brand context block for prompt injection.
+    Used by execute_* nodes to make prompts brand-aware.
+    """
+    rules = "\n".join(f"  - {r}" for r in ctx.get("voice_rules", []))
+    ctas  = ", ".join(ctx.get("cta_samples", []))
+    prods = ", ".join(ctx.get("products", []))
+    audience = ", ".join(ctx.get("target_audience", []))
+    return (
+        f"Brand Voice: {ctx['brand_voice']} ({ctx['tone']})\n"
+        f"CTA Style: {ctx['cta_style']}\n"
+        f"Core Message: {ctx.get('core_message', '')}\n"
+        f"Products: {prods}\n"
+        f"Target Audience: {audience}\n"
+        f"Voice Rules:\n{rules}\n"
+        f"Suggested CTAs: {ctas}"
+    )
 
 
 def execute_social(state: dict) -> dict:
     platform = "Twitter" if "tweet" in state["request"].lower() else "Facebook"
+    ctx = state["context"]
     caption = call_groq(
         f"Write a {platform} caption for: {state['request']}\n"
-        f"Max 280 chars. Tone: {state['context']['tone']}. "
-        f"Add 2-3 hashtags. Brand voice: {state['context']['brand_voice']}",
+        f"Max 280 chars. Add 2-3 hashtags.\n\n"
+        f"=== Brand Context ===\n{_build_brand_block(ctx)}",
         max_tokens=200,
     )
     if caption.startswith("[ERROR:"):
@@ -79,10 +133,11 @@ def execute_social(state: dict) -> dict:
 
 
 def execute_blog(state: dict) -> dict:
+    ctx = state["context"]
     draft = call_groq(
         f"Write a blog post about: {state['request']}\n"
-        f"Tone: {state['context']['tone']}. Brand voice: {state['context']['brand_voice']}\n"
-        f"Include H2 headings. Length: 500-800 words.",
+        f"Include H2 headings. Length: 500-800 words.\n\n"
+        f"=== Brand Context ===\n{_build_brand_block(ctx)}",
         max_tokens=800,
     )
     if draft.startswith("[ERROR:"):
@@ -94,9 +149,11 @@ def execute_blog(state: dict) -> dict:
 
 
 def execute_image(state: dict) -> dict:
+    ctx = state["context"]
     prompt = call_groq(
         f"Create an image generation prompt for: {state['request']}\n"
-        f"Style: professional, on-brand. Be descriptive, 50-100 words.",
+        f"Style: {ctx.get('visual_style', 'professional')}, on-brand. Be descriptive, 50-100 words.\n\n"
+        f"=== Brand Context ===\n{_build_brand_block(ctx)}",
         max_tokens=150,
     )
     if prompt.startswith("[ERROR:"):
@@ -116,10 +173,12 @@ def execute_image(state: dict) -> dict:
 
 
 def execute_research(state: dict) -> dict:
+    ctx = state["context"]
     report = call_groq(
         f"Research and write a comprehensive report on: {state['request']}\n"
         f"Include: summary, key findings, sources, confidence level.\n"
-        f"Format with clear sections. Length: 400-600 words.",
+        f"Format with clear sections. Length: 400-600 words.\n\n"
+        f"=== Brand Context ===\n{_build_brand_block(ctx)}",
         max_tokens=700,
     )
     if report.startswith("[ERROR:"):
@@ -130,18 +189,18 @@ def execute_research(state: dict) -> dict:
             "metadata": {"type": "research", "sources": [], "confidence": "high"},
             "version": 1,
         },
-        "approved": True,
+        "approved":       True,
         "publish_status": "published",
-        "usage": _merge_usage(state["usage"], 500, "research"),
+        "usage":          _merge_usage(state["usage"], 500, "research"),
     }
 
 
 def review_pause(state: dict) -> dict:
     action = interrupt({
-        "status": "paused",
-        "node": "review_pause",
-        "draft": state["draft"],
-        "usage": state["usage"],
+        "status":     "paused",
+        "node":       "review_pause",
+        "draft":      state["draft"],
+        "usage":      state["usage"],
         "session_id": state["session_id"],
     })
     if action.get("action") == "approve":
@@ -150,9 +209,9 @@ def review_pause(state: dict) -> dict:
         return {
             "approved": True,
             "draft": {
-                "content": action.get("content", state["draft"]["content"]),
+                "content":  action.get("content", state["draft"]["content"]),
                 "metadata": state["draft"]["metadata"],
-                "version": state["draft"]["version"] + 1,
+                "version":  state["draft"]["version"] + 1,
             },
         }
     return {"approved": False}

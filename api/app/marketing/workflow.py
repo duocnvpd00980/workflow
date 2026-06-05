@@ -1,6 +1,8 @@
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
 from typing import TypedDict, Optional, Literal
+from typing import Annotated
+import operator
 
 from .nodes import (
     prepare, execute_social, execute_blog, execute_image,
@@ -17,7 +19,7 @@ class WorkflowState(TypedDict):
     draft: Optional[dict]
     approved: bool
     publish_status: Optional[Literal["pending", "published", "failed", "dead_letter"]]
-    usage: dict
+    usage: Annotated[dict, operator.or_]
     error: Optional[Literal["timeout", "rate_limit", "invalid", "fatal"]]
 
 

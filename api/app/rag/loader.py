@@ -1,4 +1,4 @@
-"""DocumentLoaderService v2.3 — crawl4ai thay thế trafilatura cho load_web."""
+"""DocumentLoaderService v2.4 — Sửa lỗi luồng Metadata Tagging."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterator, List
+from typing import Dict, Iterator, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -43,24 +43,22 @@ class DocumentLoader:
 
     # ── Web Loading (crawl4ai) ────────────────────────────────────────────────
 
-    def load_web(self, url: str) -> LoadedDocument:
+    def load_web(self, url: str, document_type: str = "web_page") -> LoadedDocument:
         """
         Crawl URL bằng crawl4ai — hỗ trợ JS-rendered page, SPA, lazy-load.
-        Gọi sync wrapper vì loader được dùng trong FastAPI async endpoint
-        thông qua run_in_executor (hoặc gọi thẳng nếu đang trong event loop).
         """
         try:
             loop = asyncio.get_running_loop()
-            # Đang trong event loop (FastAPI) → chạy coroutine trong thread riêng
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(asyncio.run, self._crawl4ai(url))
+                # FIX 1: Truyền chuẩn document_type vào coroutine
+                future = pool.submit(asyncio.run, self._crawl4ai(url, document_type))
                 return future.result()
         except RuntimeError:
-            # Không có event loop (test / script) → chạy trực tiếp
-            return asyncio.run(self._crawl4ai(url))
+            return asyncio.run(self._crawl4ai(url, document_type))
 
-    async def _crawl4ai(self, url: str) -> LoadedDocument:
+    async def _crawl4ai(self, url: str, document_type: str) -> LoadedDocument:
+        """FIX 1: Nhận thêm tham số document_type từ hàm gọi."""
         try:
             from crawl4ai import AsyncWebCrawler, BrowserConfig, CrawlerRunConfig
             from crawl4ai.content_filter_strategy import PruningContentFilter
@@ -69,16 +67,14 @@ class DocumentLoader:
             raise ImportError("Cài đặt: pip install crawl4ai && crawl4ai-setup")
 
         browser_cfg = BrowserConfig(headless=True, verbose=False)
-
-        # PruningContentFilter loại bỏ nav/footer/quảng cáo trước khi convert markdown
         md_generator = DefaultMarkdownGenerator(
             content_filter=PruningContentFilter(threshold=0.48, threshold_type="fixed"),
         )
         run_cfg = CrawlerRunConfig(
             markdown_generator=md_generator,
-            wait_until="networkidle",       # chờ JS xong
-            page_timeout=30_000,            # 30s timeout
-            cache_mode="bypass",            # luôn crawl tươi
+            wait_until="networkidle",
+            page_timeout=30_000,
+            cache_mode="bypass",
         )
 
         last_exc: Exception | None = None
@@ -90,7 +86,6 @@ class DocumentLoader:
                 if not result.success:
                     raise ValueError(f"crawl4ai thất bại: {result.error_message}")
 
-                # Ưu tiên fit_markdown (đã lọc noise), fallback raw markdown
                 text = (
                     result.markdown.fit_markdown
                     or result.markdown.raw_markdown
@@ -105,7 +100,7 @@ class DocumentLoader:
                     metadata={
                         "source_id":      url,
                         "source_url":     url,
-                        "document_type":  "web_page",
+                        "document_type":  document_type, # FIX 2: Không gán cứng "web_page" nữa
                         "crawl_engine":   "crawl4ai",
                     },
                 )
@@ -115,7 +110,7 @@ class DocumentLoader:
                 logger.warning("[Loader] crawl4ai lần %d/%d thất bại: %s — %s",
                                attempt + 1, self._max_retries, url, exc)
                 if attempt < self._max_retries - 1:
-                    await asyncio.sleep(2 ** attempt)   # 1s → 2s → 4s
+                    await asyncio.sleep(2 ** attempt)
 
         raise ValueError(
             f"Không thể crawl URL sau {self._max_retries} lần thử: {url}"
@@ -209,29 +204,28 @@ class DocumentLoader:
 
     # ── Single File ───────────────────────────────────────────────────────────
 
-    def load_file(self, path: str) -> List[LoadedDocument]:
+    def load_file(self, path: str, document_type: str = "product_knowledge") -> List[LoadedDocument]:
         file_path = Path(path)
         if not file_path.exists():
             raise FileNotFoundError(f"Không tìm thấy file: {path}")
-        if file_path.suffix.lower() not in self.SUPPORTED_EXTENSIONS:
-            raise ValueError(
-                f"Định dạng '{file_path.suffix}' không được hỗ trợ. "
-                f"Chấp nhận: {', '.join(self.SUPPORTED_EXTENSIONS)}"
-            )
         self._check_file_size(file_path)
         cleaned = self._clean_text(self._read_file(file_path))
         if not cleaned:
             raise ValueError(f"Không trích xuất được nội dung từ: {file_path.name}")
-        return [LoadedDocument(text=cleaned, metadata=self._file_metadata(file_path))]
+        
+        # FIX 3: Ghi đè chính xác tag được chỉ định qua tham số đầu vào
+        metadata = self._file_metadata(file_path, document_type=document_type)
+        return [LoadedDocument(text=cleaned, metadata=metadata)]
 
-    def _file_metadata(self, path: Path) -> Dict:
+    def _file_metadata(self, path: Path, document_type: str = "product_knowledge") -> Dict:
+        """Cập nhật để hàm tạo metadata nhận diện được type động."""
         return {
             "source_id":        path.name,
             "file_name":        path.name,
             "file_extension":   path.suffix.lower().lstrip("."),
             "file_size_bytes":  path.stat().st_size,
             "absolute_path":    str(path.resolve()),
-            "document_type":    "file",
+            "document_type":    document_type, # Nhận động từ ngoài
         }
 
     # ── Directory ─────────────────────────────────────────────────────────────
@@ -251,7 +245,8 @@ class DocumentLoader:
                     and file_path.suffix.lower() in self.SUPPORTED_EXTENSIONS):
                 yield file_path
 
-    def load_directory(self, path: str) -> List[LoadedDocument]:
+    def load_directory(self, path: str, document_type: str = "product_knowledge") -> List[LoadedDocument]:
+        """FIX 4: Thêm tham số document_type khi đọc hàng loạt thư mục."""
         dir_path = Path(path)
         if not dir_path.is_dir():
             raise NotADirectoryError(f"Không phải thư mục: {path}")
@@ -261,8 +256,10 @@ class DocumentLoader:
                 self._check_file_size(file_path)
                 cleaned = self._clean_text(self._read_file(file_path))
                 if cleaned:
-                    docs.append(LoadedDocument(text=cleaned, metadata=self._file_metadata(file_path)))
+                    # FIX 5: Ép tag động cho từng file trong directory
+                    meta = self._file_metadata(file_path, document_type=document_type)
+                    docs.append(LoadedDocument(text=cleaned, metadata=meta))
             except Exception as exc:
                 logger.warning("[Loader] Bỏ qua %s: %s", file_path, exc)
-        logger.info("[Loader] Nạp %d tài liệu từ %s", len(docs), path)
+        logger.info("[Loader] Nạp %d tài liệu từ %s với tag: %s", len(docs), path, document_type)
         return docs

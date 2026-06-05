@@ -4,6 +4,7 @@ import logging
 import tempfile
 import uuid
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
 from pydantic import BaseModel, HttpUrl
@@ -48,6 +49,7 @@ async def list_docs(db: AsyncSession = Depends(get_db)):
 @router.post("/upload/", response_model=UploadOut, status_code=201)
 async def upload(
     title: str = Form(...),
+    document_type: str = Form("product_knowledge"),
     file: UploadFile = ...,
     db: AsyncSession = Depends(get_db),
     rag: RAG = Depends(get_rag),
@@ -59,7 +61,11 @@ async def upload(
     suffix  = Path(file.filename).suffix if file.filename else ""
     content = await file.read()
 
-    doc = DocumentSource(title=title.strip(), status="processing")
+    doc = DocumentSource(
+        title=title.strip(), 
+        status="processing", 
+        document_type=document_type
+    )
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
@@ -72,7 +78,7 @@ async def upload(
             tmp.write(content)
             tmp_path = tmp.name
 
-        docs = loader.load_file(tmp_path)
+        docs = loader.load_file(tmp_path, document_type=document_type)
         Path(tmp_path).unlink(missing_ok=True)
 
         if not docs:
@@ -100,6 +106,8 @@ async def upload(
 class CrawlIn(BaseModel):
     url: HttpUrl
     title: str = ""
+    document_type: str = "web_page"
+
 
 @router.post("/crawl/", response_model=UploadOut, status_code=201)
 async def crawl(
@@ -111,17 +119,21 @@ async def crawl(
     url_str = str(payload.url)
     title   = payload.title.strip() or url_str
 
-    doc = DocumentSource(title=title, status="processing")
+    doc = DocumentSource(
+        title=title, 
+        status="processing", 
+        document_type=payload.document_type
+    )
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
 
     try:
-        loaded  = loader.load_web(url_str)          # dùng load_web() có sẵn trong loader
+        loaded  = loader.load_web(url_str, document_type=payload.document_type)          
         await rag.add(loaded.text, **loaded.metadata)
 
         doc.status      = "completed"
-        doc.chunk_count = 1                          # 1 doc, RAG tự chunk bên trong
+        doc.chunk_count = 1                          
         await db.commit()
         return UploadOut(id=doc.id, title=doc.title,
                          status="completed", message="Đã crawl thành công.")
@@ -139,12 +151,13 @@ async def crawl(
 async def search(
     query: str = Form(...),
     top_k: int = Form(3),
+    document_type: Optional[str] = Form(None),
     rag: RAG = Depends(get_rag),
 ):
     if not query.strip():
         return SearchOut(query="", results=[], source="empty")
 
-    result = await rag.search(query.strip(), top_k=top_k)
+    result = await rag.search(query.strip(), top_k=top_k, document_type=document_type)
     return SearchOut(
         query=result.query,
         results=[{"text": c.text, "score": c.score, "meta": c.meta} for c in result.chunks],

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from app.config import get_settings
 
 _S = get_settings()
-_OLLAMA = _S.ollama_base_url
+_OLLAMA = _S.OLLAMA_BASE_URL
 _E = lambda m, b=None: LLMEngine(m, b)
 
 

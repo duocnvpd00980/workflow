@@ -47,3 +47,21 @@ class SearchOut(BaseModel):
     query: str
     results: list[dict]
     source: str
+
+
+
+# ── API request schemas (BỔ SUNG THÊM VÀO CUỐI FILE) ───────────────────
+
+class WebCrawlRequest(BaseModel):
+    """Schema nhận payload khi user yêu cầu cào dữ liệu từ một URL"""
+    url: str
+    # Mặc định nếu không truyền thì hệ thống tự hiểu là tài liệu sản phẩm
+    document_type: str = "product_knowledge" 
+
+
+class SearchRequest(BaseModel):
+    """Schema nhận payload khi user thực hiện tìm kiếm/truy vấn RAG"""
+    query: str
+    top_k: int = 4
+    # Quan trọng: Thêm tag này để RAG Engine biết đường cô lập vùng tìm kiếm
+    document_type: Optional[str] = None
