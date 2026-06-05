@@ -53,7 +53,6 @@ def _merge_usage(current: dict, tokens: int, node: str) -> dict:
 
 
 # ── Nodes ─────────────────────────────────────────────────────────────────────
-
 async def prepare(state: dict) -> dict:
     r = state["request"].lower()
     template = (
@@ -64,24 +63,39 @@ async def prepare(state: dict) -> dict:
         "social"
     )
 
-    # 1. Lấy dữ liệu từ Service (Đã đóng gói sạch)
-    async with AsyncSessionLocal() as db:
-        brand_id = state.get("brand_id", "default")
-        # Gọi Service, trả về dict gồm: template_text, writer_rules, designer_rules
-        scope = BrandProfileService.get_writer_scope(
-            db,
-            brand_id
-        )
+    # Khởi tạo object scope trống để dự phòng
+    scope = None
+    brand_id = state.get("brand_id", "default")
 
-    
-    context = {
-        "brand_voice": scope.positioning,
-        "tone": scope.brand_voice_rules.tone_patterns,
-        "voice_rules": scope.brand_voice_rules.forbidden_words,
-        "cta_samples": scope.brand_voice_rules.cta_patterns,
-        "target_audience": scope.audience,
-        "credits": 100,
-    }
+    # 1. Thử lấy dữ liệu từ Service trong DB
+    try:
+        async with AsyncSessionLocal() as db:
+            scope = await BrandProfileService.get_writer_scope(db, brand_id)
+            
+        # Nếu lấy thành công từ DB, map dữ liệu chuẩn vào context
+        context = {
+            "brand_voice": getattr(scope, "positioning", "Chuyên nghiệp, sáng tạo công nghệ"),
+            "tone": getattr(scope.brand_voice_rules, "tone_patterns", "Thân thiện, tin cậy"),
+            "voice_rules": getattr(scope.brand_voice_rules, "forbidden_words", []),
+            "cta_samples": getattr(scope.brand_voice_rules, "cta_patterns", ["Khám phá ngay"]),
+            "target_audience": getattr(scope, "audience", ["Khách hàng đại chúng"]),
+            "products": [],
+            "core_message": "Giải pháp tự động hóa quy trình thông minh.",
+            "credits": 100,
+        }
+    except Exception as e:
+        # Cơ chế FALLBACK: Nếu lỗi DB hoặc không tìm thấy ID 'default', nạp cấu hình cơ bản để cứu cánh
+        print(f"[WARNING] Không tìm thấy Brand ID '{brand_id}' hoặc lỗi DB: {str(e)}. Đang sử dụng cấu hình mặc định.")
+        context = {
+            "brand_voice": "Chuyên nghiệp, sáng tạo, hướng tới tương lai công nghệ",
+            "tone": "Thân thiện, rõ ràng, giàu năng lượng",
+            "voice_rules": ["cam kết 100%", "rẻ nhất thị trường"],
+            "cta_samples": ["Trải nghiệm miễn phí", "Tìm hiểu thêm tại đây"],
+            "target_audience": ["Marketers", "SaaS Users"],
+            "products": ["Hệ thống Workflow Agent"],
+            "core_message": "Tự động hóa công việc bằng AI Agent.",
+            "credits": 100,
+        }
 
     if context["credits"] <= 0:
         return {"error": "fatal", "context": context, "template": template}
@@ -104,10 +118,17 @@ def _build_brand_block(ctx: dict) -> str:
     ctas  = ", ".join(ctx.get("cta_samples", []))
     prods = ", ".join(ctx.get("products", []))
     audience = ", ".join(ctx.get("target_audience", []))
+    
+    # Dùng .get() an toàn cho toàn bộ các trường khác
+    brand_voice = ctx.get("brand_voice", "Chuyên nghiệp")
+    tone = ctx.get("tone", "Thân thiện")
+    cta_style = ctx.get("cta_style", "Trực tiếp, ngắn gọn") # Không lo KeyError nữa
+    core_message = ctx.get("core_message", "")
+
     return (
-        f"Brand Voice: {ctx['brand_voice']} ({ctx['tone']})\n"
-        f"CTA Style: {ctx['cta_style']}\n"
-        f"Core Message: {ctx.get('core_message', '')}\n"
+        f"Brand Voice: {brand_voice} ({tone})\n"
+        f"CTA Style: {cta_style}\n"
+        f"Core Message: {core_message}\n"
         f"Products: {prods}\n"
         f"Target Audience: {audience}\n"
         f"Voice Rules:\n{rules}\n"

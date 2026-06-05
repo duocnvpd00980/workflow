@@ -190,9 +190,28 @@ export default function ContentEngineWorkspace() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
-      
+      {/* Top Nav */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-indigo-600" />
+          <span className="font-bold tracking-tight text-slate-900">Content Engine V2.0</span>
+          <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Balanced Option</span>
+        </div>
+        <div className="flex bg-slate-100 p-1 rounded-lg text-xs font-medium">
+          {[1, 2, 3, 4, 5, 6].map(num => (
+            <button key={num} onClick={() => setCurrentScreen(num as any)}
+              className={`px-3 py-1.5 rounded-md transition-all ${currentScreen === num ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
+              Màn {num}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-4 text-xs text-slate-500">
+          <span>User: <strong>Alex</strong></span>
+          {sessionId && <span className="font-mono text-[10px] text-slate-400">sid: {sessionId.slice(0, 8)}…</span>}
+        </div>
+      </div>
 
-      <main className="max-w-[1600px] mx-auto">
+      <main className="p-6 max-w-[1600px] mx-auto">
         {currentScreen === 1 && (
           <ScreenDashboard onCreateContent={() => setCurrentScreen(2)} addToast={addToast} />
         )}
@@ -253,15 +272,14 @@ function ScreenDashboard({ onCreateContent, addToast }: { onCreateContent: () =>
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
       {/* Sidebar */}
-     
-      <SidebarNav />
+      {/* <SidebarNav /> */}
       
 
       {/* Main */}
       <div className="md:col-span-3 space-y-6">
         <div className="bg-white p-6 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900">Chào buổi sáng, Minh! 👋 11</h2>
+            <h2 className="text-xl font-bold tracking-tight text-slate-900">Chào buổi sáng, Minh! 👋</h2>
             <p className="text-xs text-slate-500 mt-1">Hôm nay bạn muốn tối ưu hóa chiến dịch và tạo nội dung gì?</p>
           </div>
           <button onClick={onCreateContent} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition ${PRIMARY_COLOR}`}>

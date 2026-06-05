@@ -1,6 +1,6 @@
 /**
  * ScreenBrandVoice — Notion-style Single Stream (No Cards)
- * RESTORED ALL 5 BLOCKS: Optimized for ultra-low code density & high stability.
+ * INTEGRATED WITH ASYNC BACKEND CORE & DYNAMIC DOCUMENT TYPE SELECTION
  */
 
 import React from "react";
@@ -19,50 +19,75 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SidebarNav from "@/layout/navbar";
 
 const API_BASE = "http://localhost:8000/api/v1";
-const brandVoiceKeys = { detail: () => ["brand-voice", "detail"] as const };
+const brandProfileKeys = {
+  detail: (brandId: string) => ["brand-profile", "detail", brandId] as const,
+};
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-export interface RefDoc { name: string; size: string; type: string; }
-
-export interface BrandVoiceData {
-  tone_of_voice:    string;
-  voice_rules:      string[];
-  cta_style:        string;
-  cta_samples:      string[];
-  core_message:     string;
-  visual_style:     string;
-  brand_colors:     string[];
-  image_type:       string;
-  image_rules:      string[];
-  products:         string[];
-  benefits:         string[];
-  target_audience:  string[];
-  reference_urls:   string[];
-  reference_notes:  string;
-  reference_docs:   RefDoc[];
+// ─── Types Matched With Backend Schema ───────────────────────────────────────
+export interface BrandVoiceRules {
+  forbidden_words: string[];
+  tone_patterns: string[];
+  cta_patterns: string[];
 }
 
-const MOCK_DEFAULT_DATA: BrandVoiceData = {
-  tone_of_voice: "Thân thiện",
-  voice_rules: ["Sử dụng đại từ nhân xưng 'Mày/Tao' hoặc 'Tôi/Bạn' linh hoạt", "Không dùng từ ngữ quá hàn lâm"],
-  cta_style: "Mềm mại",
-  cta_samples: ["Trải nghiệm ngay hôm nay!", "Khám phá giải pháp tối ưu cho doanh nghiệp"],
-  core_message: "Hệ thống AI Marketing tự động hóa chuỗi cung ứng nội dung cho doanh nghiệp.",
-  visual_style: "Tối giản",
-  brand_colors: ["#4F46E5", "#10B981", "#F59E0B"],
-  image_type: "Ảnh thực tế",
-  image_rules: ["Chụp góc Dutch angle nhẹ", "Độ sâu trường ảnh (Depth of Field) mỏng", "Ánh sáng tương phản Chiaroscuro"],
-  products: ["Gói Setup AI Automation", "Phần mềm Tạo Banner Tự Động"],
-  benefits: ["Tiết kiệm 80% thời gian design", "Đồng bộ nhận diện 100% các kênh"],
-  target_audience: ["SMEs", "Chủ shop online", "Marketers"],
-  reference_urls: ["https://holo-ai.vn"],
-  reference_notes: "Cần lưu ý giữ đúng palette màu thương hiệu.",
-  reference_docs: [
-    { name: "Brand_Guideline_2026.pdf", size: "4.2 MB", type: "PDF" },
-    { name: "Product_Specs.docx", size: "1.8 MB", type: "DOCX" }
-  ]
+export interface BrandMessaging {
+  pain_points: string[];
+  objections: { objection: string; counter: string; }[];
+  proof_points: string[];
+}
+
+export interface ContentExamples {
+  blog_post: string | null;
+  social_post: string | null;
+  ad_copy: string | null;
+  landing_page: string | null;
+}
+
+export interface VisualIdentity {
+  style_description: string;
+  color_palette: string[];
+  mood: string;
+}
+
+export interface BrandProfileSchema {
+  positioning: string;
+  audience: string;
+  brand_voice_rules: BrandVoiceRules;
+  messaging: BrandMessaging;
+  content_examples: ContentExamples;
+  visual_identity: VisualIdentity;
+}
+
+const DEFAULT_BRAND_ID = "default-brand-uuid-001"; // Thay bằng brand_id thực tế từ context/route params của anh
+
+const COMPONENT_DEFAULT_DATA: BrandProfileSchema = {
+  positioning: "Hệ thống AI Marketing tự động hóa chuỗi cung ứng nội dung cho doanh nghiệp.",
+  audience: "SMEs, Chủ shop online, Marketers tại Việt Nam",
+  brand_voice_rules: {
+    forbidden_words: ["cam kết 100%", "tuyệt đối"],
+    tone_patterns: ["Thân thiện", "Chuyên nghiệp"],
+    cta_patterns: ["Trải nghiệm ngay hôm nay!", "Khám phá giải pháp tối ưu cho doanh nghiệp"],
+  },
+  messaging: {
+    pain_points: ["Tiết kiệm 80% thời gian design", "Đồng bộ nhận diện 100% các kênh"],
+    objections: [{ objection: "Giá cao?", counter: "Tiết kiệm nhân sự vận hành lâu dài" }],
+    proof_points: ["Hơn 12 năm kinh nghiệm lập trình hệ thống web production"],
+  },
+  content_examples: {
+    blog_post: null,
+    social_post: "Chào anh em, hệ thống Content Factory đã chính thức tích hợp luồng Crawl4AI cực mượt...",
+    ad_copy: null,
+    landing_page: null,
+  },
+  visual_identity: {
+    style_description: "A24 Cinematic Aesthetic, đắt tiền, tối giản, tương phản cao",
+    color_palette: ["#4F46E5", "#10B981", "#F59E0B"],
+    mood: "Expensive Silence",
+  }
 };
 
 // ─── Route Definition ────────────────────────────────────────────────────────
@@ -70,7 +95,10 @@ export const Route = createFileRoute("/brand")({
   validateSearch: (search: Record<string, unknown>) => ({
     syncOpen: (search.syncOpen as boolean) || undefined,
     previewOpen: (search.previewOpen as boolean) || undefined,
-    q: (search.q as string) || "",
+    documentType: (search.documentType as string) || "brand_guideline",
+    brandName: (search.brandName as string) || "",
+    websiteUrl: (search.websiteUrl as string) || "",
+    rawTextContent: (search.rawTextContent as string) || "",
   }),
   component: ScreenBrandVoice,
 });
@@ -78,146 +106,186 @@ export const Route = createFileRoute("/brand")({
 export function ScreenBrandVoice() {
   const queryClient = useQueryClient();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { syncOpen, previewOpen, q: searchParamQ } = Route.useSearch();
+  const { 
+    syncOpen, 
+    previewOpen, 
+    documentType, 
+    brandName, 
+    websiteUrl, 
+    rawTextContent 
+  } = Route.useSearch();
 
-  // ── TanStack Query ──────────────────────────────────────────────────────────
-  const { data, isLoading } = useQuery<BrandVoiceData>({
-    queryKey: brandVoiceKeys.detail(),
+  // ── TanStack Query (Lấy profile tổng từ Async DB) ──────────────────────────
+  const { data, isLoading } = useQuery<BrandProfileSchema>({
+    queryKey: brandProfileKeys.detail(DEFAULT_BRAND_ID),
     queryFn: async () => {
       try {
-        const res = await fetch(`${API_BASE}/brand-voice`).then(r => r.json());
-        return { ...MOCK_DEFAULT_DATA, ...res.data };
+        const res = await fetch(`${API_BASE}/brand-profile/${DEFAULT_BRAND_ID}`);
+        if (!res.ok) throw new Error();
+        return await res.json();
       } catch {
-        return MOCK_DEFAULT_DATA;
+        return COMPONENT_DEFAULT_DATA;
       }
     },
     staleTime: 5 * 60 * 1000,
   });
 
   // ── Mutations ──────────────────────────────────────────────────────────────
+  // 1. Ghi đè cấu hình xuống database thông qua Bulk Save
   const saveMutation = useMutation({
-    mutationFn: async (payload: BrandVoiceData) => {
-      const res = await fetch(`${API_BASE}/brand-voice`, {
+    mutationFn: async (payload: BrandProfileSchema) => {
+      const res = await fetch(`${API_BASE}/brand-profile/${DEFAULT_BRAND_ID}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }).then(r => r.json());
-      return res.data;
+      });
+      return await res.json();
     },
-    onSuccess: (updatedData) => {
-      queryClient.setQueryData(brandVoiceKeys.detail(), updatedData);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: brandProfileKeys.detail(DEFAULT_BRAND_ID) });
     },
   });
 
-  const syncMutation = useMutation({
-    mutationFn: async (queryKeyword: string) => {
-      try {
-        const res = await fetch(`${API_BASE}/brand-voice/sync-from-rag?query=${encodeURIComponent(queryKeyword)}`, {
-          method: "POST"
-        }).then(r => r.json());
-        return res.data;
-      } catch {
-        return { ...data, core_message: `Dữ liệu đồng bộ tự động từ RAG cho từ khóa: ${queryKeyword}` };
+  // 2. Kích hoạt bóc tách bằng Groq JSON Mode + Tag Document Type động
+  const mineMutation = useMutation({
+    mutationFn: async () => {
+      const params = new URLSearchParams({
+        brand_name: brandName || "New Brand",
+        document_type: documentType,
+      });
+      if (websiteUrl) params.append("website_url", websiteUrl);
+      if (rawTextContent) params.append("raw_text_content", rawTextContent);
+
+      const res = await fetch(`${API_BASE}/brand-profile/mine?${params.toString()}`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Lỗi khai phá RAG");
       }
+      const dataJson = await res.json();
+      return dataJson.draft_profile as BrandProfileSchema;
     },
-    onSuccess: (updatedData) => {
-      queryClient.setQueryData(brandVoiceKeys.detail(), updatedData);
+    onSuccess: (minedDraft) => {
+      queryClient.setQueryData(brandProfileKeys.detail(DEFAULT_BRAND_ID), minedDraft);
       navigate({ search: (prev) => ({ ...prev, syncOpen: undefined }) });
     },
+    onError: (error: any) => {
+      alert(`Thất bại: ${error.message}`);
+    }
   });
 
   if (isLoading || !data) {
     return (
       <div className="flex items-center justify-center py-32 gap-2 text-muted-foreground text-xs font-medium">
-        <Loader2 className="w-4 h-4 animate-spin text-primary" /> Đang tối ưu luồng dữ liệu...
+        <Loader2 className="w-4 h-4 animate-spin text-primary" /> Đang đồng bộ cấu hình Brand Engine...
       </div>
     );
   }
 
-  const updateField = (patch: Partial<BrandVoiceData>) => {
-    queryClient.setQueryData(brandVoiceKeys.detail(), { ...data, ...patch });
+  const updateField = (patch: Partial<BrandProfileSchema>) => {
+    queryClient.setQueryData(brandProfileKeys.detail(DEFAULT_BRAND_ID), { ...data, ...patch });
+  };
+
+  const updateNestedField = (block: keyof BrandProfileSchema, patch: any) => {
+    queryClient.setQueryData(brandProfileKeys.detail(DEFAULT_BRAND_ID), {
+      ...data,
+      [block]: { ...(data[block] as object), ...patch }
+    });
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 space-y-12 bg-background text-foreground antialiased ">
+  <div className="flex">
+    <SidebarNav />
+   <div className="min-h-full">
+     <div className="max-w-3xl mx-auto px-4 py-8 space-y-12 bg-background text-foreground antialiased">
       
-      {/* ── STICKY TOP BAR (Hành động phẳng) ── */}
+      {/* ── STICKY TOP BAR ── */}
       <div className="sticky top-0 bg-background/90 backdrop-blur-md z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-muted">
         <div>
           <h1 className="text-xl font-bold tracking-tight flex items-center gap-2">
-            <Volume2 className="w-5 h-5 text-primary" /> Brand Engine Configuration
+            <Volume2 className="w-5 h-5 text-primary" /> Brand Context Orchestrator
           </h1>
-          <p className="text-xs text-muted-foreground mt-1">Luồng thiết lập ngữ cảnh phẳng Notion-style, triệt tiêu card.</p>
+          <p className="text-xs text-muted-foreground mt-1">Quản lý ngữ cảnh phẳng cho Multi-Agent: Writer, Designer, Ads, Landing-Page.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => updateField(MOCK_DEFAULT_DATA)}>
+          <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => queryClient.setQueryData(brandProfileKeys.detail(DEFAULT_BRAND_ID), COMPONENT_DEFAULT_DATA)}>
             <RotateCcw className="w-3.5 h-3.5 mr-1" /> Mặc định
           </Button>
           <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground" onClick={() => navigate({ search: (prev) => ({ ...prev, previewOpen: true }) })}>
-            <Eye className="w-3.5 h-3.5 mr-1" /> Payload
+            <Eye className="w-3.5 h-3.5 mr-1" /> Payload JSON
           </Button>
           <Button variant="secondary" size="sm" className="h-8 text-xs font-semibold" onClick={() => navigate({ search: (prev) => ({ ...prev, syncOpen: true }) })}>
-            <Search className="w-3.5 h-3.5 mr-1" /> Auto RAG
+            <Search className="w-3.5 h-3.5 mr-1" /> Khai phá RAG (Groq)
           </Button>
           <Button size="sm" className="h-8 text-xs font-semibold px-4 shadow-sm" disabled={saveMutation.isPending} onClick={() => saveMutation.mutate(data)}>
             {saveMutation.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1" />}
-            Lưu SQLite
+            Lưu DB
           </Button>
         </div>
       </div>
 
-      {/* ── BLOCK 1: TONE OF VOICE ── */}
+      {/* ── BLOCK 1: TONE OF VOICE & RULES ── */}
       <section className="space-y-4">
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-bold text-primary font-mono">01.</span>
-          <h2 className="text-base font-bold tracking-tight">Giọng văn & Định hướng nội dung</h2>
+          <h2 className="text-base font-bold tracking-tight">Giọng văn & Định hướng thương hiệu (Writer / Ads Scope)</h2>
         </div>
         
         <div className="pl-6 space-y-4">
-          <RadioGroup
-            value={data.tone_of_voice || "Thân thiện"}
-            onValueChange={(val) => updateField({ tone_of_voice: val })}
-            className="grid grid-cols-1 sm:grid-cols-2 gap-2"
-          >
-            {[
-              { id: "Thân thiện", title: "😊 Thân thiện", desc: "Gần gũi, tự nhiên, dễ hiểu" },
-              { id: "Chuyên nghiệp", title: "💼 Chuyên nghiệp", desc: "Trang trọng, uy tín, chính xác" },
-              { id: "Truyền cảm hứng", title: "✨ Truyền cảm hứng", desc: "Tích cực, thúc đẩy hành động" },
-              { id: "Hài hước", title: "😆 Hài hước", desc: "Vui vẻ, dí dỏm, tạo trend" },
-            ].map((t) => (
-              <Label
-                key={t.id}
-                className={`flex items-start gap-3 p-3 rounded-lg border border-muted bg-background/50 cursor-pointer transition-all hover:border-slate-300 ${
-                  data.tone_of_voice === t.id ? "border-primary ring-1 ring-primary/20 bg-primary/[0.02]" : ""
-                }`}
-              >
-                <RadioGroupItem value={t.id} className="mt-0.5" />
-                <div>
-                  <span className="font-semibold text-xs text-slate-800 block">{t.title}</span>
-                  <span className="text-[11px] text-muted-foreground block mt-0.5">{t.desc}</span>
-                </div>
-              </Label>
-            ))}
-          </RadioGroup>
+          <div className="space-y-2">
+            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Định vị cốt lõi (Positioning)</Label>
+            <Textarea
+              rows={2} value={data.positioning || ""}
+              onChange={(e) => updateField({ positioning: e.target.value })}
+              placeholder="Nhập định vị một dòng để Agent không bị lầm đường lạc lối..." className="text-xs font-medium leading-relaxed"
+            />
+          </div>
 
           <div className="space-y-2 pt-1">
-            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Quy tắc viết text bắt buộc</Label>
+            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Tone mẫu được duyệt (Tone Patterns)</Label>
             <div className="flex flex-wrap gap-1.5">
-              {(data.voice_rules || []).map((rule, i) => (
+              {(data.brand_voice_rules?.tone_patterns || []).map((tone, i) => (
                 <Badge key={i} variant="outline" className="text-xs font-medium pl-2.5 pr-1.5 py-0.5 border-slate-200 bg-slate-50 text-slate-600 rounded-md">
-                  {rule}
-                  <button type="button" className="ml-1.5 p-0.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600" onClick={() => updateField({ voice_rules: data.voice_rules.filter((_, j) => j !== i) })}>
+                  {tone}
+                  <button type="button" className="ml-1.5 p-0.5 rounded-full text-slate-400 hover:text-slate-600" 
+                    onClick={() => updateNestedField("brand_voice_rules", { tone_patterns: data.brand_voice_rules.tone_patterns.filter((_, j) => j !== i) })}>
                     <X className="w-2.5 h-2.5" />
                   </button>
                 </Badge>
               ))}
             </div>
             <Input
-              placeholder="Gõ quy tắc mới rồi nhấn Enter..." className="h-8 text-xs max-w-md focus-visible:ring-primary/30"
+              placeholder="Thêm Tone descriptor + Enter..." className="h-8 text-xs max-w-md"
               onKeyDown={(e) => {
                 const el = e.currentTarget;
                 if (e.key === "Enter" && el.value.trim()) {
-                  updateField({ voice_rules: [...(data.voice_rules || []), el.value.trim()] });
+                  updateNestedField("brand_voice_rules", { tone_patterns: [...(data.brand_voice_rules?.tone_patterns || []), el.value.trim()] });
+                  el.value = "";
+                }
+              }}
+            />
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-red-500">Từ ngữ cấm sử dụng (Forbidden Words)</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {(data.brand_voice_rules?.forbidden_words || []).map((word, i) => (
+                <Badge key={i} variant="destructive" className="text-xs font-medium pl-2.5 pr-1.5 py-0.5 rounded-md">
+                  {word}
+                  <button type="button" className="ml-1.5 p-0.5 rounded-full text-white/70 hover:text-white" 
+                    onClick={() => updateNestedField("brand_voice_rules", { forbidden_words: data.brand_voice_rules.forbidden_words.filter((_, j) => j !== i) })}>
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <Input
+              placeholder="Thêm từ cấm kị khi viết bài + Enter..." className="h-8 text-xs max-w-md border-red-200 focus-visible:ring-red-400"
+              onKeyDown={(e) => {
+                const el = e.currentTarget;
+                if (e.key === "Enter" && el.value.trim()) {
+                  updateNestedField("brand_voice_rules", { forbidden_words: [...(data.brand_voice_rules?.forbidden_words || []), el.value.trim()] });
                   el.value = "";
                 }
               }}
@@ -226,41 +294,59 @@ export function ScreenBrandVoice() {
         </div>
       </section>
 
-      {/* ── BLOCK 2: CTA & CORE MESSAGE ── */}
+      {/* ── BLOCK 2: MESSAGING ARCHITECTURE ── */}
       <section className="space-y-4 pt-2 border-t border-muted">
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-bold text-primary font-mono">02.</span>
-          <h2 className="text-base font-bold tracking-tight">Thông điệp & Lời kêu gọi (CTA)</h2>
+          <h2 className="text-base font-bold tracking-tight">Cấu trúc thông điệp & Điểm chạm khách hàng (Messaging)</h2>
         </div>
 
         <div className="pl-6 space-y-4">
           <div className="space-y-2">
-            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Thông điệp cốt lõi (Core Slogan)</Label>
-            <Textarea
-              rows={2} value={data.core_message || ""}
-              onChange={(e) => updateField({ core_message: e.target.value })}
-              placeholder="Nhập giá trị cốt lõi để bot định hình bài viết..." className="text-xs focus-visible:ring-primary/30 font-medium leading-relaxed"
+            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Nỗi đau của khách hàng (Pain Points)</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {(data.messaging?.pain_points || []).map((pain, i) => (
+                <Badge key={i} variant="secondary" className="text-xs font-medium pl-2.5 pr-1.5 py-0.5 rounded-md">
+                  {pain}
+                  <button type="button" className="ml-1.5 text-slate-400 hover:text-slate-600" 
+                    onClick={() => updateNestedField("messaging", { pain_points: data.messaging.pain_points.filter((_, j) => j !== i) })}>
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+            <Input
+              placeholder="Nhập vấn đề khách hàng đang gặp phải + Enter..." className="h-8 text-xs max-w-md"
+              onKeyDown={(e) => {
+                const el = e.currentTarget;
+                if (e.key === "Enter" && el.value.trim()) {
+                  updateNestedField("messaging", { pain_points: [...(data.messaging?.pain_points || []), el.value.trim()] });
+                  el.value = "";
+                }
+              }}
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Danh sách cấu trúc CTA mẫu</Label>
-            <div className="space-y-1 max-w-xl">
-              {(data.cta_samples || []).map((cta, i) => (
-                <div key={i} className="flex items-center justify-between py-1 px-2 border border-transparent hover:border-slate-200 rounded-md bg-slate-50/60 text-xs text-slate-700 font-medium group">
-                  <span className="truncate">{cta}</span>
-                  <Button size="icon" variant="ghost" className="w-5 h-5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive" onClick={() => updateField({ cta_samples: data.cta_samples.filter((_, j) => j !== i) })}>
+            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Bằng chứng thuyết phục (Proof Points)</Label>
+            <div className="space-y-1">
+              {(data.messaging?.proof_points || []).map((proof, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                  <span className="flex-1">{proof}</span>
+                  <button type="button" className="text-muted-foreground hover:text-destructive"
+                    onClick={() => updateNestedField("messaging", { proof_points: data.messaging.proof_points.filter((_, j) => j !== i) })}>
                     <X className="w-3 h-3" />
-                  </Button>
+                  </button>
                 </div>
               ))}
             </div>
             <Input
-              placeholder="Thêm CTA mẫu + Enter..." className="h-8 text-xs max-w-md"
+              placeholder="Thêm số liệu chứng minh uy tín + Enter..." className="h-8 text-xs max-w-md"
               onKeyDown={(e) => {
                 const el = e.currentTarget;
                 if (e.key === "Enter" && el.value.trim()) {
-                  updateField({ cta_samples: [...(data.cta_samples || []), el.value.trim()] });
+                  updateNestedField("messaging", { proof_points: [...(data.messaging?.proof_points || []), el.value.trim()] });
                   el.value = "";
                 }
               }}
@@ -273,216 +359,213 @@ export function ScreenBrandVoice() {
       <section className="space-y-4 pt-2 border-t border-muted">
         <div className="flex items-baseline gap-2">
           <span className="text-sm font-bold text-primary font-mono">03.</span>
-          <h2 className="text-base font-bold tracking-tight">Hệ thống nhận diện hình ảnh (Diffusion / ControlNet)</h2>
+          <h2 className="text-base font-bold tracking-tight">Hệ thống nhận diện hình ảnh (Designer Scope / ComfyUI Node)</h2>
         </div>
 
         <div className="pl-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Loại hình đồ họa</Label>
-              <div className="flex flex-wrap gap-1">
-                {["Ảnh thực tế", "Đồ họa phẳng", "3D Render", "Tối giản Vector"].map((t) => (
-                  <Button
-                    key={t} size="sm" variant={data.image_type === t ? "secondary" : "outline"}
-                    className={`h-7 text-xs px-3 font-medium ${data.image_type === t ? "border-primary/30 text-primary bg-primary/[0.03]" : ""}`} 
-                    onClick={() => updateField({ image_type: t })}
-                  >
-                    {t}
-                  </Button>
-                ))}
-              </div>
+              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Đặc tả phong cách Prompt (Style Description)</Label>
+              <Input
+                value={data.visual_identity?.style_description || ""}
+                onChange={(e) => updateNestedField("visual_identity", { style_description: e.target.value })}
+                className="h-8 text-xs text-primary font-medium"
+                placeholder="Ví dụ: Ultra-realistic photograph, 8k resolution..."
+              />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Bảng màu Brand (Hex)</Label>
-              <div className="flex items-center gap-2">
-                {(data.brand_colors || []).map((hex, i) => (
-                  <div key={i} className="flex items-center gap-1.5 border border-muted rounded px-1.5 py-0.5 bg-slate-50">
-                    <div style={{ backgroundColor: hex }} className="w-3 h-3 rounded-sm shadow-inner" />
-                    <span className="text-[10px] font-mono text-slate-500">{hex}</span>
-                  </div>
-                ))}
-              </div>
+              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Aesthetic Mood</Label>
+              <Input
+                value={data.visual_identity?.mood || ""}
+                onChange={(e) => updateNestedField("visual_identity", { mood: e.target.value })}
+                className="h-8 text-xs text-slate-700 font-medium"
+                placeholder="Ví dụ: Dark moody cinematic..."
+              />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Cấu trúc prompt mặc định (Cinematic Style)</Label>
-            <div className="bg-slate-50 text-slate-600 rounded-lg p-3 text-xs font-mono space-y-1 border border-slate-100">
-              {(data.image_rules || []).map((rule, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-primary/40 font-bold">•</span>
-                  <span>{rule}</span>
+          <div className="space-y-2">
+            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Mã màu hex cốt lõi</Label>
+            <div className="flex items-center gap-2">
+              {(data.visual_identity?.color_palette || []).map((hex, i) => (
+                <div key={i} className="flex items-center gap-1.5 border border-muted rounded px-2 py-1 bg-slate-50">
+                  <div style={{ backgroundColor: hex }} className="w-3.5 h-3.5 rounded shadow-inner" />
+                  <span className="text-xs font-mono text-slate-500">{hex}</span>
+                  <button type="button" className="text-slate-400 hover:text-slate-600 ml-1"
+                    onClick={() => updateNestedField("visual_identity", { color_palette: data.visual_identity.color_palette.filter((_, j) => j !== i) })}>
+                    <X className="w-2.5 h-2.5" />
+                  </button>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── BLOCK 4: PRODUCTS & TARGET AUDIENCE ── */}
-      <section className="space-y-4 pt-2 border-t border-muted">
-        <div className="flex items-baseline gap-2">
-          <span className="text-sm font-bold text-primary font-mono">04.</span>
-          <h2 className="text-base font-bold tracking-tight">Sản phẩm & Đối tượng mục tiêu</h2>
-        </div>
-
-        <div className="pl-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            
-            {/* Sản phẩm */}
-            <div className="space-y-2">
-              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Danh mục sản phẩm áp dụng</Label>
-              <div className="space-y-1 max-h-40 overflow-y-auto">
-                {(data.products || []).map((prod, i) => (
-                  <div key={i} className="flex items-center gap-2 py-1 px-1.5 text-xs text-slate-700 font-medium group">
-                    <AlignLeft className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="flex-1 truncate">{prod}</span>
-                    <button type="button" className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive" onClick={() => updateField({ products: data.products.filter((_, j) => j !== i) })}>
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
               <Input
-                placeholder="Thêm tên sản phẩm..." className="h-8 text-xs max-w-xs"
+                placeholder="#HEX + Enter" className="h-7 text-xs w-24 px-1.5"
                 onKeyDown={(e) => {
                   const el = e.currentTarget;
-                  if (e.key === "Enter" && el.value.trim()) {
-                    updateField({ products: [...(data.products || []), el.value.trim()] });
+                  if (e.key === "Enter" && el.value.trim().startsWith("#")) {
+                    updateNestedField("visual_identity", { color_palette: [...(data.visual_identity?.color_palette || []), el.value.trim()] });
                     el.value = "";
                   }
                 }}
               />
             </div>
-
-            {/* Target & Benefits */}
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Lợi ích cốt lõi</Label>
-                <ul className="text-xs space-y-1 text-slate-600 font-medium">
-                  {(data.benefits || []).map((b, i) => (
-                    <li key={i} className="flex items-center gap-2">
-                      <span className="w-1 h-1 rounded-full bg-emerald-500" />
-                      <span className="truncate">{b}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Phân khúc khách hàng mục tiêu</Label>
-                <div className="flex flex-wrap gap-1">
-                  {(data.target_audience || []).map((tag, i) => (
-                    <Badge key={i} variant="outline" className="text-[10px] px-2 py-0 border-slate-200 bg-slate-50 font-bold text-slate-500">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
       </section>
 
-      {/* ── BLOCK 5: REFERENCE DOCUMENTS ── */}
+      {/* ── BLOCK 4: AUDIENCE & CTA PATTERNS ── */}
       <section className="space-y-4 pt-2 border-t border-muted">
         <div className="flex items-baseline gap-2">
-          <span className="text-sm font-bold text-primary font-mono">05.</span>
-          <h2 className="text-base font-bold tracking-tight">Tài liệu tham khảo nguồn (RAG Input)</h2>
+          <span className="text-sm font-bold text-primary font-mono">04.</span>
+          <h2 className="text-base font-bold tracking-tight">Phân khúc mục tiêu & Chuyển đổi (Landing-Page Scope)</h2>
         </div>
 
         <div className="pl-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            
-            {/* File đính kèm */}
-            <div className="space-y-2">
-              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Tài liệu hướng dẫn đã tải lên</Label>
-              <div className="space-y-1.5">
-                {(data.reference_docs || []).map((doc, i) => (
-                  <div key={i} className="flex items-center justify-between p-2 border border-slate-100 rounded-lg bg-slate-50/50 text-[11px] font-medium">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                      <span className="text-[9px] font-black bg-red-100 text-red-700 px-1 py-0.5 rounded">{doc.type}</span>
-                      <span className="text-slate-700 font-semibold truncate">{doc.name}</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-muted-foreground shrink-0">{doc.size}</span>
-                  </div>
-                ))}
-                <div className="border border-dashed border-slate-200 p-2 rounded-lg text-center text-xs text-muted-foreground hover:bg-slate-50 cursor-pointer transition flex items-center justify-center gap-1.5 font-semibold">
-                  <Upload className="w-3.5 h-3.5 text-primary" />
-                  Tải lên tệp mới
+          <div className="space-y-2">
+            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Chân dung đối tượng thụ hưởng (Audience Target)</Label>
+            <Input
+              value={data.audience || ""}
+              onChange={(e) => updateField({ audience: e.target.value })}
+              className="text-xs font-medium"
+              placeholder="Mô tả tệp khách hàng tiềm năng..."
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Cấu trúc Call to Action mẫu</Label>
+            <div className="space-y-1">
+              {(data.brand_voice_rules?.cta_patterns || []).map((cta, i) => (
+                <div key={i} className="flex items-center justify-between py-1 px-2 border rounded bg-slate-50 text-xs text-slate-700 font-medium group">
+                  <span>{cta}</span>
+                  <Button size="icon" variant="ghost" className="w-5 h-5 text-muted-foreground hover:text-destructive" 
+                    onClick={() => updateNestedField("brand_voice_rules", { cta_patterns: data.brand_voice_rules.cta_patterns.filter((_, j) => j !== i) })}>
+                    <X className="w-3 h-3" />
+                  </Button>
                 </div>
-              </div>
+              ))}
             </div>
-
-            {/* URL cào */}
-            <div className="space-y-2">
-              <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Đường dẫn Website tham khảo</Label>
-              <div className="flex items-center gap-2 p-1.5 border border-slate-200 rounded-lg bg-background shadow-sm">
-                <Input
-                  className="h-6 text-xs border-0 p-0 focus-visible:ring-0 text-primary font-medium"
-                  value={data.reference_urls?.[0] || ""}
-                  onChange={(e) => updateField({ reference_urls: [e.target.value] })}
-                />
-                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-              </div>
-              <p className="text-[10px] text-muted-foreground font-medium leading-normal">
-                Hệ thống sẽ tự động cào cấu trúc dữ liệu sitemap khi chạy tiến trình tự động hóa tiếp theo.
-              </p>
-            </div>
-
+            <Input
+              placeholder="Thêm cấu trúc CTA kích thích chuyển đổi + Enter..." className="h-8 text-xs max-w-md"
+              onKeyDown={(e) => {
+                const el = e.currentTarget;
+                if (e.key === "Enter" && el.value.trim()) {
+                  updateNestedField("brand_voice_rules", { cta_patterns: [...(data.brand_voice_rules?.cta_patterns || []), el.value.trim()] });
+                  el.value = "";
+                }
+              }}
+            />
           </div>
         </div>
       </section>
 
-      {/* ── MODAL 1: ĐỒNG BỘ RAG PIPELINE ── */}
+      {/* ── BLOCK 5: CONTENT EXAMPLES SOURCE ── */}
+      <section className="space-y-4 pt-2 border-t border-muted">
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-bold text-primary font-mono">05.</span>
+          <h2 className="text-base font-bold tracking-tight">Văn bản mẫu định hướng AI Generation (Content Blueprint)</h2>
+        </div>
+
+        <div className="pl-6 space-y-4">
+          <div className="space-y-2">
+            <Label className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Bài viết Social mẫu (Gán Context cho Social Agent)</Label>
+            <Textarea
+              rows={3} value={data.content_examples?.social_post || ""}
+              onChange={(e) => updateNestedField("content_examples", { social_post: e.target.value })}
+              placeholder="Dán bài viết mẫu chuẩn văn phong thương hiệu nhất của anh vào đây để Groq học theo..." className="text-xs font-mono"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── MODAL 1: KHAI PHÁ VÀ PHÂN TAG ĐỘNG RAG PIPELINE ── */}
       <Dialog open={!!syncOpen} onOpenChange={(open) => navigate({ search: (prev) => ({ ...prev, syncOpen: open ? true : undefined }) })}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">Kích hoạt Auto-Sync từ RAG</DialogTitle>
+            <DialogTitle className="text-sm font-bold flex items-center gap-2">🚀 Tiến trình Khai phá Thực thể RAG</DialogTitle>
             <DialogDescription className="text-xs">
-              Hệ thống quét Vector DB qua từ khóa, tự động phân tích cấu trúc cấu hình và ghi đè thẳng vào SQLite.
+              Nhập thông tin mồi. Lõi AI sử dụng Groq JSON Mode để bóc tách thông tin dựa trên phân loại tài liệu do client chọn.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center space-x-2 pt-2">
-            <Input
-              value={searchParamQ}
-              onChange={(e) => navigate({ search: (prev) => ({ ...prev, q: e.target.value }) })}
-              placeholder="Ví dụ: guideline, campaign brief..." className="h-9 text-xs"
-            />
-            <Button size="sm" disabled={syncMutation.isPending} onClick={() => syncMutation.mutate(searchParamQ)}>
-              {syncMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Quét ngay"}
+          
+          <div className="space-y-3 pt-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Tên thương hiệu mục tiêu</Label>
+              <Input
+                value={brandName}
+                onChange={(e) => navigate({ search: (prev) => ({ ...prev, brandName: e.target.value }) })}
+                placeholder="Ví dụ: Holo AI, VinFast..." className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Client Phân Loại Tài Liệu (Document Type Tag)</Label>
+              <Select
+                value={documentType}
+                onValueChange={(val) => navigate({ search: (prev) => ({ ...prev, documentType: val }) })}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Chọn loại tài liệu" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="brand_guideline">📖 Brand Guideline (Cốt lõi)</SelectItem>
+                  <SelectItem value="competitor_analysis">📊 Phân tích đối thủ (Competitor)</SelectItem>
+                  <SelectItem value="product_brief">📦 Mô tả sản phẩm (Product Brief)</SelectItem>
+                  <SelectItem value="campaign_brief">🎯 Kế hoạch chiến dịch marketing</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Đường dẫn Seed URL (Sử dụng Crawl4AI)</Label>
+              <Input
+                value={websiteUrl}
+                onChange={(e) => navigate({ search: (prev) => ({ ...prev, websiteUrl: e.target.value }) })}
+                placeholder="https://example.com/guideline" className="h-8 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Văn bản thô tiêm vào hệ thống (Injected Content)</Label>
+              <Textarea
+                rows={3} value={rawTextContent}
+                onChange={(e) => navigate({ search: (prev) => ({ ...prev, rawTextContent: e.target.value }) })}
+                placeholder="Dán toàn bộ text guideline thô hoặc thông tin bóc tách thủ công..." className="text-xs"
+              />
+            </div>
+
+            <Button className="w-full h-9 text-xs font-bold" disabled={mineMutation.isPending} onClick={() => mineMutation.mutate()}>
+              {mineMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : "Khai phá dữ liệu & Đè cấu trúc"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* ── MODAL 2: XEM TRƯỚC RAG CONTEXT PREVIEW ── */}
+      {/* ── MODAL 2: XEM TRƯỚC PAYLOAD TRUYỀN CHO AGENTS ── */}
       <Dialog open={!!previewOpen} onOpenChange={(open) => navigate({ search: (prev) => ({ ...prev, previewOpen: open ? true : undefined }) })}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">RAG Context Preview</DialogTitle>
+            <DialogTitle className="text-sm font-bold">RAG Engine Payload Preview</DialogTitle>
             <DialogDescription className="text-xs">
-              Cấu trúc JSON thô payload sẽ được truyền thẳng vào Prompt Engine khi sinh Banner/Video.
+              Cấu trúc JSON thô hoàn thiện, sẵn sàng phân rã thành các Scope thích hợp ném vào Context Window của LLM.
             </DialogDescription>
           </DialogHeader>
           <div className="pt-2">
-            <pre className="bg-muted text-slate-800 border rounded-lg p-3 text-[10px] font-mono overflow-auto max-h-72 whitespace-pre-wrap leading-relaxed">
-              {JSON.stringify({ brand_identity_context: data }, null, 2)}
+            <pre className="bg-muted text-slate-800 border rounded-lg p-3 text-[10px] font-mono overflow-auto max-h-80 whitespace-pre-wrap leading-relaxed">
+              {JSON.stringify({ active_brand_profile_blueprint: data }, null, 2)}
             </pre>
           </div>
           <Button variant="secondary" size="sm" className="w-full mt-2" onClick={() => navigate({ search: (prev) => ({ ...prev, previewOpen: undefined }) })}>
-            Đóng bảng xem trước
+            Đóng bảng cấu trúc
           </Button>
         </DialogContent>
       </Dialog>
 
     </div>
+   </div>
+  </div>
   );
 }
 
-// Helper component xử lý loading icon nội bộ chống crash
 function Loader2({ className, ...props }: React.ComponentProps<"svg">) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`animate-spin ${className}`} {...props}>

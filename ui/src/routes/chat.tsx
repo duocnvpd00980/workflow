@@ -12,7 +12,6 @@ import {
   ChevronRight, AlignLeft, Eye, EyeOff, Play, Pause,
   Smartphone, Monitor, ThumbsUp, Trash2, Loader2, AlertCircle, X
 } from 'lucide-react';
-import SidebarNav from "@/layout/navbar";
 
 // ==========================================
 // CONSTANTS & TYPES
@@ -162,11 +161,19 @@ function useToast() {
 // ==========================================
 // ROUTE SETUP
 // ==========================================
-export const Route = createFileRoute('/')({
-  component: ContentEngineWorkspace,
+export const Route = createFileRoute('/chat')({
+  component: ContentEngineApp,
 });
 
+const queryClient = new QueryClient();
 
+function ContentEngineApp() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ContentEngineWorkspace />
+    </QueryClientProvider>
+  );
+}
 
 // ==========================================
 // MAIN COMPONENT
@@ -190,9 +197,28 @@ export default function ContentEngineWorkspace() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
-      
+      {/* Top Nav */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-indigo-600" />
+          <span className="font-bold tracking-tight text-slate-900">Content Engine V2.0</span>
+          <span className="text-xs bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">Balanced Option</span>
+        </div>
+        <div className="flex bg-slate-100 p-1 rounded-lg text-xs font-medium">
+          {[1, 2, 3, 4, 5, 6].map(num => (
+            <button key={num} onClick={() => setCurrentScreen(num as any)}
+              className={`px-3 py-1.5 rounded-md transition-all ${currentScreen === num ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
+              Màn {num}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-4 text-xs text-slate-500">
+          <span>User: <strong>Alex</strong></span>
+          {sessionId && <span className="font-mono text-[10px] text-slate-400">sid: {sessionId.slice(0, 8)}…</span>}
+        </div>
+      </div>
 
-      <main className="max-w-[1600px] mx-auto">
+      <main className="p-6 max-w-[1600px] mx-auto">
         {currentScreen === 1 && (
           <ScreenDashboard onCreateContent={() => setCurrentScreen(2)} addToast={addToast} />
         )}
@@ -253,9 +279,34 @@ function ScreenDashboard({ onCreateContent, addToast }: { onCreateContent: () =>
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
       {/* Sidebar */}
-     
-      <SidebarNav />
-      
+      <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-6">
+        <div className="space-y-1">
+          {[
+            { icon: LayoutDashboard, label: 'Tổng quan', active: true },
+            { icon: FolderKanban, label: 'Dự án gần đây' },
+            { icon: FileText, label: 'Templates mẫu' },
+            { icon: UserSquare2, label: 'Brand Profile' },
+            { icon: Layers, label: 'Tích hợp kênh' },
+            { icon: BarChart3, label: 'Báo cáo hiệu quả' },
+            { icon: Settings, label: 'Cài đặt hệ thống' },
+          ].map(({ icon: Icon, label, active }) => (
+            <button key={label} className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md ${active ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50'}`}>
+              <Icon className="w-4 h-4" /> {label}
+            </button>
+          ))}
+        </div>
+        <hr className="border-slate-100" />
+        <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 text-xs space-y-3">
+          <div className="flex justify-between items-center text-slate-600">
+            <span className="flex items-center gap-1 font-medium"><CreditCard className="w-3.5 h-3.5" /> Credit còn lại</span>
+            <span className="font-bold text-slate-900">182 / 500</span>
+          </div>
+          <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+            <div className="bg-indigo-600 h-full w-[36%]" />
+          </div>
+          <button className="w-full py-2 bg-white border border-slate-200 rounded text-center font-semibold text-slate-700 hover:bg-slate-50 transition">Nâng cấp gói</button>
+        </div>
+      </div>
 
       {/* Main */}
       <div className="md:col-span-3 space-y-6">

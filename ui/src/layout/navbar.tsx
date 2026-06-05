@@ -1,6 +1,10 @@
 // src/components/SidebarNav.tsx
 import { Link } from '@tanstack/react-router'
-import { Zap, History, BrainCircuit, Settings, BarChart3, CreditCard } from 'lucide-react'
+import {
+  LayoutDashboard, FolderKanban, FileText, UserSquare2, Zap, BrainCircuit, BarChart3, Settings, CreditCard, History
+} from 'lucide-react';
+
+
 
 export default function SidebarNav() {
   // Bộ CSS class gom nhóm để giao diện thống nhất và scannable
@@ -9,8 +13,8 @@ export default function SidebarNav() {
   const activeClass = "bg-indigo-50/70 text-indigo-700 font-bold"
 
   return (
-    <>
-      
+    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-6">
+
       {/* BRAND HEADER */}
       <div className="flex h-14 items-center gap-2.5 border-b px-4 shrink-0">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-sm">
@@ -24,10 +28,10 @@ export default function SidebarNav() {
 
       {/* NAVIGATION LINKS CONTAINER */}
       <div className="px-2 py-3 border-b space-y-0.5 shrink-0">
-        
+
         {/* 1. ĐANG THỰC THI (Trang chủ - Map vào file src/routes/index.tsx) */}
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className={`${baseLinkClass} ${inactiveClass}`}
           activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
           activeOptions={{ exact: true }} // Chỉ sáng đèn khi url chuẩn xác là "/"
@@ -46,8 +50,8 @@ export default function SidebarNav() {
         </Link>
 
         {/* 2. LỊCH SỬ CÔNG VIỆC (Map vào file src/routes/history.tsx) */}
-        <Link 
-          to="/history" 
+        <Link
+          to="/history"
           className={`${baseLinkClass} ${inactiveClass}`}
           activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
         >
@@ -60,8 +64,8 @@ export default function SidebarNav() {
         </Link>
 
         {/* 3. CƠ SỞ TRI THỨC RAG (Map vào file src/routes/knowledge.tsx) */}
-        <Link 
-          to="/knowledge" 
+        <Link
+          to="/knowledge"
           className={`${baseLinkClass} ${inactiveClass}`}
           activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
         >
@@ -74,8 +78,8 @@ export default function SidebarNav() {
         </Link>
 
         {/* 4. CẤU HÌNH AGENT (Map vào file src/routes/settings.tsx) */}
-        <Link 
-          to="/settings" 
+        {/* <Link
+          to="/settings"
           className={`${baseLinkClass} ${inactiveClass}`}
           activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
         >
@@ -85,11 +89,11 @@ export default function SidebarNav() {
               <span>Cấu hình Agent</span>
             </>
           )}
-        </Link>
+        </Link> */}
 
         {/* 5. ANALYTICS & BÁO CÁO (Map vào file src/routes/analytics.tsx) */}
-        <Link 
-          to="/analytics" 
+        <Link
+          to="/analytics"
           className={`${baseLinkClass} ${inactiveClass}`}
           activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
         >
@@ -101,8 +105,8 @@ export default function SidebarNav() {
           )}
         </Link>
 
-         <Link 
-          to="/artifacts" 
+        <Link
+          to="/artifacts"
           className={`${baseLinkClass} ${inactiveClass}`}
           activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
         >
@@ -114,16 +118,60 @@ export default function SidebarNav() {
           )}
         </Link>
 
-        {/* 6. CHI PHÍ & HÓA ĐƠN (Map vào file src/routes/budget.tsx hoặc billing.tsx tùy bạn đặt tên file con) */}
-        <Link 
-          to="/billing" 
+
+
+        {/* <Link
+          to="/integrations"
           className={`${baseLinkClass} ${inactiveClass}`}
           activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
         >
           {({ isActive }) => (
             <>
               <CreditCard size={16} className={isActive ? "text-indigo-600" : "text-slate-400"} />
-              <span>Chi phí & Hóa đơn</span>
+              <span>Dự án gần đây</span>
+            </>
+          )}
+        </Link> */}
+
+
+
+        <Link
+          to="/templates"
+          className={`${baseLinkClass} ${inactiveClass}`}
+          activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
+        >
+          {({ isActive }) => (
+            <>
+              <CreditCard size={16} className={isActive ? "text-indigo-600" : "text-slate-400"} />
+              <span>Templates mẫu</span>
+            </>
+          )}
+        </Link>
+
+
+        <Link
+          to="/brand"
+          className={`${baseLinkClass} ${inactiveClass}`}
+          activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
+        >
+          {({ isActive }) => (
+            <>
+              <CreditCard size={16} className={isActive ? "text-indigo-600" : "text-slate-400"} />
+              <span>Brand Profile</span>
+            </>
+          )}
+        </Link>
+
+
+        <Link
+          to="/integrations"
+          className={`${baseLinkClass} ${inactiveClass}`}
+          activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
+        >
+          {({ isActive }) => (
+            <>
+              <CreditCard size={16} className={isActive ? "text-indigo-600" : "text-slate-400"} />
+              <span>Tích hợp kênh</span>
             </>
           )}
         </Link>
@@ -131,7 +179,22 @@ export default function SidebarNav() {
 
         
 
+
+        {/* <Link
+          to="/billing"
+          className={`${baseLinkClass} ${inactiveClass}`}
+          activeProps={{ className: `${baseLinkClass} ${activeClass}` }}
+        >
+          {({ isActive }) => (
+            <>
+              <CreditCard size={16} className={isActive ? "text-indigo-600" : "text-slate-400"} />
+              <span>billing</span>
+            </>
+          )}
+        </Link> */}
+
+
       </div>
-    </>
+    </div>
   )
 }

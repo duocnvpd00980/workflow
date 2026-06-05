@@ -10,18 +10,27 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkflowRouteImport } from './routes/workflow'
+import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
+import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as ArtifactsRouteImport } from './routes/artifacts'
+import { Route as Analytics2RouteImport } from './routes/analytics2'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 
 const WorkflowRoute = WorkflowRouteImport.update({
   id: '/workflow',
   path: '/workflow',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TemplatesRoute = TemplatesRouteImport.update({
+  id: '/templates',
+  path: '/templates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -34,9 +43,19 @@ const KnowledgeRoute = KnowledgeRouteImport.update({
   path: '/knowledge',
   getParentRoute: () => rootRouteImport,
 } as any)
+const IntegrationsRoute = IntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BrandRoute = BrandRouteImport.update({
@@ -54,6 +73,11 @@ const ArtifactsRoute = ArtifactsRouteImport.update({
   path: '/artifacts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Analytics2Route = Analytics2RouteImport.update({
+  id: '/analytics2',
+  path: '/analytics2',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -68,35 +92,47 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/analytics2': typeof Analytics2Route
   '/artifacts': typeof ArtifactsRoute
   '/billing': typeof BillingRoute
   '/brand': typeof BrandRoute
+  '/chat': typeof ChatRoute
   '/history': typeof HistoryRoute
+  '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/settings': typeof SettingsRoute
+  '/templates': typeof TemplatesRoute
   '/workflow': typeof WorkflowRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/analytics2': typeof Analytics2Route
   '/artifacts': typeof ArtifactsRoute
   '/billing': typeof BillingRoute
   '/brand': typeof BrandRoute
+  '/chat': typeof ChatRoute
   '/history': typeof HistoryRoute
+  '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/settings': typeof SettingsRoute
+  '/templates': typeof TemplatesRoute
   '/workflow': typeof WorkflowRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
+  '/analytics2': typeof Analytics2Route
   '/artifacts': typeof ArtifactsRoute
   '/billing': typeof BillingRoute
   '/brand': typeof BrandRoute
+  '/chat': typeof ChatRoute
   '/history': typeof HistoryRoute
+  '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/settings': typeof SettingsRoute
+  '/templates': typeof TemplatesRoute
   '/workflow': typeof WorkflowRoute
 }
 export interface FileRouteTypes {
@@ -104,46 +140,62 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/analytics'
+    | '/analytics2'
     | '/artifacts'
     | '/billing'
     | '/brand'
+    | '/chat'
     | '/history'
+    | '/integrations'
     | '/knowledge'
     | '/settings'
+    | '/templates'
     | '/workflow'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/analytics'
+    | '/analytics2'
     | '/artifacts'
     | '/billing'
     | '/brand'
+    | '/chat'
     | '/history'
+    | '/integrations'
     | '/knowledge'
     | '/settings'
+    | '/templates'
     | '/workflow'
   id:
     | '__root__'
     | '/'
     | '/analytics'
+    | '/analytics2'
     | '/artifacts'
     | '/billing'
     | '/brand'
+    | '/chat'
     | '/history'
+    | '/integrations'
     | '/knowledge'
     | '/settings'
+    | '/templates'
     | '/workflow'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
+  Analytics2Route: typeof Analytics2Route
   ArtifactsRoute: typeof ArtifactsRoute
   BillingRoute: typeof BillingRoute
   BrandRoute: typeof BrandRoute
+  ChatRoute: typeof ChatRoute
   HistoryRoute: typeof HistoryRoute
+  IntegrationsRoute: typeof IntegrationsRoute
   KnowledgeRoute: typeof KnowledgeRoute
   SettingsRoute: typeof SettingsRoute
+  TemplatesRoute: typeof TemplatesRoute
   WorkflowRoute: typeof WorkflowRoute
 }
 
@@ -154,6 +206,13 @@ declare module '@tanstack/react-router' {
       path: '/workflow'
       fullPath: '/workflow'
       preLoaderRoute: typeof WorkflowRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/templates': {
+      id: '/templates'
+      path: '/templates'
+      fullPath: '/templates'
+      preLoaderRoute: typeof TemplatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -170,11 +229,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KnowledgeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/integrations': {
+      id: '/integrations'
+      path: '/integrations'
+      fullPath: '/integrations'
+      preLoaderRoute: typeof IntegrationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/history': {
       id: '/history'
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/brand': {
@@ -198,6 +271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtifactsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics2': {
+      id: '/analytics2'
+      path: '/analytics2'
+      fullPath: '/analytics2'
+      preLoaderRoute: typeof Analytics2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
@@ -218,12 +298,16 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
+  Analytics2Route: Analytics2Route,
   ArtifactsRoute: ArtifactsRoute,
   BillingRoute: BillingRoute,
   BrandRoute: BrandRoute,
+  ChatRoute: ChatRoute,
   HistoryRoute: HistoryRoute,
+  IntegrationsRoute: IntegrationsRoute,
   KnowledgeRoute: KnowledgeRoute,
   SettingsRoute: SettingsRoute,
+  TemplatesRoute: TemplatesRoute,
   WorkflowRoute: WorkflowRoute,
 }
 export const routeTree = rootRouteImport

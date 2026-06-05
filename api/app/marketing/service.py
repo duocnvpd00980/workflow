@@ -32,7 +32,7 @@ class WorkflowService:
             "error": None
         }
 
-        for event in graph.stream(initial_state, config=config):
+        async for event in graph.astream(initial_state, config=config):
             if "__interrupt__" in event:
                 # Nếu auto_mode: tự động approve, không pause
                 if auto_mode:
