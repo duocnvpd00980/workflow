@@ -15,10 +15,12 @@ AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 async def init_db() -> None:
     from app.chat.models import Base as ChatBase   # ← đúng path
     from app.rag.models import Base as RagBase     # ← đúng path
+    from app.marketing.models import Base as MarketingBase 
 
     async with engine.begin() as conn:
         await conn.run_sync(ChatBase.metadata.create_all)
         await conn.run_sync(RagBase.metadata.create_all)
+        await conn.run_sync(MarketingBase.metadata.create_all)
 
 
 async def get_db() -> AsyncSession:

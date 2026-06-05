@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as BrandRouteImport } from './routes/brand'
 import { Route as BillingRouteImport } from './routes/billing'
 import { Route as ArtifactsRouteImport } from './routes/artifacts'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -30,6 +31,11 @@ const KnowledgeRoute = KnowledgeRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BrandRoute = BrandRouteImport.update({
+  id: '/brand',
+  path: '/brand',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BillingRoute = BillingRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/billing': typeof BillingRoute
+  '/brand': typeof BrandRoute
   '/history': typeof HistoryRoute
   '/knowledge': typeof KnowledgeRoute
   '/settings': typeof SettingsRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/billing': typeof BillingRoute
+  '/brand': typeof BrandRoute
   '/history': typeof HistoryRoute
   '/knowledge': typeof KnowledgeRoute
   '/settings': typeof SettingsRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/billing': typeof BillingRoute
+  '/brand': typeof BrandRoute
   '/history': typeof HistoryRoute
   '/knowledge': typeof KnowledgeRoute
   '/settings': typeof SettingsRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/artifacts'
     | '/billing'
+    | '/brand'
     | '/history'
     | '/knowledge'
     | '/settings'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/artifacts'
     | '/billing'
+    | '/brand'
     | '/history'
     | '/knowledge'
     | '/settings'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/artifacts'
     | '/billing'
+    | '/brand'
     | '/history'
     | '/knowledge'
     | '/settings'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   ArtifactsRoute: typeof ArtifactsRoute
   BillingRoute: typeof BillingRoute
+  BrandRoute: typeof BrandRoute
   HistoryRoute: typeof HistoryRoute
   KnowledgeRoute: typeof KnowledgeRoute
   SettingsRoute: typeof SettingsRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand': {
+      id: '/brand'
+      path: '/brand'
+      fullPath: '/brand'
+      preLoaderRoute: typeof BrandRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/billing': {
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   ArtifactsRoute: ArtifactsRoute,
   BillingRoute: BillingRoute,
+  BrandRoute: BrandRoute,
   HistoryRoute: HistoryRoute,
   KnowledgeRoute: KnowledgeRoute,
   SettingsRoute: SettingsRoute,

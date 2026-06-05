@@ -34,3 +34,17 @@ Environment=PYTHONUNBUFFERED=1
 
 [Install]
 WantedBy=multi-user.target
+
+
+
+
+
+
+
+
+sudo systemctl daemon-reload
+sudo systemctl restart fastapi
+sudo systemctl status fastapi
+sudo systemctl enable fastapi
+sudo journalctl -u fastapi.service -f
+sudo systemctl stop fastapi
