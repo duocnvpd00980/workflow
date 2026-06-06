@@ -40,7 +40,7 @@ from groq import Groq
 import uuid
 
 # ─ Groq Config ─
-client = Groq(api_key="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")
+client = Groq(api_key="")
 MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 def call_groq(prompt: str, max_completion_tokens: int = 500) -> str:
