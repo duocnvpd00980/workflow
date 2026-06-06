@@ -382,7 +382,7 @@ print(f"📄 Report:\n{state['draft'][:300]}...\n")
 
 ## 📧 Contact Info
 - **Model**: Groq Llama 4 Scout 17B
-- **API Key**: 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
+- **API Key**: 
 - **Framework**: LangGraph + Python 3.12+
 
 **READY FOR HANDOVER** ✅
