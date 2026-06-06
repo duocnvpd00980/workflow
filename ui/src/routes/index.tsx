@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   Plus, Sparkles, ArrowRight, ArrowLeft, Send, Check, History, Eye, 
-  Play, Pause, Loader2, AlertCircle, X, Bell, DollarSign, Zap
+  Play, Pause, Loader2, AlertCircle, X, Bell, DollarSign, Zap, LayoutDashboard, Sliders
 } from 'lucide-react';
 import { BASE_URL } from "@/config";
 
@@ -13,7 +13,7 @@ import { BASE_URL } from "@/config";
 // CONSTANTS & TYPES
 // ==========================================
 
-const PRIMARY_COLOR = "bg-slate-900 text-white hover:bg-slate-800";
+const PRIMARY_COLOR = "bg-slate-900 text-white hover:bg-slate-800 transition-colors";
 
 type WorkflowStatus = "running" | "paused" | "completed" | "error";
 
@@ -130,16 +130,18 @@ interface Toast { id: string; message: string; type: 'success' | 'error' | 'info
 
 function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: string) => void }) {
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-full px-4 sm:px-0">
       {toasts.map(t => (
-        <div key={t.id} className={`flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-xs font-medium text-white animate-in slide-in-from-right ${
-          t.type === 'success' ? 'bg-emerald-600' : t.type === 'error' ? 'bg-red-600' : 'bg-slate-800'
+        <div key={t.id} className={`flex items-center justify-between gap-3 px-4 py-3 rounded-lg shadow-lg text-xs font-medium text-white animate-in slide-in-from-bottom-5 duration-200 ${
+          t.type === 'success' ? 'bg-slate-900' : t.type === 'error' ? 'bg-red-600' : 'bg-slate-700'
         }`}>
-          {t.type === 'success' && <Check className="w-3.5 h-3.5" />}
-          {t.type === 'error' && <AlertCircle className="w-3.5 h-3.5" />}
-          <span>{t.message}</span>
-          <button onClick={() => onRemove(t.id)} className="ml-2 opacity-70 hover:opacity-100">
-            <X className="w-3 h-3" />
+          <div className="flex items-center gap-2">
+            {t.type === 'success' && <Check className="w-4 h-4 shrink-0" />}
+            {t.type === 'error' && <AlertCircle className="w-4 h-4 shrink-0" />}
+            <span className="break-words line-clamp-2">{t.message}</span>
+          </div>
+          <button onClick={() => onRemove(t.id)} className="p-1 rounded-md hover:bg-white/20 transition">
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       ))}
@@ -169,7 +171,7 @@ export const Route = createFileRoute('/')({
 // MAIN COMPONENT
 // ==========================================
 export default function ContentEngineWorkspace() {
-  const [currentScreen, setCurrentScreen] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
+  const [currentScreen, setCurrentScreen] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [sessionId, setSessionId] = useState<string | null>(getStoredSessionId());
   const [currentDraft, setCurrentDraft] = useState<string>('');
   const { toasts, add: addToast, remove: removeToast } = useToast();
@@ -184,8 +186,24 @@ export default function ContentEngineWorkspace() {
   const handleDraftUpdate = (draft: string) => setCurrentDraft(draft);
 
   return (
-    <div >
-      <>
+    <div className="h-screen bg-white text-slate-900 flex flex-col antialiased overflow-hidden selection:bg-slate-100">
+      {/* HEADER TỐI GIẢN */}
+      <div className="bg-white border-b border-slate-100 px-6 py-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 rounded-full bg-slate-900" />
+          <span className="text-xs font-bold tracking-widest text-slate-900 uppercase">AI Content Engine</span>
+        </div>
+        <div className="flex items-center gap-1 text-xs font-medium">
+          <button onClick={() => setCurrentScreen(1)} className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition ${currentScreen === 1 ? 'text-slate-900 bg-slate-50' : 'text-slate-500 hover:text-slate-900'}`}><LayoutDashboard className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Tổng quan</span></button>
+          <button onClick={() => setCurrentScreen(2)} className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition ${currentScreen === 2 ? 'text-slate-900 bg-slate-50' : 'text-slate-500 hover:text-slate-900'}`}><Plus className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Khởi tạo</span></button>
+          <button onClick={() => setCurrentScreen(3)} className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition ${currentScreen === 3 ? 'text-slate-900 bg-slate-50' : 'text-slate-500 hover:text-slate-900'}`}><Sliders className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Không gian viêt</span></button>
+          <button onClick={() => setCurrentScreen(4)} className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition ${currentScreen === 4 ? 'text-slate-900 bg-slate-50' : 'text-slate-500 hover:text-slate-900'}`}><Eye className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Kiểm duyệt</span></button>
+          <button onClick={() => setCurrentScreen(5)} className={`px-3 py-1.5 rounded-md flex items-center gap-1.5 transition ${currentScreen === 5 ? 'text-slate-900 bg-slate-50' : 'text-slate-500 hover:text-slate-900'}`}><Zap className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Tự động</span></button>
+        </div>
+      </div>
+
+      {/* VÙNG NỘI DUNG TRUNG TÂM (Loại bỏ các padding/margin thừa để workspace tràn viền) */}
+      <div className={`flex-1 w-full flex flex-col justify-stretch overflow-y-auto ${currentScreen === 3 ? '' : 'max-w-5xl mx-auto p-6 lg:p-12'}`}>
         {currentScreen === 1 && (
           <ScreenDashboard onCreateContent={() => setCurrentScreen(2)} />
         )}
@@ -196,20 +214,20 @@ export default function ContentEngineWorkspace() {
             addToast={addToast}
           />
         )}
-        {currentScreen === 3 && sessionId && (
+        {currentScreen === 3 && (
           <ScreenWorkspace
             onGoToReview={() => setCurrentScreen(4)}
             onGoToAuto={() => setCurrentScreen(5)}
-            sessionId={sessionId}
+            sessionId={sessionId || "dummy-session-id"}
             initialDraft={currentDraft}
             onDraftUpdate={handleDraftUpdate}
             addToast={addToast}
           />
         )}
-        {currentScreen === 4 && sessionId && (
+        {currentScreen === 4 && (
           <ScreenReviewMode
             onBack={() => setCurrentScreen(3)}
-            sessionId={sessionId}
+            sessionId={sessionId || "dummy-session-id"}
             addToast={addToast}
           />
         )}
@@ -221,10 +239,7 @@ export default function ContentEngineWorkspace() {
             addToast={addToast}
           />
         )}
-        {currentScreen === 6 && (
-          <ScreenMobileView draft={currentDraft} />
-        )}
-      </>
+      </div>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
@@ -237,12 +252,6 @@ export default function ContentEngineWorkspace() {
 function ScreenDashboard({ onCreateContent }: { onCreateContent: () => void }) {
   const [showNotifTooltip, setShowNotifTooltip] = useState(false);
 
-  const recentProjects = [
-    { name: "Bánh mì ABC - Tháng 6", type: "Facebook Post", time: "2 giờ trước", status: "Đã đăng", color: "bg-emerald-50 text-emerald-700" },
-    { name: "Khuyến mãi cuối tuần", type: "Blog Post", time: "1 ngày trước", status: "Bản nháp", color: "bg-amber-50 text-amber-700" },
-    { name: "Campaign mùa hè 2024", type: "Multi-channel", time: "2 ngày trước", status: "Đang xử lý", color: "bg-indigo-50 text-indigo-700" },
-  ];
-
   const notifBreakdown = [
     { label: "Bình luận chờ phản hồi", count: 5 },
     { label: "Bản nháp chờ duyệt", count: 3 },
@@ -250,76 +259,50 @@ function ScreenDashboard({ onCreateContent }: { onCreateContent: () => void }) {
   ];
 
   return (
-    <div className="flex">
-      <div className="md:col-span-3 space-y-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div>
-              <h2 className="text-xl font-bold tracking-tight text-slate-900">Chào buổi sáng, Minh! 👋</h2>
-              <p className="text-xs text-slate-500 mt-1">Hôm nay bạn muốn tối ưu hóa chiến dịch và tạo nội dung gì?</p>
-            </div>
-            <div className="relative">
-              <button
-                className="relative flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 transition"
-                onMouseEnter={() => setShowNotifTooltip(true)}
-                onMouseLeave={() => setShowNotifTooltip(false)}
-                aria-label="11 thông báo"
-              >
-                <Bell className="w-4 h-4 text-slate-600" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">11</span>
-              </button>
-              {showNotifTooltip && (
-                <div className="absolute top-10 left-0 z-10 bg-white border border-slate-200 rounded-xl shadow-lg p-3 w-52 text-xs space-y-2">
-                  <p className="font-semibold text-slate-700 mb-1">11 thông báo mới</p>
-                  {notifBreakdown.map(n => (
-                    <div key={n.label} className="flex justify-between text-slate-600">
-                      <span>{n.label}</span>
-                      <span className="font-semibold text-slate-900">{n.count}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+    <div className="space-y-12 w-full animate-in fade-in duration-300">
+      {/* Header Tối Giản */}
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-6 border-b border-slate-100">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Chào buổi sáng.</h2>
+          <p className="text-sm text-slate-500">Bạn muốn khởi tạo chiến dịch nội dung gì hôm nay?</p>
+        </div>
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="relative">
+            <button
+              className="flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-50 transition"
+              onClick={() => setShowNotifTooltip(!showNotifTooltip)}
+              onMouseEnter={() => setShowNotifTooltip(true)}
+            >
+              <Bell className="w-5 h-5 text-slate-600" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-slate-900 rounded-full" />
+            </button>
+            {showNotifTooltip && (
+              <div className="absolute top-12 right-0 z-50 bg-white border border-slate-100 rounded-lg shadow-xl p-4 w-64 text-sm space-y-3 animate-in fade-in zoom-in-95 duration-100">
+                <p className="font-semibold text-slate-900 border-b border-slate-100 pb-2">Thông báo chờ</p>
+                {notifBreakdown.map(n => (
+                  <div key={n.label} className="flex justify-between items-center text-slate-600 text-xs">
+                    <span>{n.label}</span>
+                    <span className="font-medium">{n.count}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <button onClick={onCreateContent} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition ${PRIMARY_COLOR}`}>
-            <Plus className="w-4 h-4" /> Tạo content mới
+          <button onClick={onCreateContent} className={`flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-medium rounded-md ${PRIMARY_COLOR}`}>
+            <Plus className="w-4 h-4" /> Tạo chiến dịch mới
           </button>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {["Bài đăng Facebook", "Blog bài viết SEO", "Quảng cáo Ads", "Ý tưởng nội dung"].map((action, idx) => (
-            <button key={idx} onClick={onCreateContent}
-              className="bg-white p-4 rounded-xl border border-slate-200 text-left hover:border-indigo-500 transition hover:shadow-sm space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">0{idx + 1}</div>
-              <div className="font-semibold text-xs text-slate-900">{action}</div>
-            </button>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-white p-5 rounded-xl border border-slate-200 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Dự án gần đây</h3>
-            <div className="divide-y divide-slate-100 text-xs">
-              {recentProjects.map((proj, i) => (
-                <div key={i} className="py-3 flex justify-between items-center first:pt-0 last:pb-0">
-                  <div>
-                    <h4 className="font-semibold text-slate-900">{proj.name}</h4>
-                    <span className="text-[11px] text-slate-400">{proj.type} · {proj.time}</span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded font-medium ${proj.color}`}>{proj.status}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Hoạt động gần đây</h3>
-            <div className="space-y-3 text-xs text-slate-600">
-              <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-indigo-500 rounded-full mt-1.5 shrink-0" /><p>Bạn đã xuất bản <strong>Bánh mì ngon</strong> lên Fanpage <span className="text-slate-400">· 2 giờ trước</span></p></div>
-              <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 shrink-0" /><p>AI đã tạo bản nháp mới cho chiến dịch tuần mới <span className="text-slate-400">· 5 giờ trước</span></p></div>
-              <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 shrink-0" /><p>Cập nhật lại cấu trúc <strong>Brand Profile</strong> <span className="text-slate-400">· 1 ngày trước</span></p></div>
-            </div>
-          </div>
-        </div>
+      {/* Grid Menu Không Đóng Khung */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {["Bài đăng Mạng Xã Hội", "Bài viết chuẩn SEO", "Kịch bản Quảng Cáo", "Ý tưởng & Concept"].map((action, idx) => (
+          <button key={idx} onClick={onCreateContent}
+            className="text-left p-6 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors group space-y-4">
+            <span className="text-xs font-medium text-slate-400 group-hover:text-slate-900 transition-colors">0{idx + 1}</span>
+            <div className="font-medium text-sm text-slate-900">{action}</div>
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -354,117 +337,94 @@ function ScreenCreateContent({
     onSuccess: (data) => {
       const draft = data.draft?.content ?? '';
       onSessionCreated(data.session_id, draft, autoMode);
-      addToast('Đã tạo content thành công!', 'success');
     },
-    onError: (err: Error) => addToast(`Lỗi: ${err.message}`, 'error'),
+    onError: (err: Error) => addToast(`Lỗi khởi tạo: ${err.message}`, 'error'),
   });
 
-  const tags = ["Bánh mì ABC", "Tone vui vẻ", "Mạng xã hội Facebook", "Quảng cáo sản phẩm", "Thêm CTA ưu đãi"];
+  const tags = ["Thương hiệu F&B", "Giọng điệu hài hước", "Chuẩn định dạng Facebook", "Tập trung chuyển đổi"];
   const toggleTag = (tag: string) => setSelectedTags(p => p.includes(tag) ? p.filter(t => t !== tag) : [...p, tag]);
 
   return (
-    <div className="mx-auto bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mt-6">
-      <div className="border-b border-slate-100 p-4 flex items-center justify-between text-xs font-medium text-slate-500">
-        <button onClick={onBack} className="flex items-center gap-1 hover:text-slate-900"><ArrowLeft className="w-3.5 h-3.5" /> Quay lại</button>
-        <div className="flex gap-4 items-center">
-          <span className="text-indigo-600 font-semibold border-b-2 border-indigo-600 pb-4 pt-1">1. Yêu cầu</span>
-          <span className="opacity-50">2. Thông tin bổ sung</span>
-          <span className="opacity-50">3. Tạo nội dung</span>
-        </div>
-      </div>
+    <div className="max-w-3xl mx-auto w-full animate-in fade-in duration-300">
+      
+      <button onClick={onBack} className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-900 transition mb-8">
+        <ArrowLeft className="w-4 h-4" /> Quay lại tổng quan
+      </button>
 
-      <div className="p-8 space-y-6">
-        <div className="text-center max-w-md mx-auto space-y-1">
-          <h2 className="text-lg font-bold tracking-tight">Bạn muốn tạo nội dung gì hôm nay?</h2>
-          <p className="text-xs text-slate-500">Nhập yêu cầu chi tiết của bạn, AI Engine sẽ thiết lập không gian xử lý tối ưu.</p>
+      <div className="space-y-10">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold text-slate-900">Yêu cầu chiến dịch</h1>
+          <p className="text-sm text-slate-500">Mô tả định hướng nội dung của bạn. Hệ thống sẽ tự động thiết lập không gian biên tập.</p>
         </div>
 
-        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 transition relative">
+        {/* Khung Input Phẳng (Flat Design) */}
+        <div className="space-y-6">
           <textarea
-            className="w-full bg-transparent border-0 outline-none resize-none text-sm placeholder:text-slate-400 min-h-[120px]"
-            placeholder="Ví dụ: Viết bài đăng Facebook quảng cáo dòng sản phẩm bánh mì thịt nướng mới của quán ABC, yêu cầu văn phong vui vẻ, có kêu gọi hành động cuối bài..."
+            className="w-full bg-transparent border-b-2 border-slate-100 hover:border-slate-200 focus:border-slate-900 outline-none resize-none text-base sm:text-lg placeholder:text-slate-300 min-h-[120px] leading-relaxed text-slate-900 transition-colors pb-4"
+            placeholder="Ví dụ: Viết bài đăng Facebook quảng cáo món bánh mì mới, yêu cầu văn phong năng động, có lời kêu gọi hành động ở cuối bài..."
             value={request}
             onChange={e => setRequest(e.target.value)}
+            autoFocus
           />
-          <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-xs text-slate-400">
-            <div className="flex items-center gap-3">
-              <span>Độ dài đề xuất: 50-200 từ</span>
-              <button
-                onClick={() => setAutoMode(v => !v)}
-                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md transition font-medium border ${
-                  autoMode
-                    ? 'bg-indigo-600 text-white border-indigo-600'
-                    : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'
-                }`}
-              >
-                <Zap className="w-3 h-3" />
-                Auto Mode {autoMode ? 'Bật' : 'Tắt'}
-              </button>
-            </div>
-            <button
-              onClick={() => startMutation.mutate()}
-              disabled={!request.trim() || startMutation.isPending}
-              className="bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700 transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-              {startMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
 
-        <div className="space-y-2 text-xs">
-          <span className="font-semibold text-slate-500">Gợi ý nhanh cấu trúc:</span>
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map(tag => (
-              <button key={tag}
-                onClick={() => toggleTag(tag)}
-                className={`px-2.5 py-1 rounded-md font-medium cursor-pointer transition ${selectedTags.includes(tag) ? 'bg-indigo-100 text-indigo-700 border border-indigo-300' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="bg-indigo-50/60 border border-indigo-100 rounded-xl p-4 space-y-4">
-          <div className="flex items-start gap-2.5 text-xs">
-            <div className="w-5 h-5 bg-indigo-600 text-white rounded-full flex items-center justify-center shrink-0 font-bold text-[10px]">AI</div>
-            <div className="space-y-1">
-              <h4 className="font-bold text-indigo-900">AI Clarification (Gợi ý tối ưu hóa)</h4>
-              <p className="text-indigo-700">Để bản thảo đầu tiên sát nhất với mong muốn, bạn có thể chọn thêm các chi tiết sau:</p>
+          {/* Thiết lập nhanh */}
+          <div className="space-y-3">
+            <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Từ khóa định hướng</span>
+            <div className="flex flex-wrap gap-2">
+              {tags.map(tag => (
+                <button key={tag}
+                  onClick={() => toggleTag(tag)}
+                  className={`px-4 py-2 rounded-md text-xs font-medium transition-colors ${selectedTags.includes(tag) ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}>
+                  {tag}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pl-7">
-            <div className="space-y-1.5">
-              <label className="font-semibold text-slate-700">1. Đối tượng khách hàng mục tiêu?</label>
-              <div className="flex gap-1.5">
+          {/* Tùy chỉnh Nâng cao */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-slate-100">
+            <div className="space-y-3">
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Đối tượng mục tiêu</span>
+              <div className="flex flex-wrap gap-2">
                 {["Học sinh, sinh viên", "Dân văn phòng"].map(opt => (
                   <button key={opt} onClick={() => setSelectedAudience(opt)}
-                    className={`px-2 py-1 rounded cursor-pointer border ${selectedAudience === opt ? 'bg-white border-indigo-200 text-indigo-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                    className={`px-4 py-2 rounded-md text-xs font-medium transition-colors ${selectedAudience === opt ? 'bg-slate-200 text-slate-900' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                     {opt}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="font-semibold text-slate-700">2. Chương trình ưu đãi đi kèm?</label>
-              <div className="flex gap-1.5">
+            <div className="space-y-3">
+              <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Ưu đãi nổi bật</span>
+              <div className="flex flex-wrap gap-2">
                 {["Giảm giá 20%", "Tặng kèm nước ngọt"].map(opt => (
                   <button key={opt} onClick={() => setSelectedPromo(opt)}
-                    className={`px-2 py-1 rounded cursor-pointer border ${selectedPromo === opt ? 'bg-white border-indigo-200 text-indigo-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                    className={`px-4 py-2 rounded-md text-xs font-medium transition-colors ${selectedPromo === opt ? 'bg-slate-200 text-slate-900' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
                     {opt}
                   </button>
                 ))}
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="pt-2 text-right border-t border-indigo-100">
-            <button
-              onClick={() => startMutation.mutate()}
-              disabled={!request.trim() || startMutation.isPending}
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold disabled:opacity-50">
-              {startMutation.isPending ? 'Đang xử lý...' : 'Bỏ qua & Tiến hành tạo nội dung ngay →'}
-            </button>
-          </div>
+        {/* Thanh Action Đáy */}
+        <div className="flex items-center justify-between pt-8 border-t border-slate-100">
+          <button
+            onClick={() => setAutoMode(v => !v)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-medium transition-colors ${
+              autoMode ? 'bg-slate-900 text-white' : 'text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            <Zap className="w-4 h-4" /> Auto Mode: {autoMode ? 'Bật' : 'Tắt'}
+          </button>
+          
+          <button
+            onClick={() => startMutation.mutate()}
+            disabled={!request.trim() || startMutation.isPending}
+            className={`flex items-center gap-2 px-6 py-3 rounded-md text-sm font-medium transition-colors ${PRIMARY_COLOR} disabled:opacity-40 disabled:cursor-not-allowed`}>
+            {startMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Bắt đầu soạn thảo'} <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>
@@ -517,9 +477,9 @@ function ScreenWorkspace({
     onSuccess: (data) => {
       setDraftContent(data.draft);
       onDraftUpdate(data.draft);
-      setChatMessages(p => [...p, { role: 'assistant', content: `Đã cập nhật bản thảo theo yêu cầu. ${data.draft.slice(0, 80)}…` }]);
+      setChatMessages(p => [...p, { role: 'assistant', content: `Đã cập nhật bản thảo theo yêu cầu.` }]);
     },
-    onError: (err: Error) => addToast(`Chat error: ${err.message}`, 'error'),
+    onError: (err: Error) => addToast(`Lỗi phản hồi: ${err.message}`, 'error'),
   });
 
   const inlineMutation = useMutation({
@@ -536,25 +496,25 @@ function ScreenWorkspace({
       });
       setShowInlineInput(false);
     },
-    onError: (err: Error) => addToast(`Inline error: ${err.message}`, 'error'),
+    onError: (err: Error) => addToast(`Lỗi chỉnh sửa: ${err.message}`, 'error'),
   });
 
   const approveMutation = useMutation({
     mutationFn: () => api.resumeWorkflow(sessionId, { action: 'approve', content: draftContent }),
     onSuccess: () => {
       setIsApproved(true);
-      addToast('Đã duyệt! Bấm "Đăng bài" để xuất bản.', 'info');
+      addToast('Đã chốt nội dung. Bạn có thể xuất bản.', 'success');
     },
-    onError: (err: Error) => addToast(`Lỗi duyệt: ${err.message}`, 'error'),
+    onError: (err: Error) => addToast(`Lỗi phê duyệt: ${err.message}`, 'error'),
   });
 
   const publishMutation = useMutation({
     mutationFn: () => api.publishWorkflow(sessionId),
     onSuccess: (data) => {
-      addToast(`Đã đăng bài thành công! Status: ${data.publish_status}`, 'success');
+      addToast(`Đã xuất bản thành công! Trạng thái: ${data.publish_status}`, 'success');
       setIsApproved(false);
     },
-    onError: (err: Error) => addToast(`Lỗi đăng bài: ${err.message}`, 'error'),
+    onError: (err: Error) => addToast(`Lỗi xuất bản: ${err.message}`, 'error'),
   });
 
   const handleSendChat = () => {
@@ -591,7 +551,6 @@ function ScreenWorkspace({
     onDraftUpdate(newDraft);
     setInlineSuggestion(null);
     setSelection(null);
-    addToast('Đã áp dụng gợi ý inline', 'success');
   };
 
   const rejectInlineSuggestion = () => {
@@ -600,88 +559,47 @@ function ScreenWorkspace({
   };
 
   const wordCount = draftContent.trim().split(/\s+/).filter(Boolean).length;
-  const estimatedCostUSD = ((wordCount * 1.3) / 1_000_000 * 3).toFixed(4);
-
-  const suggestedPrompts = [
-    "Tối ưu hóa chuẩn SEO",
-    "Rút gọn nội dung",
-    "Thêm CTA mạnh hơn",
-    "Đổi tone vui vẻ hơn",
-  ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 border border-slate-200 rounded-xl overflow-hidden h-[calc(100vh-80px)] mt-6">
+    <div className="flex flex-col lg:flex-row h-full w-full bg-white border-t border-slate-100 overflow-hidden animate-in fade-in duration-300">
       
-      {/* LEFT PANEL: Copilot (4/12) */}
-      <div className="lg:col-span-4 bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden">
-        <div className="flex border-b border-slate-100 p-2 bg-slate-50 text-xs font-semibold shrink-0">
+      {/* CỘT TRÁI: AI COPILOT (Layout phẳng, không đóng hộp) */}
+      <div className="w-full lg:w-[320px] xl:w-[380px] bg-slate-50/50 flex flex-col border-r border-slate-100 shrink-0">
+        <div className="flex border-b border-slate-100 p-2 shrink-0 gap-1">
           <button onClick={() => setActiveTab('copilot')}
-            className={`flex-1 py-1.5 text-center rounded transition ${activeTab === 'copilot' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
-            Trợ lý Copilot
+            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'copilot' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
+            Trợ lý AI
           </button>
           <button onClick={() => setActiveTab('history')}
-            className={`flex-1 py-1.5 text-center rounded transition ${activeTab === 'history' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
-            Lịch sử (v{workflow?.draft?.version ?? 1})
+            className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${activeTab === 'history' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}>
+            Nhật ký
           </button>
         </div>
 
-        {activeTab === 'copilot' && (
-          <div className="shrink-0 p-3 border-b border-slate-100 bg-slate-50/50">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Actions nhanh</p>
-            <div className="grid grid-cols-2 gap-1.5">
-              {[
-                { label: "Tối ưu SEO", instruction: "Tối ưu hóa bài viết này chuẩn SEO" },
-                { label: "Rút gọn", instruction: "Rút ngắn nội dung, giữ ý chính" },
-                { label: "Đổi tone", instruction: "Đổi văn phong sang chuyên nghiệp hơn" },
-                { label: "Tạo ảnh AI", instruction: "Viết prompt hình ảnh phù hợp cho bài này" },
-              ].map(({ label, instruction }) => (
-                <button key={label}
-                  onClick={() => {
-                    setChatMessages(p => [...p, { role: 'user', content: instruction }]);
-                    chatMutation.mutate(instruction);
-                  }}
-                  disabled={chatMutation.isPending}
-                  className="text-left bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg hover:border-indigo-400 text-xs font-medium text-slate-700 disabled:opacity-50 transition">
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs">
+        {/* Khung Chat */}
+        <div className="flex-1 overflow-y-auto p-5 text-sm space-y-6 scrollbar-thin">
           {activeTab === 'copilot' ? (
             <>
-              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-slate-500 text-center text-[11px]">
-                Brand Profile đang áp dụng: <strong className="text-slate-700">Bánh mì ABC</strong>
-              </div>
-
               {chatMessages.length === 0 && (
-                <div className="text-center text-slate-400 py-4 space-y-3">
-                  <Sparkles className="w-7 h-7 mx-auto text-slate-300" />
-                  <p className="text-[11px]">Thử hỏi Copilot:</p>
-                  <div className="flex flex-wrap gap-1.5 justify-center">
-                    {suggestedPrompts.map(p => (
-                      <button key={p}
-                        onClick={() => {
-                          setChatMessages(prev => [...prev, { role: 'user', content: p }]);
-                          chatMutation.mutate(p);
-                        }}
-                        className="text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded-lg hover:bg-indigo-100 transition">
-                        {p}
-                      </button>
+                <div className="text-slate-400 text-xs leading-relaxed space-y-4 pt-4">
+                  <p>Hãy yêu cầu AI chỉnh sửa tổng thể bản thảo. Ví dụ:</p>
+                  <ul className="space-y-2">
+                    {["Làm giọng điệu chuyên nghiệp hơn", "Rút gọn thành 100 từ", "Thêm CTA mạnh mẽ"].map(p => (
+                      <li key={p}>
+                        <button onClick={() => { setChatInput(p); handleSendChat(); }} className="text-left hover:text-slate-900 transition-colors">
+                          → {p}
+                        </button>
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
               )}
 
               {chatMessages.map((msg, i) => (
-                <div key={i} className={`flex gap-2 items-start ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                  {msg.role === 'assistant' && (
-                    <div className="w-6 h-6 bg-indigo-100 text-indigo-600 font-bold rounded-full flex items-center justify-center shrink-0 text-[10px]">AI</div>
-                  )}
-                  <div className={`p-3 rounded-xl max-w-[85%] leading-relaxed ${
-                    msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-100 text-slate-800 rounded-tl-none'
+                <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} gap-1`}>
+                  <span className="text-[10px] font-medium text-slate-400 uppercase">{msg.role === 'user' ? 'Bạn' : 'AI Engine'}</span>
+                  <div className={`px-4 py-2.5 rounded-lg max-w-[90%] text-sm leading-relaxed ${
+                    msg.role === 'user' ? 'bg-slate-100 text-slate-900' : 'text-slate-700 bg-transparent'
                   }`}>
                     {msg.content}
                   </div>
@@ -689,165 +607,121 @@ function ScreenWorkspace({
               ))}
 
               {chatMutation.isPending && (
-                <div className="flex gap-2 items-center text-slate-400">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>AI đang xử lý...</span>
+                <div className="flex items-center text-slate-400 text-xs gap-2 py-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang xử lý yêu cầu...
                 </div>
               )}
               <div ref={chatBottomRef} />
             </>
           ) : (
-            <div className="space-y-2 text-slate-600">
-              <p className="text-slate-400 text-center pt-4 text-[11px]">Lịch sử chỉnh sửa phiên làm việc hiện tại.</p>
+            <div className="space-y-4">
               {chatMessages.filter(m => m.role === 'user').map((msg, i) => (
-                <div key={i} className="bg-slate-50 border border-slate-100 rounded-lg p-2.5">
-                  <span className="text-[10px] text-slate-400 font-medium">Yêu cầu #{i + 1}</span>
-                  <p className="mt-1 text-xs">{msg.content}</p>
+                <div key={i} className="text-xs space-y-1 pb-4 border-b border-slate-100">
+                  <span className="text-slate-400 font-medium">Bản sửa đổi #{i + 1}</span>
+                  <p className="text-slate-900">{msg.content}</p>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="shrink-0 px-3 py-2 border-t border-slate-100 bg-slate-50 flex items-center gap-1.5 text-[11px] text-slate-400">
-          <DollarSign className="w-3 h-3" />
-          <span>{wordCount} từ · ước tính ~${estimatedCostUSD}</span>
-        </div>
-
-        <div className="shrink-0 p-3 border-t border-slate-100 flex gap-2 bg-slate-50">
-          <input
-            className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-indigo-500"
-            placeholder="Nhập yêu cầu chỉnh sửa..."
-            value={chatInput}
-            onChange={e => setChatInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
-          />
-          <button onClick={handleSendChat} disabled={chatMutation.isPending || !chatInput.trim()}
-            className="bg-indigo-600 text-white p-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-50">
-            {chatMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-          </button>
+        {/* Input Text Trợ Lý */}
+        <div className="p-4 border-t border-slate-100 bg-white shrink-0">
+          <div className="relative flex items-center">
+            <input
+              className="w-full bg-slate-50 border-0 rounded-md py-2.5 pl-3 pr-10 text-xs outline-none focus:ring-1 focus:ring-slate-200 text-slate-900 placeholder-slate-400 transition-all"
+              placeholder="Nhập yêu cầu cho AI..."
+              value={chatInput}
+              onChange={e => setChatInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
+            />
+            <button onClick={handleSendChat} disabled={chatMutation.isPending || !chatInput.trim()}
+              className="absolute right-1 p-1.5 text-slate-400 hover:text-slate-900 disabled:opacity-50 transition-colors">
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* RIGHT PANEL: Editor (8/12) */}
-      <div className="lg:col-span-8 bg-white flex flex-col h-full overflow-hidden">
-        <div className="border-b border-slate-200 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 shrink-0">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="font-bold text-slate-900">Bản thảo: Bánh mì ABC</span>
-            <span className="bg-slate-200 px-2 py-0.5 rounded text-[11px] font-medium text-slate-700 flex items-center gap-1">
-              <History className="w-3 h-3" /> v{workflow?.draft?.version ?? 1}
-            </span>
+      {/* CỘT PHẢI: KHÔNG GIAN SOẠN THẢO VĂN BẢN (Text Editor tinh gọn) */}
+      <div className="flex-1 flex flex-col bg-white overflow-hidden relative">
+        {/* Toolbar ngang mỏng nhẹ */}
+        <div className="px-6 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4 shrink-0 bg-white">
+          <div className="flex items-center gap-4 text-xs font-medium text-slate-400">
+            <span>{wordCount} từ</span>
+            <span className="w-1 h-1 rounded-full bg-slate-200" />
+            <span>V{workflow?.draft?.version ?? 1}</span>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onGoToReview}
-              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5" /> So sánh
+            <button onClick={onGoToReview} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors">
+              Xem khác biệt
             </button>
-            <button onClick={onGoToAuto}
-              className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold hover:bg-indigo-100 flex items-center gap-1.5">
-              <Play className="w-3.5 h-3.5" /> Auto Mode
+            <button onClick={onGoToAuto} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors">
+              Chế độ Tự động
             </button>
+            <div className="w-px h-4 bg-slate-200 mx-2" />
             {!isApproved ? (
-              <button
-                onClick={() => approveMutation.mutate()}
-                disabled={approveMutation.isPending}
-                className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 flex items-center gap-1.5 disabled:opacity-50">
-                {approveMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <Check className="w-3.5 h-3.5" /> Duyệt nội dung
+              <button onClick={() => approveMutation.mutate()} disabled={approveMutation.isPending}
+                className="px-4 py-1.5 bg-slate-100 text-slate-900 rounded-md text-xs font-medium hover:bg-slate-200 transition-colors">
+                {approveMutation.isPending ? 'Đang xử lý...' : 'Chốt nội dung'}
               </button>
             ) : (
-              <button
-                onClick={() => publishMutation.mutate()}
-                disabled={publishMutation.isPending}
-                className={`px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5 ${PRIMARY_COLOR} disabled:opacity-50`}>
-                {publishMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <Send className="w-3.5 h-3.5" /> Đăng bài
+              <button onClick={() => publishMutation.mutate()} disabled={publishMutation.isPending}
+                className={`px-4 py-1.5 rounded-md text-xs font-medium ${PRIMARY_COLOR}`}>
+                {publishMutation.isPending ? 'Đang xử lý...' : 'Xuất bản'}
               </button>
             )}
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex gap-2 px-6 py-2 border-b border-slate-100 text-xs text-slate-400 font-mono items-center shrink-0">
-            <span className="font-bold text-slate-800 cursor-pointer hover:bg-slate-100 px-1 rounded">H1</span>
-            <span className="font-bold text-slate-800 cursor-pointer hover:bg-slate-100 px-1 rounded">H2</span>
-            <span className="underline cursor-pointer hover:bg-slate-100 px-1 rounded">U</span>
-            <span className="italic cursor-pointer hover:bg-slate-100 px-1 rounded">I</span>
-            <span className="cursor-pointer hover:bg-slate-100 px-1 rounded">Link</span>
-            <span className="cursor-pointer hover:bg-slate-100 px-1 rounded">Quote</span>
-            <span className="ml-auto text-[10px] text-slate-400 font-sans italic">
-              Bôi đen đoạn văn → AI sẽ gợi ý chỉnh sửa
-            </span>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
-            {inlineSuggestion && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs space-y-2">
-                <div className="font-semibold text-amber-900">✨ Gợi ý chỉnh sửa inline</div>
-                <div className="space-y-1">
-                  <div className="line-through text-red-600 bg-red-50 p-2 rounded">{inlineSuggestion.original}</div>
-                  <div className="text-emerald-700 bg-emerald-50 p-2 rounded font-medium">{inlineSuggestion.suggestion}</div>
-                  {inlineSuggestion.changes && <div className="text-slate-500 italic">{inlineSuggestion.changes}</div>}
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={acceptInlineSuggestion} className="px-3 py-1 bg-emerald-600 text-white rounded font-semibold hover:bg-emerald-700">
-                    ✓ Chấp nhận
-                  </button>
-                  <button onClick={rejectInlineSuggestion} className="px-3 py-1 bg-white border border-slate-200 text-slate-600 rounded font-semibold hover:bg-slate-50">
-                    ✗ Từ chối
-                  </button>
-                  <button onClick={() => {
-                    if (selection) inlineMutation.mutate({ paragraph: selection.text, instruction: inlineInstruction || 'Viết lại' });
-                  }} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded font-semibold hover:bg-indigo-100 flex items-center gap-1">
-                    {inlineMutation.isPending && <Loader2 className="w-3 h-3 animate-spin" />} ↻ Thử lại
-                  </button>
-                </div>
+        {/* Khung soạn thảo (Tập trung vào typography) */}
+        <div className="flex-1 overflow-y-auto p-8 lg:p-16 relative scrollbar-thin">
+          
+          {/* Popup Inline Suggestion (Khi có kết quả AI trả về) */}
+          {inlineSuggestion && (
+            <div className="absolute top-8 right-8 z-10 w-80 bg-white border border-slate-100 rounded-xl shadow-xl p-5 text-sm space-y-4 animate-in fade-in zoom-in-95">
+              <div className="font-medium text-slate-900">Gợi ý từ AI</div>
+              <div className="space-y-3 text-sm">
+                <div className="line-through text-slate-400">{inlineSuggestion.original}</div>
+                <div className="text-slate-900 font-medium">{inlineSuggestion.suggestion}</div>
               </div>
-            )}
-
-            {showInlineInput && !inlineSuggestion && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-xs space-y-2">
-                <div className="font-semibold text-indigo-900">✂️ Chỉnh sửa đoạn đã chọn</div>
-                <div className="text-indigo-700 bg-white p-2 rounded border border-indigo-100 line-clamp-2">{selection?.text}</div>
-                <div className="flex gap-2">
-                  <input
-                    className="flex-1 bg-white border border-indigo-200 rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500"
-                    placeholder="Yêu cầu chỉnh sửa... (VD: Ngắn gọn hơn, thêm CTA)"
-                    value={inlineInstruction}
-                    onChange={e => setInlineInstruction(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleInlineSubmit()}
-                    autoFocus
-                  />
-                  <button onClick={handleInlineSubmit} disabled={inlineMutation.isPending}
-                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-1">
-                    {inlineMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowRight className="w-3.5 h-3.5" />}
-                  </button>
-                  <button onClick={() => { setShowInlineInput(false); setSelection(null); }}
-                    className="px-2 py-1.5 bg-white border border-slate-200 text-slate-500 rounded-lg hover:bg-slate-50">
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="flex gap-1.5">
-                  {["Ngắn gọn hơn", "Tăng độ hài hước", "Thêm CTA ưu đãi"].map(s => (
-                    <button key={s} onClick={() => setInlineInstruction(s)}
-                      className="bg-white px-2 py-0.5 rounded border border-indigo-200 text-indigo-700 text-[11px] cursor-pointer hover:bg-indigo-100">
-                      {s}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex gap-2 pt-2 border-t border-slate-50">
+                <button onClick={acceptInlineSuggestion} className="flex-1 py-1.5 bg-slate-900 text-white rounded-md text-xs font-medium hover:bg-slate-800 transition-colors">Chấp nhận</button>
+                <button onClick={rejectInlineSuggestion} className="flex-1 py-1.5 bg-slate-50 text-slate-600 rounded-md text-xs font-medium hover:bg-slate-100 transition-colors">Bỏ qua</button>
               </div>
-            )}
+            </div>
+          )}
 
-            <textarea
-              ref={editorRef}
-              className="w-full text-sm text-slate-800 leading-relaxed outline-none resize-none border-0 bg-transparent min-h-[400px]"
-              value={draftContent}
-              onChange={e => { setDraftContent(e.target.value); onDraftUpdate(e.target.value); }}
-              onMouseUp={handleTextSelect}
-              onKeyUp={handleTextSelect}
-              placeholder="Nội dung bản thảo sẽ xuất hiện ở đây..."
-            />
-          </div>
+          {/* Popup Yêu cầu Inline (Khi bôi đen văn bản) */}
+          {showInlineInput && !inlineSuggestion && (
+            <div className="absolute top-8 right-8 z-10 w-80 bg-white border border-slate-100 rounded-xl shadow-xl p-4 text-sm space-y-3 animate-in slide-in-from-top-4">
+              <div className="text-xs font-medium text-slate-400">Chỉnh sửa đoạn đã chọn</div>
+              <input
+                className="w-full bg-slate-50 border-0 rounded-md px-3 py-2 text-sm outline-none focus:bg-slate-100 transition-colors"
+                placeholder="Ví dụ: Viết ngắn gọn lại..."
+                value={inlineInstruction}
+                onChange={e => setInlineInstruction(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleInlineSubmit()}
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <button onClick={() => { setShowInlineInput(false); setSelection(null); }} className="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-900">Hủy</button>
+                <button onClick={handleInlineSubmit} disabled={inlineMutation.isPending} className="px-3 py-1.5 bg-slate-900 text-white rounded-md text-xs font-medium hover:bg-slate-800 transition-colors">
+                  {inlineMutation.isPending ? 'Đang xử lý...' : 'Chỉnh sửa'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <textarea
+            ref={editorRef}
+            className="w-full max-w-3xl mx-auto block bg-transparent outline-none resize-none border-0 min-h-full font-serif text-lg text-slate-800 leading-loose"
+            value={draftContent}
+            onChange={e => { setDraftContent(e.target.value); onDraftUpdate(e.target.value); }}
+            onMouseUp={handleTextSelect}
+            onKeyUp={handleTextSelect}
+            placeholder="Nội dung sẽ hiển thị tại đây. Bôi đen một đoạn văn để yêu cầu AI chỉnh sửa riêng phần đó..."
+          />
         </div>
       </div>
     </div>
@@ -864,7 +738,7 @@ function ScreenReviewMode({
   sessionId: string;
   addToast: (m: string, t?: Toast['type']) => void;
 }) {
-  const { data: versionsData, isLoading, error } = useQuery({
+  const { data: versionsData, isLoading } = useQuery({
     queryKey: ['versions', sessionId],
     queryFn: () => api.getVersions(sessionId),
     enabled: !!sessionId,
@@ -872,8 +746,7 @@ function ScreenReviewMode({
 
   const approveMutation = useMutation({
     mutationFn: () => api.resumeWorkflow(sessionId, { action: 'approve' }),
-    onSuccess: () => addToast('Đã phê duyệt bản v' + (versionsData?.current_version ?? ''), 'success'),
-    onError: (err: Error) => addToast(`Lỗi: ${err.message}`, 'error'),
+    onSuccess: () => addToast('Đã phê duyệt nội dung.', 'success'),
   });
 
   const versions = versionsData?.versions ?? [];
@@ -882,85 +755,48 @@ function ScreenReviewMode({
   const currVersion = versions.find(v => v.version === currentVersion);
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200">
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
-            <ArrowLeft className="w-4 h-4" />
+    <div className="max-w-6xl mx-auto w-full flex flex-col h-full animate-in fade-in duration-300">
+      <div className="flex items-center justify-between pb-6 border-b border-slate-100 shrink-0">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="text-slate-400 hover:text-slate-900 transition-colors">
+            <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h2 className="text-sm font-bold">So sánh và phê duyệt (Diff Review)</h2>
-            <p className="text-xs text-slate-500">Xem các chỉnh sửa AI đề xuất trước khi phê duyệt.</p>
+            <h2 className="text-lg font-semibold text-slate-900">So sánh phiên bản</h2>
+            <p className="text-xs text-slate-500">Xem lại các thay đổi trước khi chốt bản thảo.</p>
           </div>
         </div>
-        <div className="flex gap-2 text-xs">
-          <button className="px-4 py-2 bg-slate-100 rounded-lg font-semibold text-slate-600 hover:bg-slate-200">
-            Khôi phục về v{currentVersion - 1}
-          </button>
-          <button
-            onClick={() => approveMutation.mutate()}
-            disabled={approveMutation.isPending}
-            className={`px-4 py-2 rounded-lg font-semibold shadow-sm transition flex items-center gap-2 ${PRIMARY_COLOR} disabled:opacity-50`}>
-            {approveMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-            Phê duyệt bản v{currentVersion}
-          </button>
-        </div>
+        <button
+          onClick={() => approveMutation.mutate()}
+          disabled={approveMutation.isPending}
+          className={`px-5 py-2.5 rounded-md text-sm font-medium transition-colors ${PRIMARY_COLOR} disabled:opacity-50`}>
+          {approveMutation.isPending ? 'Đang xử lý...' : `Phê duyệt V${currentVersion}`}
+        </button>
       </div>
 
-      {isLoading && (
-        <div className="flex items-center justify-center py-12 text-slate-400 gap-2">
-          <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Đang tải lịch sử phiên bản...</span>
+      {isLoading ? (
+        <div className="flex-1 flex items-center justify-center text-slate-400 text-sm gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" /> Đang tải lịch sử thay đổi...
         </div>
-      )}
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" /> Không thể tải lịch sử phiên bản. Hiển thị dữ liệu mẫu.
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3 relative opacity-75">
-          <span className="absolute top-3 right-3 text-[10px] uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded font-bold text-slate-500">
-            Bản cũ (v{currentVersion - 1})
-          </span>
-          <h3 className="text-sm font-bold text-slate-900 pr-24">Phiên bản cũ</h3>
-          <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
-            {prevVersion?.content ? (
-              prevVersion.content
-            ) : (
-              <>
-                <p>🥖 BÁNH MÌ NGON - MÓN QUÀ BUỔI SÁNG</p>
-                <p className="mt-2">Hệ thống cửa hàng Bánh mì ABC chuyên cung cấp các bữa ăn sáng tiện lợi cho mọi người.</p>
-                <div className="bg-red-50 text-red-700 p-2.5 rounded border border-red-100 line-through mt-2">
-                  Hãy ghé qua mua ăn thử nếu bạn rảnh vào tuần này nhé mọi người ơi.
-                </div>
-              </>
-            )}
+      ) : (
+        <div className="flex-1 flex flex-col md:flex-row gap-8 pt-8 overflow-hidden">
+          {/* Cột bản cũ */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-4 shrink-0">Phiên bản V{currentVersion - 1} (Bản cũ)</div>
+            <div className="flex-1 overflow-y-auto pr-4 font-serif text-base text-slate-500 leading-loose scrollbar-thin whitespace-pre-wrap opacity-80">
+              {prevVersion?.content || "Không có dữ liệu bản cũ."}
+            </div>
+          </div>
+          <div className="w-px bg-slate-100 hidden md:block shrink-0" />
+          {/* Cột bản mới */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="text-xs font-medium text-slate-900 uppercase tracking-wider mb-4 shrink-0">Phiên bản V{currentVersion} (Mới nhất)</div>
+            <div className="flex-1 overflow-y-auto pl-0 md:pl-4 font-serif text-base text-slate-900 leading-loose scrollbar-thin whitespace-pre-wrap">
+              {currVersion?.content || "Không có dữ liệu bản mới."}
+            </div>
           </div>
         </div>
-
-        <div className="bg-white border border-indigo-200 rounded-xl p-5 space-y-3 relative ring-1 ring-indigo-500/20">
-          <span className="absolute top-3 right-3 text-[10px] uppercase tracking-wider bg-indigo-50 px-2 py-0.5 rounded font-bold text-indigo-600">
-            Đề xuất mới (v{currentVersion})
-          </span>
-          <h3 className="text-sm font-bold text-slate-900 pr-24">Phiên bản mới nhất</h3>
-          <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
-            {currVersion?.content ? (
-              currVersion.content
-            ) : (
-              <>
-                <p>🥖 BÁNH MÌ NGON - NGÀY MỚI VUI HƠN!</p>
-                <p className="mt-2">Hệ thống cửa hàng Bánh mì ABC chuyên cung cấp các bữa ăn sáng tiện lợi cho mọi người.</p>
-                <div className="bg-emerald-50 text-emerald-800 p-2.5 rounded border border-emerald-100 font-medium mt-2">
-                  ✨ 📍 Ghé ngay cơ sở gần nhất tại 123 Nguyễn Văn Linh để được áp dụng chương trình mua 1 tặng 1 trong khung giờ vàng!
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -996,173 +832,83 @@ function ScreenAutoMode({
     queryKey: ['workflow-auto', sessionId],
     queryFn: () => api.getWorkflow(sessionId!),
     enabled: !!sessionId && started && !isPaused,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      return status === 'running' ? 3000 : false;
-    },
+    refetchInterval: (query) => query.state.data?.status === 'running' ? 3000 : false,
   });
 
   const status = workflow?.status ?? 'running';
-  const publishStatus = workflow?.publish_status;
-  const totalTokens = workflow?.usage?.total_tokens ?? 0;
-  const estimatedCost = ((totalTokens / 1_000_000) * 3).toFixed(4);
-
-  useEffect(() => {
-    if (status === 'completed') addToast('Hoàn tất! Đã đăng bài thành công.', 'success');
-    if (status === 'error') addToast(`Lỗi: ${workflow?.error}`, 'error');
-  }, [status, workflow, addToast]);
 
   const steps = [
-    { label: "Research", timeEstimate: "~2s", status: 'complete' as const },
-    { label: "Generate", timeEstimate: "~15s", status: status === 'running' || status === 'completed' ? 'complete' as const : 'active' as const },
-    { label: "Image Gen", timeEstimate: "~30s", status: status === 'completed' ? 'complete' as const : status === 'running' ? 'active' as const : 'pending' as const },
-    { label: "Publish", timeEstimate: "~5s", status: status === 'completed' ? 'complete' as const : 'pending' as const },
+    { label: "Nghiên cứu", status: 'complete' as const },
+    { label: "Biên soạn", status: status === 'running' || status === 'completed' ? 'complete' as const : 'active' as const },
+    { label: "Hình ảnh", status: status === 'completed' ? 'complete' as const : status === 'running' ? 'active' as const : 'pending' as const },
+    { label: "Xuất bản", status: status === 'completed' ? 'complete' as const : 'pending' as const },
   ];
 
   if (!started) {
     return (
-      <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-xl shadow-sm p-8 space-y-6 mt-6">
-        <h2 className="text-lg font-bold">Kích hoạt Auto Campaign Mode</h2>
-        <p className="text-sm text-slate-500">Nhập yêu cầu, AI sẽ tự động hoàn thành toàn bộ quy trình từ nghiên cứu đến đăng bài.</p>
-        <textarea
-          className="w-full border border-slate-200 rounded-xl p-4 text-sm outline-none focus:border-indigo-500 min-h-[120px] resize-none"
-          placeholder="Nhập yêu cầu content..."
-          value={request}
-          onChange={e => setRequest(e.target.value)}
-        />
-        <div className="flex gap-3">
-          <button onClick={onBack} className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">
-            Quay lại
-          </button>
-          <button
-            onClick={() => startMutation.mutate(request)}
-            disabled={!request.trim() || startMutation.isPending}
-            className={`px-6 py-2 rounded-lg text-sm font-semibold shadow-sm transition flex items-center gap-2 ${PRIMARY_COLOR} disabled:opacity-50`}>
-            {startMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            <Play className="w-4 h-4" /> Bắt đầu Auto Mode
-          </button>
+      <div className="max-w-2xl mx-auto w-full pt-12 animate-in fade-in duration-300">
+        <button onClick={onBack} className="flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-slate-900 transition mb-8">
+          <ArrowLeft className="w-4 h-4" /> Quay lại
+        </button>
+        <div className="space-y-8">
+          <h2 className="text-2xl font-semibold text-slate-900">Chiến dịch Tự động hóa</h2>
+          <textarea
+            className="w-full bg-transparent border-b-2 border-slate-100 hover:border-slate-200 focus:border-slate-900 outline-none resize-none text-base placeholder:text-slate-300 min-h-[100px] leading-relaxed text-slate-900 transition-colors"
+            placeholder="Nhập thông điệp chính, AI sẽ tự động nghiên cứu, viết bài và đăng tải..."
+            value={request}
+            onChange={e => setRequest(e.target.value)}
+          />
+          <div className="flex justify-end">
+            <button
+              onClick={() => startMutation.mutate(request)}
+              disabled={!request.trim() || startMutation.isPending}
+              className={`px-6 py-2.5 rounded-md text-sm font-medium transition-colors ${PRIMARY_COLOR} disabled:opacity-50`}>
+              {startMutation.isPending ? 'Đang khởi chạy...' : 'Chạy chiến dịch Auto'}
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mt-6">
-      <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className={`w-2.5 h-2.5 rounded-full ${status === 'running' ? 'bg-emerald-400 animate-pulse' : status === 'completed' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-          <span className="text-xs font-semibold tracking-wide uppercase">
-            {status === 'running' ? 'Hệ thống đang vận hành tự động' : status === 'completed' ? 'Hoàn tất!' : status === 'paused' ? 'Đã tạm dừng' : 'Đã xảy ra lỗi'}
-          </span>
+    <div className="max-w-2xl mx-auto w-full pt-12 animate-in fade-in duration-300 space-y-12">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900">Luồng tự động đang chạy</h2>
+          <p className="text-sm text-slate-500">Trạng thái: {status === 'running' ? 'Đang xử lý' : status === 'completed' ? 'Hoàn tất' : status}</p>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => setIsPaused(p => !p)}
-            className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white text-xs font-medium rounded flex items-center gap-1 transition">
-            {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+          <button onClick={() => setIsPaused(!isPaused)} className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-md transition-colors">
             {isPaused ? "Tiếp tục" : "Tạm dừng"}
           </button>
-          <button onClick={onBack} className="px-3 py-1 bg-white text-slate-900 text-xs font-semibold rounded hover:bg-slate-100 transition">
-            Thoát về workspace
-          </button>
+          <button onClick={onBack} className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-md transition-colors">Thoát</button>
         </div>
       </div>
 
-      <div className="p-8 space-y-8">
-        <div className="flex items-start justify-between relative max-w-2xl mx-auto">
-          <div className="absolute left-0 right-0 top-[14px] h-0.5 bg-slate-200 z-0" />
-          <div className={`absolute left-0 top-[14px] h-0.5 bg-indigo-600 z-0 transition-all duration-1000 ${
-            status === 'completed' ? 'w-full' : 'w-[50%]'
-          }`} />
-
-          {steps.map((step, idx) => (
-            <div key={idx} className="relative z-10 flex flex-col items-center space-y-1 text-center min-w-[70px]">
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                step.status === 'complete' ? 'bg-indigo-600 text-white' :
-                step.status === 'active' ? 'bg-indigo-50 border-2 border-indigo-600 text-indigo-600 animate-pulse' :
-                'bg-white border-2 border-slate-200 text-slate-400'
-              }`}>
-                {step.status === 'complete' ? <Check className="w-4 h-4" /> : idx + 1}
-              </div>
-              <span className={`text-xs font-semibold ${step.status === 'active' ? 'text-indigo-600' : 'text-slate-500'}`}>{step.label}</span>
-              <span className="text-[10px] text-slate-400">{step.timeEstimate}</span>
+      {/* Progress Line */}
+      <div className="flex justify-between relative px-2">
+        <div className="absolute top-3 left-4 right-4 h-px bg-slate-100 z-0" />
+        {steps.map((step, idx) => (
+          <div key={idx} className="relative z-10 flex flex-col items-center gap-2 bg-white px-2">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors ${
+              step.status === 'complete' ? 'bg-slate-900 text-white' :
+              step.status === 'active' ? 'bg-slate-200 text-slate-900 animate-pulse' :
+              'bg-slate-50 text-slate-400'
+            }`}>
+              {step.status === 'complete' ? <Check className="w-3 h-3" /> : idx + 1}
             </div>
-          ))}
-        </div>
-
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3 max-w-2xl mx-auto text-xs">
-          <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-            <span className="font-bold text-slate-700">Nhật ký tiến trình thực tế</span>
-            <span className="text-slate-400">
-              {status === 'completed' ? 'Tiến độ: 100%' : status === 'running' ? 'Đang chạy...' : status}
-            </span>
+            <span className={`text-xs font-medium ${step.status === 'active' ? 'text-slate-900' : 'text-slate-500'}`}>{step.label}</span>
           </div>
-          <div className="space-y-2 text-slate-600">
-            <div className="flex gap-2 text-emerald-600"><Check className="w-3.5 h-3.5 shrink-0" /><span>[Xong] Hoàn tất quét dữ liệu từ khóa xu hướng ngành F&B Việt Nam.</span></div>
-            <div className={`flex gap-2 ${status !== 'running' ? 'text-emerald-600' : 'text-indigo-600'}`}>
-              {status !== 'running' ? <Check className="w-3.5 h-3.5 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-indigo-600 mt-1.5 animate-ping shrink-0" />}
-              <span>{status !== 'running' ? '[Xong]' : '[Đang chạy]'} Khởi tạo cấu trúc bản thảo bài đăng.</span>
-            </div>
-            <div className={`flex gap-2 ${status === 'completed' ? 'text-emerald-600' : 'text-slate-400'}`}>
-              {status === 'completed' ? <Check className="w-3.5 h-3.5 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />}
-              <span>{status === 'completed' ? '[Xong]' : '[Chờ]'} Tạo hình ảnh AI bằng DALL-E 3.</span>
-            </div>
-            <div className={`flex gap-2 ${status === 'completed' ? 'text-emerald-600' : 'text-slate-400'}`}>
-              {status === 'completed' ? <Check className="w-3.5 h-3.5 shrink-0" /> : <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />}
-              <span>{status === 'completed' ? `[Xong] ${publishStatus ?? 'Đã xuất bản'}` : '[Chờ] Xuất bản bài viết tự động qua Graph API.'}</span>
-            </div>
-          </div>
-        </div>
-
-        {totalTokens > 0 && (
-          <div className="max-w-2xl mx-auto text-xs text-slate-400 text-center flex items-center justify-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5" />
-            Đã sử dụng <strong className="text-slate-600">{totalTokens.toLocaleString()} tokens</strong>
-            <span className="text-slate-300">·</span>
-            ước tính <strong className="text-slate-600">~${estimatedCost}</strong>
-          </div>
-        )}
-
-        {status === 'error' && workflow?.error && (
-          <div className="max-w-2xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" /> {workflow.error}
-          </div>
-        )}
+        ))}
       </div>
-    </div>
-  );
-}
 
-// ==========================================
-// SCREEN 6 — MOBILE VIEW
-// ==========================================
-function ScreenMobileView({ draft }: { draft: string }) {
-  const displayContent = draft || `🥖 BÁNH MÌ NGON - NGÀY MỚI VUI HƠN!\n\nBạn đã sẵn sàng để bùng nổ năng lượng cho ngày mới chưa? Ghé ngay hệ thống Bánh mì ABC để nhận trọn combo bữa sáng giòn rụm, đầy ắp năng lượng!`;
-
-  return (
-    <div className="max-w-md mx-auto bg-slate-900 p-3 rounded-[40px] shadow-2xl border-4 border-slate-800 my-8">
-      <div className="bg-white rounded-[32px] overflow-hidden min-h-[640px] flex flex-col text-slate-900">
-        <div className="px-4 pt-6 pb-3 border-b border-slate-100 flex justify-between items-center text-xs font-bold">
-          <span className="text-slate-900">⚡ Copilot Workspace</span>
-          <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">Draft</span>
-        </div>
-        <div className="flex-1 p-4 overflow-y-auto space-y-4">
-          <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{displayContent}</p>
-          <div className="bg-slate-100 rounded-xl h-36 flex items-center justify-center border border-slate-200 text-xs text-slate-400 font-medium">
-            [ Khung hiển thị Banner AI đã tạo kèm theo ]
-          </div>
-        </div>
-        <div className="p-3 bg-slate-50 border-t border-slate-100 space-y-3">
-          <div className="flex gap-1.5 text-[10px] font-bold overflow-x-auto pb-1">
-            <span className="bg-white border border-slate-200 px-2.5 py-1 rounded text-slate-700 shrink-0">✨ Rút ngắn gọn</span>
-            <span className="bg-white border border-slate-200 px-2.5 py-1 rounded text-slate-700 shrink-0">✨ Thêm CTA gấp</span>
-            <span className="bg-white border border-slate-200 px-2.5 py-1 rounded text-slate-700 shrink-0">🔄 Đổi văn phong</span>
-          </div>
-          <div className="flex gap-2">
-            <input className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs outline-none" placeholder="Nhập yêu cầu nhanh cho trợ lý..." />
-            <button className={`px-4 py-2 rounded-lg text-xs font-bold shrink-0 shadow-sm ${PRIMARY_COLOR}`}>Đăng bài</button>
-          </div>
-        </div>
+      {/* Nhật ký Logs (Clean text) */}
+      <div className="bg-slate-50 p-6 rounded-xl text-sm font-mono text-slate-600 space-y-3">
+        <div className="flex items-center gap-3"><span className="text-slate-400">[Hệ thống]</span> Khởi tạo phân tích dữ liệu...</div>
+        <div className="flex items-center gap-3"><span className="text-slate-400">[AI Core]</span> Xây dựng khung nội dung.</div>
+        {status === 'running' && <div className="flex items-center gap-3 text-slate-900"><Loader2 className="w-3 h-3 animate-spin" /> Đang tạo sinh văn bản chi tiết...</div>}
+        {status === 'completed' && <div className="flex items-center gap-3 text-slate-900">Chiến dịch hoàn tất. Đã đẩy lên hệ thống phân phối.</div>}
       </div>
     </div>
   );
