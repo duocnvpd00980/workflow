@@ -16,7 +16,7 @@ from typing import Optional
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "YOUR_GROQ_API_KEY"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL   = "meta-llama/llama-4-scout-17b-16e-instruct"
 
