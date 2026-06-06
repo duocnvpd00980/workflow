@@ -11,12 +11,12 @@ const queryClient = new QueryClient()
 
 // 2. Khởi tạo TanStack Router 
 // (Bổ sung truyền queryClient vào context để các file routes sau này lấy ra dùng chung)
-const router = createRouter({ 
+const router = createRouter({
   routeTree,
   context: {
     queryClient,
   }
-})
+} as any)
 
 // 3. Đăng ký Typescript bảo vệ Route (Bắt buộc để có Type-safe)
 declare module '@tanstack/react-router' {

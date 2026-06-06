@@ -1,17 +1,40 @@
-// src/routes/__root.tsx
-import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import {
+  createRootRoute,
+  Outlet,
+} from "@tanstack/react-router";
 
-const RootLayout = () => (
-  <div>
-    <main>
-      <Outlet /> 
-    </main>
+import {
+  TanStackRouterDevtools,
+} from "@tanstack/react-router-devtools";
 
-    <TanStackRouterDevtools position="bottom-left" />
-    <ReactQueryDevtools initialIsOpen={false}/>
-  </div>
-)
+import {
+  ReactQueryDevtools,
+} from "@tanstack/react-query-devtools";
 
-export const Route = createRootRoute({ component: RootLayout })
+import AppLayout from "@/layout/app-layout";
+
+function RootLayout() {
+  return (
+    <>
+      <AppLayout>
+
+        <Outlet />
+
+      </AppLayout>
+
+      <TanStackRouterDevtools
+        position="bottom-left"
+      />
+
+      <ReactQueryDevtools
+        initialIsOpen={false}
+      />
+    </>
+  );
+}
+
+export const Route =
+  createRootRoute({
+    component:
+      RootLayout,
+  });

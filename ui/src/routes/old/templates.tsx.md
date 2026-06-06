@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
-import SidebarNav from '@/layout/navbar';
+
 
 export const Route = createFileRoute('/templates')({
   component: PageTemplates,
@@ -17,8 +17,7 @@ function PageTemplates() {
   ];
 
   return (
-    <div class="flex">
-        <SidebarNav />
+    <div className="flex">
       <div className="space-y-4 animate-fadeIn">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>

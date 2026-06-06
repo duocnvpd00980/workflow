@@ -9,33 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WorkflowRouteImport } from './routes/workflow'
-import { Route as TemplatesRouteImport } from './routes/templates'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as HistoryRouteImport } from './routes/history'
-import { Route as ChatRouteImport } from './routes/chat'
 import { Route as BrandRouteImport } from './routes/brand'
-import { Route as BillingRouteImport } from './routes/billing'
 import { Route as ArtifactsRouteImport } from './routes/artifacts'
-import { Route as Analytics2RouteImport } from './routes/analytics2'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 
-const WorkflowRoute = WorkflowRouteImport.update({
-  id: '/workflow',
-  path: '/workflow',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TemplatesRoute = TemplatesRouteImport.update({
-  id: '/templates',
-  path: '/templates',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlannerRoute = PlannerRouteImport.update({
+  id: '/planner',
+  path: '/planner',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KnowledgeRoute = KnowledgeRouteImport.update({
@@ -53,29 +44,14 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ChatRoute = ChatRouteImport.update({
-  id: '/chat',
-  path: '/chat',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const BrandRoute = BrandRouteImport.update({
   id: '/brand',
   path: '/brand',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BillingRoute = BillingRouteImport.update({
-  id: '/billing',
-  path: '/billing',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ArtifactsRoute = ArtifactsRouteImport.update({
   id: '/artifacts',
   path: '/artifacts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Analytics2Route = Analytics2RouteImport.update({
-  id: '/analytics2',
-  path: '/analytics2',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
@@ -92,134 +68,99 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/analytics2': typeof Analytics2Route
   '/artifacts': typeof ArtifactsRoute
-  '/billing': typeof BillingRoute
   '/brand': typeof BrandRoute
-  '/chat': typeof ChatRoute
   '/history': typeof HistoryRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
+  '/planner': typeof PlannerRoute
   '/settings': typeof SettingsRoute
-  '/templates': typeof TemplatesRoute
-  '/workflow': typeof WorkflowRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/analytics2': typeof Analytics2Route
   '/artifacts': typeof ArtifactsRoute
-  '/billing': typeof BillingRoute
   '/brand': typeof BrandRoute
-  '/chat': typeof ChatRoute
   '/history': typeof HistoryRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
+  '/planner': typeof PlannerRoute
   '/settings': typeof SettingsRoute
-  '/templates': typeof TemplatesRoute
-  '/workflow': typeof WorkflowRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/analytics2': typeof Analytics2Route
   '/artifacts': typeof ArtifactsRoute
-  '/billing': typeof BillingRoute
   '/brand': typeof BrandRoute
-  '/chat': typeof ChatRoute
   '/history': typeof HistoryRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
+  '/planner': typeof PlannerRoute
   '/settings': typeof SettingsRoute
-  '/templates': typeof TemplatesRoute
-  '/workflow': typeof WorkflowRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/analytics'
-    | '/analytics2'
     | '/artifacts'
-    | '/billing'
     | '/brand'
-    | '/chat'
     | '/history'
     | '/integrations'
     | '/knowledge'
+    | '/planner'
     | '/settings'
-    | '/templates'
-    | '/workflow'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/analytics'
-    | '/analytics2'
     | '/artifacts'
-    | '/billing'
     | '/brand'
-    | '/chat'
     | '/history'
     | '/integrations'
     | '/knowledge'
+    | '/planner'
     | '/settings'
-    | '/templates'
-    | '/workflow'
   id:
     | '__root__'
     | '/'
     | '/analytics'
-    | '/analytics2'
     | '/artifacts'
-    | '/billing'
     | '/brand'
-    | '/chat'
     | '/history'
     | '/integrations'
     | '/knowledge'
+    | '/planner'
     | '/settings'
-    | '/templates'
-    | '/workflow'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
-  Analytics2Route: typeof Analytics2Route
   ArtifactsRoute: typeof ArtifactsRoute
-  BillingRoute: typeof BillingRoute
   BrandRoute: typeof BrandRoute
-  ChatRoute: typeof ChatRoute
   HistoryRoute: typeof HistoryRoute
   IntegrationsRoute: typeof IntegrationsRoute
   KnowledgeRoute: typeof KnowledgeRoute
+  PlannerRoute: typeof PlannerRoute
   SettingsRoute: typeof SettingsRoute
-  TemplatesRoute: typeof TemplatesRoute
-  WorkflowRoute: typeof WorkflowRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/workflow': {
-      id: '/workflow'
-      path: '/workflow'
-      fullPath: '/workflow'
-      preLoaderRoute: typeof WorkflowRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/templates': {
-      id: '/templates'
-      path: '/templates'
-      fullPath: '/templates'
-      preLoaderRoute: typeof TemplatesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planner': {
+      id: '/planner'
+      path: '/planner'
+      fullPath: '/planner'
+      preLoaderRoute: typeof PlannerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/knowledge': {
@@ -243,13 +184,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/chat': {
-      id: '/chat'
-      path: '/chat'
-      fullPath: '/chat'
-      preLoaderRoute: typeof ChatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/brand': {
       id: '/brand'
       path: '/brand'
@@ -257,25 +191,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrandRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/billing': {
-      id: '/billing'
-      path: '/billing'
-      fullPath: '/billing'
-      preLoaderRoute: typeof BillingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/artifacts': {
       id: '/artifacts'
       path: '/artifacts'
       fullPath: '/artifacts'
       preLoaderRoute: typeof ArtifactsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/analytics2': {
-      id: '/analytics2'
-      path: '/analytics2'
-      fullPath: '/analytics2'
-      preLoaderRoute: typeof Analytics2RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analytics': {
@@ -298,17 +218,13 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
-  Analytics2Route: Analytics2Route,
   ArtifactsRoute: ArtifactsRoute,
-  BillingRoute: BillingRoute,
   BrandRoute: BrandRoute,
-  ChatRoute: ChatRoute,
   HistoryRoute: HistoryRoute,
   IntegrationsRoute: IntegrationsRoute,
   KnowledgeRoute: KnowledgeRoute,
+  PlannerRoute: PlannerRoute,
   SettingsRoute: SettingsRoute,
-  TemplatesRoute: TemplatesRoute,
-  WorkflowRoute: WorkflowRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

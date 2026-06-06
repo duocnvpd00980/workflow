@@ -1,4 +1,5 @@
-const BASE = "http://localhost:8000/api/v1/rag";
+import { BASE } from "@/config";
+
 
 export interface DocOut {
   id: number;

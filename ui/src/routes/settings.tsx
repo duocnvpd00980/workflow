@@ -10,7 +10,6 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
-import SidebarNav from "@/layout/navbar";
 
 // ─── Mock Data cấu hình các Sub-Agents ───────────────────────────────────────
 const INITIAL_SUB_AGENTS = [
@@ -53,7 +52,7 @@ export default function AgentSettingsPage() {
       {/* ─── 1. SIDEBAR TRÁI (Đồng bộ cấu trúc 100% từ các trang trước) ─── */}
       <aside className={`fixed inset-y-0 left-0 z-30 flex w-[260px] flex-col border-r bg-white transition-transform duration-200 md:relative md:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
 
-        <SidebarNav />
+
 
         <div className="flex-1 overflow-y-auto px-3 py-4 flex flex-col min-h-0">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-1 mb-2">Trạng thái cấu hình</p>

@@ -1,23 +1,18 @@
 "use client";
 
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
-  useQuery, useMutation, useQueryClient, QueryClient, QueryClientProvider
-} from '@tanstack/react-query';
-import {
-  LayoutDashboard, FolderKanban, FileText, UserSquare2,
-  Layers, BarChart3, Settings, CreditCard, Plus, Sparkles,
-  ArrowRight, ArrowLeft, Send, Check, History, Undo,
-  ChevronRight, AlignLeft, Eye, EyeOff, Play, Pause,
-  Smartphone, Monitor, ThumbsUp, Trash2, Loader2, AlertCircle, X
+  Plus, Sparkles, ArrowRight, ArrowLeft, Send, Check, History, Eye, 
+  Play, Pause, Loader2, AlertCircle, X, Bell, DollarSign, Zap
 } from 'lucide-react';
-import SidebarNav from "@/layout/navbar";
+import { BASE_URL } from "@/config";
 
 // ==========================================
 // CONSTANTS & TYPES
 // ==========================================
-const BASE_URL = "http://localhost:8000/api/v1/marketing";
+
 const PRIMARY_COLOR = "bg-slate-900 text-white hover:bg-slate-800";
 
 type WorkflowStatus = "running" | "paused" | "completed" | "error";
@@ -52,7 +47,7 @@ interface InlineSuggestion {
 }
 
 // ==========================================
-// API LAYER (fetch-based)
+// API LAYER
 // ==========================================
 const api = {
   createSession: async (): Promise<{ session_id: string }> => {
@@ -122,9 +117,11 @@ const api = {
 // SESSION STORAGE HELPERS
 // ==========================================
 const SESSION_KEY = 'content_engine_session_id';
-const getStoredSessionId = () => localStorage.getItem(SESSION_KEY);
+const getStoredSessionId = () => {
+  if (typeof window !== 'undefined') return localStorage.getItem(SESSION_KEY);
+  return null;
+};
 const setStoredSessionId = (id: string) => localStorage.setItem(SESSION_KEY, id);
-const clearStoredSessionId = () => localStorage.removeItem(SESSION_KEY);
 
 // ==========================================
 // TOAST COMPONENT
@@ -141,7 +138,9 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
           {t.type === 'success' && <Check className="w-3.5 h-3.5" />}
           {t.type === 'error' && <AlertCircle className="w-3.5 h-3.5" />}
           <span>{t.message}</span>
-          <button onClick={() => onRemove(t.id)} className="ml-2 opacity-70 hover:opacity-100"><X className="w-3 h-3" /></button>
+          <button onClick={() => onRemove(t.id)} className="ml-2 opacity-70 hover:opacity-100">
+            <X className="w-3 h-3" />
+          </button>
         </div>
       ))}
     </div>
@@ -166,35 +165,29 @@ export const Route = createFileRoute('/')({
   component: ContentEngineWorkspace,
 });
 
-
-
 // ==========================================
 // MAIN COMPONENT
 // ==========================================
 export default function ContentEngineWorkspace() {
   const [currentScreen, setCurrentScreen] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
-  const [sessionId, setSessionId] = useState<string | null>(getStoredSessionId);
+  const [sessionId, setSessionId] = useState<string | null>(getStoredSessionId());
   const [currentDraft, setCurrentDraft] = useState<string>('');
-  const [autoMode, setAutoMode] = useState(false);
   const { toasts, add: addToast, remove: removeToast } = useToast();
 
   const handleSessionCreated = (id: string, draft: string, isAuto: boolean) => {
     setSessionId(id);
     setStoredSessionId(id);
     setCurrentDraft(draft);
-    setAutoMode(isAuto);
     setCurrentScreen(isAuto ? 5 : 3);
   };
 
   const handleDraftUpdate = (draft: string) => setCurrentDraft(draft);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans antialiased">
-      
-
-      <main className="max-w-[1600px] mx-auto">
+    <div >
+      <>
         {currentScreen === 1 && (
-          <ScreenDashboard onCreateContent={() => setCurrentScreen(2)} addToast={addToast} />
+          <ScreenDashboard onCreateContent={() => setCurrentScreen(2)} />
         )}
         {currentScreen === 2 && (
           <ScreenCreateContent
@@ -205,7 +198,6 @@ export default function ContentEngineWorkspace() {
         )}
         {currentScreen === 3 && sessionId && (
           <ScreenWorkspace
-            onBack={() => setCurrentScreen(2)}
             onGoToReview={() => setCurrentScreen(4)}
             onGoToAuto={() => setCurrentScreen(5)}
             sessionId={sessionId}
@@ -232,7 +224,7 @@ export default function ContentEngineWorkspace() {
         {currentScreen === 6 && (
           <ScreenMobileView draft={currentDraft} />
         )}
-      </main>
+      </>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
@@ -242,27 +234,52 @@ export default function ContentEngineWorkspace() {
 // ==========================================
 // SCREEN 1 — DASHBOARD
 // ==========================================
-function ScreenDashboard({ onCreateContent, addToast }: { onCreateContent: () => void; addToast: (m: string, t?: Toast['type']) => void }) {
-  // Mock recent projects from localStorage
+function ScreenDashboard({ onCreateContent }: { onCreateContent: () => void }) {
+  const [showNotifTooltip, setShowNotifTooltip] = useState(false);
+
   const recentProjects = [
     { name: "Bánh mì ABC - Tháng 6", type: "Facebook Post", time: "2 giờ trước", status: "Đã đăng", color: "bg-emerald-50 text-emerald-700" },
     { name: "Khuyến mãi cuối tuần", type: "Blog Post", time: "1 ngày trước", status: "Bản nháp", color: "bg-amber-50 text-amber-700" },
     { name: "Campaign mùa hè 2024", type: "Multi-channel", time: "2 ngày trước", status: "Đang xử lý", color: "bg-indigo-50 text-indigo-700" },
   ];
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
-      {/* Sidebar */}
-     
-      <SidebarNav />
-      
+  const notifBreakdown = [
+    { label: "Bình luận chờ phản hồi", count: 5 },
+    { label: "Bản nháp chờ duyệt", count: 3 },
+    { label: "Chiến dịch hoàn thành", count: 3 },
+  ];
 
-      {/* Main */}
+  return (
+    <div className="flex">
       <div className="md:col-span-3 space-y-6">
         <div className="bg-white p-6 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-slate-900">Chào buổi sáng, Minh! 👋 11</h2>
-            <p className="text-xs text-slate-500 mt-1">Hôm nay bạn muốn tối ưu hóa chiến dịch và tạo nội dung gì?</p>
+          <div className="flex items-start gap-3">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight text-slate-900">Chào buổi sáng, Minh! 👋</h2>
+              <p className="text-xs text-slate-500 mt-1">Hôm nay bạn muốn tối ưu hóa chiến dịch và tạo nội dung gì?</p>
+            </div>
+            <div className="relative">
+              <button
+                className="relative flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 transition"
+                onMouseEnter={() => setShowNotifTooltip(true)}
+                onMouseLeave={() => setShowNotifTooltip(false)}
+                aria-label="11 thông báo"
+              >
+                <Bell className="w-4 h-4 text-slate-600" />
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-indigo-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center">11</span>
+              </button>
+              {showNotifTooltip && (
+                <div className="absolute top-10 left-0 z-10 bg-white border border-slate-200 rounded-xl shadow-lg p-3 w-52 text-xs space-y-2">
+                  <p className="font-semibold text-slate-700 mb-1">11 thông báo mới</p>
+                  {notifBreakdown.map(n => (
+                    <div key={n.label} className="flex justify-between text-slate-600">
+                      <span>{n.label}</span>
+                      <span className="font-semibold text-slate-900">{n.count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <button onClick={onCreateContent} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg shadow-sm transition ${PRIMARY_COLOR}`}>
             <Plus className="w-4 h-4" /> Tạo content mới
@@ -287,7 +304,7 @@ function ScreenDashboard({ onCreateContent, addToast }: { onCreateContent: () =>
                 <div key={i} className="py-3 flex justify-between items-center first:pt-0 last:pb-0">
                   <div>
                     <h4 className="font-semibold text-slate-900">{proj.name}</h4>
-                    <span className="text-[11px] text-slate-400">{proj.type} • {proj.time}</span>
+                    <span className="text-[11px] text-slate-400">{proj.type} · {proj.time}</span>
                   </div>
                   <span className={`px-2 py-0.5 rounded font-medium ${proj.color}`}>{proj.status}</span>
                 </div>
@@ -297,9 +314,9 @@ function ScreenDashboard({ onCreateContent, addToast }: { onCreateContent: () =>
           <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Hoạt động gần đây</h3>
             <div className="space-y-3 text-xs text-slate-600">
-              <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-indigo-500 rounded-full mt-1.5 shrink-0" /><p>Bạn đã xuất bản <strong>Bánh mì ngon</strong> lên Fanpage</p></div>
-              <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 shrink-0" /><p>AI đã tạo bản nhập mới cho chiến dịch tuần mới</p></div>
-              <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 shrink-0" /><p>Cập nhật lại cấu trúc <strong>Brand Profile</strong></p></div>
+              <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-indigo-500 rounded-full mt-1.5 shrink-0" /><p>Bạn đã xuất bản <strong>Bánh mì ngon</strong> lên Fanpage <span className="text-slate-400">· 2 giờ trước</span></p></div>
+              <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 shrink-0" /><p>AI đã tạo bản nháp mới cho chiến dịch tuần mới <span className="text-slate-400">· 5 giờ trước</span></p></div>
+              <div className="flex gap-2"><div className="w-1.5 h-1.5 bg-slate-300 rounded-full mt-1.5 shrink-0" /><p>Cập nhật lại cấu trúc <strong>Brand Profile</strong> <span className="text-slate-400">· 1 ngày trước</span></p></div>
             </div>
           </div>
         </div>
@@ -321,19 +338,17 @@ function ScreenCreateContent({
   const [request, setRequest] = useState('');
   const [autoMode, setAutoMode] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedAudience, setSelectedAudience] = useState('Học sinh, sinh viên');
+  const [selectedAudience, setSelectedAudience] = useState('Dân văn phòng');
   const [selectedPromo, setSelectedPromo] = useState('Tặng kèm nước ngọt');
 
   const startMutation = useMutation({
     mutationFn: async () => {
-      // Build full request with clarifications
       const fullRequest = [
         request,
         selectedTags.length ? `Tags: ${selectedTags.join(', ')}` : '',
         `Đối tượng: ${selectedAudience}`,
         `Ưu đãi: ${selectedPromo}`,
       ].filter(Boolean).join('. ');
-
       return api.startWorkflow({ request: fullRequest, auto_mode: autoMode });
     },
     onSuccess: (data) => {
@@ -341,16 +356,14 @@ function ScreenCreateContent({
       onSessionCreated(data.session_id, draft, autoMode);
       addToast('Đã tạo content thành công!', 'success');
     },
-    onError: (err: Error) => {
-      addToast(`Lỗi: ${err.message}`, 'error');
-    },
+    onError: (err: Error) => addToast(`Lỗi: ${err.message}`, 'error'),
   });
 
   const tags = ["Bánh mì ABC", "Tone vui vẻ", "Mạng xã hội Facebook", "Quảng cáo sản phẩm", "Thêm CTA ưu đãi"];
   const toggleTag = (tag: string) => setSelectedTags(p => p.includes(tag) ? p.filter(t => t !== tag) : [...p, tag]);
 
   return (
-    <div className="max-w-3xl mx-auto bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+    <div className="mx-auto bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mt-6">
       <div className="border-b border-slate-100 p-4 flex items-center justify-between text-xs font-medium text-slate-500">
         <button onClick={onBack} className="flex items-center gap-1 hover:text-slate-900"><ArrowLeft className="w-3.5 h-3.5" /> Quay lại</button>
         <div className="flex gap-4 items-center">
@@ -376,11 +389,17 @@ function ScreenCreateContent({
           <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-xs text-slate-400">
             <div className="flex items-center gap-3">
               <span>Độ dài đề xuất: 50-200 từ</span>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={autoMode} onChange={e => setAutoMode(e.target.checked)}
-                  className="w-3 h-3 accent-indigo-600" />
-                <span className="text-indigo-600 font-medium">Auto Mode</span>
-              </label>
+              <button
+                onClick={() => setAutoMode(v => !v)}
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md transition font-medium border ${
+                  autoMode
+                    ? 'bg-indigo-600 text-white border-indigo-600'
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-400 hover:text-indigo-600'
+                }`}
+              >
+                <Zap className="w-3 h-3" />
+                Auto Mode {autoMode ? 'Bật' : 'Tắt'}
+              </button>
             </div>
             <button
               onClick={() => startMutation.mutate()}
@@ -395,11 +414,11 @@ function ScreenCreateContent({
           <span className="font-semibold text-slate-500">Gợi ý nhanh cấu trúc:</span>
           <div className="flex flex-wrap gap-1.5">
             {tags.map(tag => (
-              <span key={tag}
+              <button key={tag}
                 onClick={() => toggleTag(tag)}
                 className={`px-2.5 py-1 rounded-md font-medium cursor-pointer transition ${selectedTags.includes(tag) ? 'bg-indigo-100 text-indigo-700 border border-indigo-300' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 {tag}
-              </span>
+              </button>
             ))}
           </div>
         </div>
@@ -418,10 +437,10 @@ function ScreenCreateContent({
               <label className="font-semibold text-slate-700">1. Đối tượng khách hàng mục tiêu?</label>
               <div className="flex gap-1.5">
                 {["Học sinh, sinh viên", "Dân văn phòng"].map(opt => (
-                  <span key={opt} onClick={() => setSelectedAudience(opt)}
+                  <button key={opt} onClick={() => setSelectedAudience(opt)}
                     className={`px-2 py-1 rounded cursor-pointer border ${selectedAudience === opt ? 'bg-white border-indigo-200 text-indigo-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                     {opt}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -429,10 +448,10 @@ function ScreenCreateContent({
               <label className="font-semibold text-slate-700">2. Chương trình ưu đãi đi kèm?</label>
               <div className="flex gap-1.5">
                 {["Giảm giá 20%", "Tặng kèm nước ngọt"].map(opt => (
-                  <span key={opt} onClick={() => setSelectedPromo(opt)}
+                  <button key={opt} onClick={() => setSelectedPromo(opt)}
                     className={`px-2 py-1 rounded cursor-pointer border ${selectedPromo === opt ? 'bg-white border-indigo-200 text-indigo-700 font-medium' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                     {opt}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -456,9 +475,8 @@ function ScreenCreateContent({
 // SCREEN 3 — CONTENT WORKSPACE
 // ==========================================
 function ScreenWorkspace({
-  onBack, onGoToReview, onGoToAuto, sessionId, initialDraft, onDraftUpdate, addToast
+   onGoToReview, onGoToAuto, sessionId, initialDraft, onDraftUpdate, addToast
 }: {
-  onBack: () => void;
   onGoToReview: () => void;
   onGoToAuto: () => void;
   sessionId: string;
@@ -474,11 +492,10 @@ function ScreenWorkspace({
   const [inlineInstruction, setInlineInstruction] = useState('');
   const [showInlineInput, setShowInlineInput] = useState(false);
   const [selection, setSelection] = useState<{ start: number; end: number; text: string } | null>(null);
+  const [isApproved, setIsApproved] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
-  const qc = useQueryClient();
 
-  // Load workflow from API if draft is empty
   const { data: workflow } = useQuery({
     queryKey: ['workflow', sessionId],
     queryFn: () => api.getWorkflow(sessionId),
@@ -495,7 +512,6 @@ function ScreenWorkspace({
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  // Chat Copilot mutation
   const chatMutation = useMutation({
     mutationFn: (instruction: string) => api.chatEdit({ draft: draftContent, instruction }),
     onSuccess: (data) => {
@@ -506,7 +522,6 @@ function ScreenWorkspace({
     onError: (err: Error) => addToast(`Chat error: ${err.message}`, 'error'),
   });
 
-  // Inline suggestion mutation
   const inlineMutation = useMutation({
     mutationFn: ({ paragraph, instruction }: { paragraph: string; instruction: string }) =>
       api.chatInline({ paragraph, instruction, context: draftContent }),
@@ -524,19 +539,21 @@ function ScreenWorkspace({
     onError: (err: Error) => addToast(`Inline error: ${err.message}`, 'error'),
   });
 
-  // Approve & publish
   const approveMutation = useMutation({
     mutationFn: () => api.resumeWorkflow(sessionId, { action: 'approve', content: draftContent }),
     onSuccess: () => {
-      addToast('Đã phê duyệt! Đang đăng bài...', 'info');
-      publishMutation.mutate();
+      setIsApproved(true);
+      addToast('Đã duyệt! Bấm "Đăng bài" để xuất bản.', 'info');
     },
-    onError: (err: Error) => addToast(`Lỗi phê duyệt: ${err.message}`, 'error'),
+    onError: (err: Error) => addToast(`Lỗi duyệt: ${err.message}`, 'error'),
   });
 
   const publishMutation = useMutation({
     mutationFn: () => api.publishWorkflow(sessionId),
-    onSuccess: (data) => addToast(`Đã đăng bài! Status: ${data.publish_status}`, 'success'),
+    onSuccess: (data) => {
+      addToast(`Đã đăng bài thành công! Status: ${data.publish_status}`, 'success');
+      setIsApproved(false);
+    },
     onError: (err: Error) => addToast(`Lỗi đăng bài: ${err.message}`, 'error'),
   });
 
@@ -583,41 +600,85 @@ function ScreenWorkspace({
   };
 
   const wordCount = draftContent.trim().split(/\s+/).filter(Boolean).length;
-  const tokenEstimate = Math.round(wordCount * 1.3);
+  const estimatedCostUSD = ((wordCount * 1.3) / 1_000_000 * 3).toFixed(4);
+
+  const suggestedPrompts = [
+    "Tối ưu hóa chuẩn SEO",
+    "Rút gọn nội dung",
+    "Thêm CTA mạnh hơn",
+    "Đổi tone vui vẻ hơn",
+  ];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-      {/* Left: Chat Copilot */}
-      <div className="lg:col-span-4 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col h-[680px]">
-        <div className="flex border-b border-slate-100 p-2 bg-slate-50 text-xs font-semibold">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 border border-slate-200 rounded-xl overflow-hidden h-[calc(100vh-80px)] mt-6">
+      
+      {/* LEFT PANEL: Copilot (4/12) */}
+      <div className="lg:col-span-4 bg-white border-r border-slate-200 flex flex-col h-full overflow-hidden">
+        <div className="flex border-b border-slate-100 p-2 bg-slate-50 text-xs font-semibold shrink-0">
           <button onClick={() => setActiveTab('copilot')}
             className={`flex-1 py-1.5 text-center rounded transition ${activeTab === 'copilot' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
             Trợ lý Copilot
           </button>
           <button onClick={() => setActiveTab('history')}
             className={`flex-1 py-1.5 text-center rounded transition ${activeTab === 'history' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}>
-            Lịch sử phiên (v{workflow?.draft?.version ?? 1})
+            Lịch sử (v{workflow?.draft?.version ?? 1})
           </button>
         </div>
+
+        {activeTab === 'copilot' && (
+          <div className="shrink-0 p-3 border-b border-slate-100 bg-slate-50/50">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Actions nhanh</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { label: "Tối ưu SEO", instruction: "Tối ưu hóa bài viết này chuẩn SEO" },
+                { label: "Rút gọn", instruction: "Rút ngắn nội dung, giữ ý chính" },
+                { label: "Đổi tone", instruction: "Đổi văn phong sang chuyên nghiệp hơn" },
+                { label: "Tạo ảnh AI", instruction: "Viết prompt hình ảnh phù hợp cho bài này" },
+              ].map(({ label, instruction }) => (
+                <button key={label}
+                  onClick={() => {
+                    setChatMessages(p => [...p, { role: 'user', content: instruction }]);
+                    chatMutation.mutate(instruction);
+                  }}
+                  disabled={chatMutation.isPending}
+                  className="text-left bg-white border border-slate-200 px-2.5 py-1.5 rounded-lg hover:border-indigo-400 text-xs font-medium text-slate-700 disabled:opacity-50 transition">
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs">
           {activeTab === 'copilot' ? (
             <>
-              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-slate-500 text-center">
-                Hệ thống áp dụng Brand Profile: <strong>Bánh mì ABC</strong>
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-slate-500 text-center text-[11px]">
+                Brand Profile đang áp dụng: <strong className="text-slate-700">Bánh mì ABC</strong>
               </div>
 
               {chatMessages.length === 0 && (
-                <div className="text-center text-slate-400 py-8">
-                  <Sparkles className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                  <p>Nhập yêu cầu để AI chỉnh sửa nội dung</p>
+                <div className="text-center text-slate-400 py-4 space-y-3">
+                  <Sparkles className="w-7 h-7 mx-auto text-slate-300" />
+                  <p className="text-[11px]">Thử hỏi Copilot:</p>
+                  <div className="flex flex-wrap gap-1.5 justify-center">
+                    {suggestedPrompts.map(p => (
+                      <button key={p}
+                        onClick={() => {
+                          setChatMessages(prev => [...prev, { role: 'user', content: p }]);
+                          chatMutation.mutate(p);
+                        }}
+                        className="text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-1 rounded-lg hover:bg-indigo-100 transition">
+                        {p}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
               {chatMessages.map((msg, i) => (
                 <div key={i} className={`flex gap-2 items-start ${msg.role === 'user' ? 'justify-end' : ''}`}>
                   {msg.role === 'assistant' && (
-                    <div className="w-6 h-6 bg-indigo-100 text-indigo-600 font-bold rounded-full flex items-center justify-center shrink-0">AI</div>
+                    <div className="w-6 h-6 bg-indigo-100 text-indigo-600 font-bold rounded-full flex items-center justify-center shrink-0 text-[10px]">AI</div>
                   )}
                   <div className={`p-3 rounded-xl max-w-[85%] leading-relaxed ${
                     msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-slate-100 text-slate-800 rounded-tl-none'
@@ -633,26 +694,30 @@ function ScreenWorkspace({
                   <span>AI đang xử lý...</span>
                 </div>
               )}
-
               <div ref={chatBottomRef} />
             </>
           ) : (
             <div className="space-y-2 text-slate-600">
-              <p className="text-slate-400 text-center pt-4">Lịch sử chỉnh sửa của phiên làm việc hiện tại.</p>
+              <p className="text-slate-400 text-center pt-4 text-[11px]">Lịch sử chỉnh sửa phiên làm việc hiện tại.</p>
               {chatMessages.filter(m => m.role === 'user').map((msg, i) => (
                 <div key={i} className="bg-slate-50 border border-slate-100 rounded-lg p-2.5">
                   <span className="text-[10px] text-slate-400 font-medium">Yêu cầu #{i + 1}</span>
-                  <p className="mt-1">{msg.content}</p>
+                  <p className="mt-1 text-xs">{msg.content}</p>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="p-3 border-t border-slate-100 flex gap-2 bg-slate-50">
+        <div className="shrink-0 px-3 py-2 border-t border-slate-100 bg-slate-50 flex items-center gap-1.5 text-[11px] text-slate-400">
+          <DollarSign className="w-3 h-3" />
+          <span>{wordCount} từ · ước tính ~${estimatedCostUSD}</span>
+        </div>
+
+        <div className="shrink-0 p-3 border-t border-slate-100 flex gap-2 bg-slate-50">
           <input
             className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-indigo-500"
-            placeholder="Yêu cầu AI sửa đổi nội dung văn bản..."
+            placeholder="Nhập yêu cầu chỉnh sửa..."
             value={chatInput}
             onChange={e => setChatInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSendChat()}
@@ -664,9 +729,9 @@ function ScreenWorkspace({
         </div>
       </div>
 
-      {/* Right: Editor */}
-      <div className="lg:col-span-8 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col h-[680px]">
-        <div className="border-b border-slate-200 p-4 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+      {/* RIGHT PANEL: Editor (8/12) */}
+      <div className="lg:col-span-8 bg-white flex flex-col h-full overflow-hidden">
+        <div className="border-b border-slate-200 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 shrink-0">
           <div className="flex items-center gap-2 text-xs">
             <span className="font-bold text-slate-900">Bản thảo: Bánh mì ABC</span>
             <span className="bg-slate-200 px-2 py-0.5 rounded text-[11px] font-medium text-slate-700 flex items-center gap-1">
@@ -676,38 +741,46 @@ function ScreenWorkspace({
           <div className="flex items-center gap-2">
             <button onClick={onGoToReview}
               className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5">
-              <Eye className="w-3.5 h-3.5" /> So sánh phiên bản
+              <Eye className="w-3.5 h-3.5" /> So sánh
             </button>
             <button onClick={onGoToAuto}
               className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold hover:bg-indigo-100 flex items-center gap-1.5">
               <Play className="w-3.5 h-3.5" /> Auto Mode
             </button>
-            <button
-              onClick={() => approveMutation.mutate()}
-              disabled={approveMutation.isPending || publishMutation.isPending}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5 ${PRIMARY_COLOR} disabled:opacity-50`}>
-              {(approveMutation.isPending || publishMutation.isPending) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              Duyệt & Đăng bài
-            </button>
+            {!isApproved ? (
+              <button
+                onClick={() => approveMutation.mutate()}
+                disabled={approveMutation.isPending}
+                className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-xs font-semibold hover:bg-amber-600 flex items-center gap-1.5 disabled:opacity-50">
+                {approveMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <Check className="w-3.5 h-3.5" /> Duyệt nội dung
+              </button>
+            ) : (
+              <button
+                onClick={() => publishMutation.mutate()}
+                disabled={publishMutation.isPending}
+                className={`px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5 ${PRIMARY_COLOR} disabled:opacity-50`}>
+                {publishMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                <Send className="w-3.5 h-3.5" /> Đăng bài
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-4 divide-x divide-slate-100 overflow-hidden">
-          {/* Editor Area */}
-          <div className="md:col-span-3 p-6 overflow-y-auto space-y-3 flex flex-col">
-            <div className="flex gap-2 border-b border-slate-100 pb-2 text-xs text-slate-400 font-mono">
-              <span className="font-bold text-slate-800 cursor-pointer">H1</span>
-              <span className="font-bold text-slate-800 cursor-pointer">H2</span>
-              <span className="underline cursor-pointer">U</span>
-              <span className="italic cursor-pointer">I</span>
-              <span className="cursor-pointer">Link</span>
-              <span className="cursor-pointer">Quote</span>
-              <span className="ml-auto text-[10px] text-slate-400 font-sans">
-                💡 Bôi đen đoạn văn để chỉnh sửa inline
-              </span>
-            </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex gap-2 px-6 py-2 border-b border-slate-100 text-xs text-slate-400 font-mono items-center shrink-0">
+            <span className="font-bold text-slate-800 cursor-pointer hover:bg-slate-100 px-1 rounded">H1</span>
+            <span className="font-bold text-slate-800 cursor-pointer hover:bg-slate-100 px-1 rounded">H2</span>
+            <span className="underline cursor-pointer hover:bg-slate-100 px-1 rounded">U</span>
+            <span className="italic cursor-pointer hover:bg-slate-100 px-1 rounded">I</span>
+            <span className="cursor-pointer hover:bg-slate-100 px-1 rounded">Link</span>
+            <span className="cursor-pointer hover:bg-slate-100 px-1 rounded">Quote</span>
+            <span className="ml-auto text-[10px] text-slate-400 font-sans italic">
+              Bôi đen đoạn văn → AI sẽ gợi ý chỉnh sửa
+            </span>
+          </div>
 
-            {/* Inline suggestion banner */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
             {inlineSuggestion && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs space-y-2">
                 <div className="font-semibold text-amber-900">✨ Gợi ý chỉnh sửa inline</div>
@@ -732,7 +805,6 @@ function ScreenWorkspace({
               </div>
             )}
 
-            {/* Inline input popup */}
             {showInlineInput && !inlineSuggestion && (
               <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-xs space-y-2">
                 <div className="font-semibold text-indigo-900">✂️ Chỉnh sửa đoạn đã chọn</div>
@@ -757,10 +829,10 @@ function ScreenWorkspace({
                 </div>
                 <div className="flex gap-1.5">
                   {["Ngắn gọn hơn", "Tăng độ hài hước", "Thêm CTA ưu đãi"].map(s => (
-                    <span key={s} onClick={() => setInlineInstruction(s)}
-                      className="bg-white px-2 py-0.5 rounded border border-indigo-200 text-indigo-700 cursor-pointer hover:bg-indigo-100">
+                    <button key={s} onClick={() => setInlineInstruction(s)}
+                      className="bg-white px-2 py-0.5 rounded border border-indigo-200 text-indigo-700 text-[11px] cursor-pointer hover:bg-indigo-100">
                       {s}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -768,40 +840,13 @@ function ScreenWorkspace({
 
             <textarea
               ref={editorRef}
-              className="flex-1 w-full text-sm text-slate-800 leading-relaxed outline-none resize-none border-0 bg-transparent"
+              className="w-full text-sm text-slate-800 leading-relaxed outline-none resize-none border-0 bg-transparent min-h-[400px]"
               value={draftContent}
               onChange={e => { setDraftContent(e.target.value); onDraftUpdate(e.target.value); }}
               onMouseUp={handleTextSelect}
               onKeyUp={handleTextSelect}
               placeholder="Nội dung bản thảo sẽ xuất hiện ở đây..."
             />
-          </div>
-
-          {/* Quick AI Actions */}
-          <div className="p-4 bg-slate-50/50 space-y-3 text-xs overflow-y-auto">
-            <h4 className="font-bold uppercase tracking-wider text-slate-400 text-[10px]">AI Actions nhanh</h4>
-            {[
-              { label: "Tối ưu hóa chuẩn SEO", instruction: "Tối ưu hóa bài viết này chuẩn SEO, thêm từ khóa phù hợp" },
-              { label: "Rút gọn văn bản gốc", instruction: "Rút ngắn nội dung, giữ lại ý chính" },
-              { label: "Đổi văn phong (Tone)", instruction: "Đổi văn phong sang chuyên nghiệp hơn" },
-              { label: "Tự động tạo ảnh AI", instruction: "Mô tả prompt hình ảnh phù hợp cho bài viết này" },
-            ].map(({ label, instruction }) => (
-              <button key={label}
-                onClick={() => {
-                  setChatMessages(p => [...p, { role: 'user', content: instruction }]);
-                  chatMutation.mutate(instruction);
-                }}
-                disabled={chatMutation.isPending}
-                className="w-full text-left bg-white border border-slate-200 p-2.5 rounded-lg hover:border-indigo-500 font-medium flex items-center justify-between disabled:opacity-50">
-                <span>{label}</span>
-                <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-              </button>
-            ))}
-            <hr className="border-slate-200" />
-            <div className="text-[11px] text-slate-400 space-y-1">
-              <div>Độ dài: <strong>{wordCount} từ</strong></div>
-              <div>Ước tính token: <strong>{tokenEstimate} tokens</strong></div>
-            </div>
           </div>
         </div>
       </div>
@@ -837,13 +882,15 @@ function ScreenReviewMode({
   const currVersion = versions.find(v => v.version === currentVersion);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-6">
       <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"><ArrowLeft className="w-4 h-4" /></button>
+          <button onClick={onBack} className="p-2 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
+            <ArrowLeft className="w-4 h-4" />
+          </button>
           <div>
-            <h2 className="text-sm font-bold">Chế độ so sánh và phê duyệt (Diff Review)</h2>
-            <p className="text-xs text-slate-500">Xem các chỉnh sửa chi tiết mà AI Copilot đã đề xuất.</p>
+            <h2 className="text-sm font-bold">So sánh và phê duyệt (Diff Review)</h2>
+            <p className="text-xs text-slate-500">Xem các chỉnh sửa AI đề xuất trước khi phê duyệt.</p>
           </div>
         </div>
         <div className="flex gap-2 text-xs">
@@ -874,14 +921,15 @@ function ScreenReviewMode({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Old version */}
         <div className="bg-white border border-slate-200 rounded-xl p-5 space-y-3 relative opacity-75">
           <span className="absolute top-3 right-3 text-[10px] uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded font-bold text-slate-500">
             Bản cũ (v{currentVersion - 1})
           </span>
           <h3 className="text-sm font-bold text-slate-900 pr-24">Phiên bản cũ</h3>
           <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
-            {prevVersion?.content ?? (
+            {prevVersion?.content ? (
+              prevVersion.content
+            ) : (
               <>
                 <p>🥖 BÁNH MÌ NGON - MÓN QUÀ BUỔI SÁNG</p>
                 <p className="mt-2">Hệ thống cửa hàng Bánh mì ABC chuyên cung cấp các bữa ăn sáng tiện lợi cho mọi người.</p>
@@ -893,14 +941,15 @@ function ScreenReviewMode({
           </div>
         </div>
 
-        {/* New version */}
         <div className="bg-white border border-indigo-200 rounded-xl p-5 space-y-3 relative ring-1 ring-indigo-500/20">
           <span className="absolute top-3 right-3 text-[10px] uppercase tracking-wider bg-indigo-50 px-2 py-0.5 rounded font-bold text-indigo-600">
             Đề xuất mới (v{currentVersion})
           </span>
           <h3 className="text-sm font-bold text-slate-900 pr-24">Phiên bản mới nhất</h3>
           <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
-            {currVersion?.content ?? (
+            {currVersion?.content ? (
+              currVersion.content
+            ) : (
               <>
                 <p>🥖 BÁNH MÌ NGON - NGÀY MỚI VUI HƠN!</p>
                 <p className="mt-2">Hệ thống cửa hàng Bánh mì ABC chuyên cung cấp các bữa ăn sáng tiện lợi cho mọi người.</p>
@@ -955,23 +1004,24 @@ function ScreenAutoMode({
 
   const status = workflow?.status ?? 'running';
   const publishStatus = workflow?.publish_status;
+  const totalTokens = workflow?.usage?.total_tokens ?? 0;
+  const estimatedCost = ((totalTokens / 1_000_000) * 3).toFixed(4);
 
   useEffect(() => {
     if (status === 'completed') addToast('Hoàn tất! Đã đăng bài thành công.', 'success');
     if (status === 'error') addToast(`Lỗi: ${workflow?.error}`, 'error');
-  }, [status]);
+  }, [status, workflow, addToast]);
 
-  // Map status to steps
   const steps = [
-    { label: "Research", status: status === 'running' ? 'active' : 'complete' },
-    { label: "Generate", status: status === 'running' ? 'active' : status === 'completed' ? 'complete' : 'active' },
-    { label: "Image Gen", status: status === 'completed' ? 'complete' : status === 'running' ? 'active' : 'pending' },
-    { label: "Publish", status: status === 'completed' ? 'complete' : 'pending' },
+    { label: "Research", timeEstimate: "~2s", status: 'complete' as const },
+    { label: "Generate", timeEstimate: "~15s", status: status === 'running' || status === 'completed' ? 'complete' as const : 'active' as const },
+    { label: "Image Gen", timeEstimate: "~30s", status: status === 'completed' ? 'complete' as const : status === 'running' ? 'active' as const : 'pending' as const },
+    { label: "Publish", timeEstimate: "~5s", status: status === 'completed' ? 'complete' as const : 'pending' as const },
   ];
 
   if (!started) {
     return (
-      <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-xl shadow-sm p-8 space-y-6">
+      <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-xl shadow-sm p-8 space-y-6 mt-6">
         <h2 className="text-lg font-bold">Kích hoạt Auto Campaign Mode</h2>
         <p className="text-sm text-slate-500">Nhập yêu cầu, AI sẽ tự động hoàn thành toàn bộ quy trình từ nghiên cứu đến đăng bài.</p>
         <textarea
@@ -997,7 +1047,7 @@ function ScreenAutoMode({
   }
 
   return (
-    <div className="max-w-4xl mx-auto bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+    <div className="max-w-4xl mx-auto bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden mt-6">
       <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <div className={`w-2.5 h-2.5 rounded-full ${status === 'running' ? 'bg-emerald-400 animate-pulse' : status === 'completed' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
@@ -1012,20 +1062,21 @@ function ScreenAutoMode({
             {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
             {isPaused ? "Tiếp tục" : "Tạm dừng"}
           </button>
-          <button onClick={onBack} className="px-3 py-1 bg-white text-slate-900 text-xs font-semibold rounded hover:bg-slate-100 transition">Thoát ra</button>
+          <button onClick={onBack} className="px-3 py-1 bg-white text-slate-900 text-xs font-semibold rounded hover:bg-slate-100 transition">
+            Thoát về workspace
+          </button>
         </div>
       </div>
 
       <div className="p-8 space-y-8">
-        {/* Progress Steps */}
-        <div className="flex items-center justify-between relative max-w-2xl mx-auto">
-          <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-slate-200 -translate-y-1/2 z-0" />
-          <div className={`absolute left-0 top-1/2 h-0.5 bg-indigo-600 -translate-y-1/2 z-0 transition-all duration-1000 ${
+        <div className="flex items-start justify-between relative max-w-2xl mx-auto">
+          <div className="absolute left-0 right-0 top-[14px] h-0.5 bg-slate-200 z-0" />
+          <div className={`absolute left-0 top-[14px] h-0.5 bg-indigo-600 z-0 transition-all duration-1000 ${
             status === 'completed' ? 'w-full' : 'w-[50%]'
           }`} />
 
           {steps.map((step, idx) => (
-            <div key={idx} className="relative z-10 flex flex-col items-center space-y-1 text-center">
+            <div key={idx} className="relative z-10 flex flex-col items-center space-y-1 text-center min-w-[70px]">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                 step.status === 'complete' ? 'bg-indigo-600 text-white' :
                 step.status === 'active' ? 'bg-indigo-50 border-2 border-indigo-600 text-indigo-600 animate-pulse' :
@@ -1034,11 +1085,11 @@ function ScreenAutoMode({
                 {step.status === 'complete' ? <Check className="w-4 h-4" /> : idx + 1}
               </div>
               <span className={`text-xs font-semibold ${step.status === 'active' ? 'text-indigo-600' : 'text-slate-500'}`}>{step.label}</span>
+              <span className="text-[10px] text-slate-400">{step.timeEstimate}</span>
             </div>
           ))}
         </div>
 
-        {/* Status Logs */}
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3 max-w-2xl mx-auto text-xs">
           <div className="flex justify-between items-center border-b border-slate-200 pb-2">
             <span className="font-bold text-slate-700">Nhật ký tiến trình thực tế</span>
@@ -1063,14 +1114,15 @@ function ScreenAutoMode({
           </div>
         </div>
 
-        {/* Usage info */}
-        {workflow?.usage && (
-          <div className="max-w-2xl mx-auto text-xs text-slate-400 text-center">
-            Đã sử dụng tổng cộng <strong className="text-slate-600">{workflow.usage.total_tokens.toLocaleString()} tokens</strong>
+        {totalTokens > 0 && (
+          <div className="max-w-2xl mx-auto text-xs text-slate-400 text-center flex items-center justify-center gap-1.5">
+            <DollarSign className="w-3.5 h-3.5" />
+            Đã sử dụng <strong className="text-slate-600">{totalTokens.toLocaleString()} tokens</strong>
+            <span className="text-slate-300">·</span>
+            ước tính <strong className="text-slate-600">~${estimatedCost}</strong>
           </div>
         )}
 
-        {/* Error display */}
         {status === 'error' && workflow?.error && (
           <div className="max-w-2xl mx-auto bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700 flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" /> {workflow.error}
@@ -1088,22 +1140,18 @@ function ScreenMobileView({ draft }: { draft: string }) {
   const displayContent = draft || `🥖 BÁNH MÌ NGON - NGÀY MỚI VUI HƠN!\n\nBạn đã sẵn sàng để bùng nổ năng lượng cho ngày mới chưa? Ghé ngay hệ thống Bánh mì ABC để nhận trọn combo bữa sáng giòn rụm, đầy ắp năng lượng!`;
 
   return (
-    <div className="max-w-md mx-auto bg-slate-900 p-3 rounded-[40px] shadow-2xl border-4 border-slate-800">
+    <div className="max-w-md mx-auto bg-slate-900 p-3 rounded-[40px] shadow-2xl border-4 border-slate-800 my-8">
       <div className="bg-white rounded-[32px] overflow-hidden min-h-[640px] flex flex-col text-slate-900">
         <div className="px-4 pt-6 pb-3 border-b border-slate-100 flex justify-between items-center text-xs font-bold">
           <span className="text-slate-900">⚡ Copilot Workspace</span>
           <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">Draft</span>
         </div>
-
         <div className="flex-1 p-4 overflow-y-auto space-y-4">
-          <div className="space-y-2">
-            <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{displayContent}</p>
-          </div>
+          <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">{displayContent}</p>
           <div className="bg-slate-100 rounded-xl h-36 flex items-center justify-center border border-slate-200 text-xs text-slate-400 font-medium">
             [ Khung hiển thị Banner AI đã tạo kèm theo ]
           </div>
         </div>
-
         <div className="p-3 bg-slate-50 border-t border-slate-100 space-y-3">
           <div className="flex gap-1.5 text-[10px] font-bold overflow-x-auto pb-1">
             <span className="bg-white border border-slate-200 px-2.5 py-1 rounded text-slate-700 shrink-0">✨ Rút ngắn gọn</span>
