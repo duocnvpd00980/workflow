@@ -26,13 +26,16 @@ router = APIRouter(prefix="/rag", tags=["rag"])
 @router.get("/", response_model=list[DocOut])
 async def list_docs(db: AsyncSession = Depends(get_db)):
     rows = await db.execute(
-        select(DocumentSource).order_by(DocumentSource.created_at.desc()).limit(100)
+        select(DocumentSource)
+        .order_by(DocumentSource.created_at.desc())
+        .limit(100)
     )
     return [
         DocOut(
             id=d.id,
             title=d.title,
             status=d.status,
+            document_type=d.document_type,  # ✅ THÊM
             chunk_count=d.chunk_count,
             file_size=(
                 f"{Path(d.file_path).stat().st_size // 1024} KB"

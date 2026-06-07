@@ -8,7 +8,7 @@ import {
 } from "date-fns";
 
 // =============================================================================
-// ICONS (inline SVG - zero deps)
+// BIỂU TƯỢNG (SVG inline - không phụ thuộc)
 // =============================================================================
 
 const I = {
@@ -39,7 +39,7 @@ const I = {
 };
 
 // =============================================================================
-// TYPES
+// KIỂU DỮ LIỆU
 // =============================================================================
 
 type Channel = "facebook" | "website" | "instagram";
@@ -86,25 +86,25 @@ interface Post {
 }
 
 // =============================================================================
-// DEMO DATA
+// DỮ LIỆU MINH HỌA
 // =============================================================================
 
 const DEMO_POSTS: Post[] = [
-  { id: "1", title: "Summer Sale Launch", date: new Date(2026, 5, 6), time: "09:00", channel: "facebook", status: "scheduled" },
-  { id: "2", title: "Blog: AI Trends", date: new Date(2026, 5, 6), time: "14:00", channel: "website", status: "scheduled" },
-  { id: "3", title: "Product Teaser", date: new Date(2026, 5, 8), time: "10:30", channel: "instagram", status: "pending" },
-  { id: "4", title: "Weekly Newsletter", date: new Date(2026, 5, 9), time: "08:00", channel: "website", status: "draft" },
-  { id: "5", title: "Flash Sale Alert", date: new Date(2026, 5, 10), time: "19:30", channel: "facebook", status: "scheduled" },
-  { id: "6", title: "Customer Story", date: new Date(2026, 5, 12), time: "11:00", channel: "instagram", status: "scheduled" },
-  { id: "7", title: "API Update Notes", date: new Date(2026, 5, 15), time: "16:00", channel: "website", status: "failed" },
-  { id: "8", title: "Holiday Campaign", date: new Date(2026, 5, 18), time: "09:00", channel: "facebook", status: "draft" },
-  { id: "9", title: "Behind the Scenes", date: new Date(2026, 5, 20), time: "13:00", channel: "instagram", status: "pending" },
-  { id: "10", title: "Monthly Recap", date: new Date(2026, 5, 25), time: "17:00", channel: "website", status: "scheduled" },
-  { id: "11", title: "New Feature Drop", date: new Date(2026, 5, 28), time: "10:00", channel: "facebook", status: "scheduled" },
+  { id: "1", title: "Khởi động Khuyến mãi Mùa hè", date: new Date(2026, 5, 6), time: "09:00", channel: "facebook", status: "scheduled" },
+  { id: "2", title: "Blog: Xu hướng AI", date: new Date(2026, 5, 6), time: "14:00", channel: "website", status: "scheduled" },
+  { id: "3", title: "Teaser sản phẩm", date: new Date(2026, 5, 8), time: "10:30", channel: "instagram", status: "pending" },
+  { id: "4", title: "Bản tin hàng tuần", date: new Date(2026, 5, 9), time: "08:00", channel: "website", status: "draft" },
+  { id: "5", title: "Cảnh báo Khuyến mãi Nhanh", date: new Date(2026, 5, 10), time: "19:30", channel: "facebook", status: "scheduled" },
+  { id: "6", title: "Câu chuyện khách hàng", date: new Date(2026, 5, 12), time: "11:00", channel: "instagram", status: "scheduled" },
+  { id: "7", title: "Ghi chú Cập nhật API", date: new Date(2026, 5, 15), time: "16:00", channel: "website", status: "failed" },
+  { id: "8", title: "Chiến dịch Ngày lễ", date: new Date(2026, 5, 18), time: "09:00", channel: "facebook", status: "draft" },
+  { id: "9", title: "Hậu trường", date: new Date(2026, 5, 20), time: "13:00", channel: "instagram", status: "pending" },
+  { id: "10", title: "Tóm tắt hàng tháng", date: new Date(2026, 5, 25), time: "17:00", channel: "website", status: "scheduled" },
+  { id: "11", title: "Ra mắt tính năng mới", date: new Date(2026, 5, 28), time: "10:00", channel: "facebook", status: "scheduled" },
 ];
 
 // =============================================================================
-// STYLE TOKENS
+// MỆNH GIÁ PHONG CÁCH
 // =============================================================================
 
 const C = {
@@ -149,7 +149,7 @@ const S = {
 };
 
 // =============================================================================
-// HELPERS
+// HỖ TRỢ
 // =============================================================================
 
 function getChannelMeta(ch: Channel) {
@@ -159,21 +159,32 @@ function getChannelMeta(ch: Channel) {
     website: <I.Globe s={12} />,
     instagram: <I.Instagram s={12} />,
   };
-  return { ...m, icon: icons[ch], label: ch.charAt(0).toUpperCase() + ch.slice(1) };
+  const labels: Record<Channel, string> = {
+    facebook: "Facebook",
+    website: "Trang web",
+    instagram: "Instagram",
+  };
+  return { ...m, icon: icons[ch], label: labels[ch] };
 }
 
 function getStatusBadge(st: Status) {
   const m = C.status[st];
+  const labels: Record<Status, string> = {
+    scheduled: "Đã lên lịch",
+    pending: "Đang chờ",
+    draft: "Bản nháp",
+    failed: "Thất bại",
+  };
   return (
     <span style={{ ...S.tag, background: m.bg, color: m.text, padding: "2px 8px" }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: m.dot, flexShrink: 0 }} />
-      {st.charAt(0).toUpperCase() + st.slice(1)}
+      {labels[st]}
     </span>
   );
 }
 
 // =============================================================================
-// SHARED UI PRIMITIVES
+// NGUYÊN THỦY UI CHUNG
 // =============================================================================
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
@@ -223,7 +234,7 @@ function InputRow({ label, children }: { label: string; children: React.ReactNod
 }
 
 // =============================================================================
-// SCHEDULE SECTION
+// PHẦN LỊCH
 // =============================================================================
 
 function ScheduleSection({ config, onChange }: {
@@ -234,9 +245,9 @@ function ScheduleSection({ config, onChange }: {
   const setMode = (m: ScheduleMode) => onChange({ ...config, mode: m } as ScheduleConfig);
 
   const modes: { key: ScheduleMode; label: string; icon: React.ReactNode }[] = [
-    { key: "once", label: "Publish once", icon: <I.Play s={13} /> },
-    { key: "repeat", label: "Repeat", icon: <I.Repeat s={13} /> },
-    { key: "auto_queue", label: "Auto queue", icon: <I.Zap s={13} /> },
+    { key: "once", label: "Xuất bản một lần", icon: <I.Play s={13} /> },
+    { key: "repeat", label: "Lặp lại", icon: <I.Repeat s={13} /> },
+    { key: "auto_queue", label: "Hàng đợi tự động", icon: <I.Zap s={13} /> },
   ];
 
   const getRepeatPreview = (): string[] => {
@@ -292,7 +303,7 @@ function ScheduleSection({ config, onChange }: {
 
       {mode === "once" && (
         <div style={{ ...S.col, gap: 10 }}>
-          <InputRow label="Date">
+          <InputRow label="Ngày">
             <input
               type="date"
               value={config?.publishAt ? format(new Date(config.publishAt), "yyyy-MM-dd") : ""}
@@ -301,7 +312,7 @@ function ScheduleSection({ config, onChange }: {
               className="responsive-input"
             />
           </InputRow>
-          <InputRow label="Time">
+          <InputRow label="Giờ">
             <input
               type="time"
               value={config?.publishAt ? format(new Date(config.publishAt), "HH:mm") : ""}
@@ -320,7 +331,7 @@ function ScheduleSection({ config, onChange }: {
 
       {mode === "repeat" && (
         <div style={{ ...S.col, gap: 10 }}>
-          <InputRow label="Frequency">
+          <InputRow label="Tần suất">
             <select
               value={config?.repeat?.frequency ?? "weekly"}
               onChange={(e) => onChange({
@@ -330,12 +341,12 @@ function ScheduleSection({ config, onChange }: {
               style={{ ...S.input, width: 140 }}
               className="responsive-input"
             >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
+              <option value="daily">Hàng ngày</option>
+              <option value="weekly">Hàng tuần</option>
+              <option value="monthly">Hàng tháng</option>
             </select>
           </InputRow>
-          <InputRow label="Until">
+          <InputRow label="Cho đến">
             <input
               type="date"
               value={config?.repeat?.until ? format(new Date(config.repeat.until), "yyyy-MM-dd") : ""}
@@ -348,11 +359,11 @@ function ScheduleSection({ config, onChange }: {
             />
           </InputRow>
           <div style={{ ...S.col, gap: 6, padding: "10px 12px", borderRadius: 8, background: C.bg.subtle }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: C.text.subtle }}>Next 5 occurrences</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.text.subtle }}>5 lần xuất hiện tiếp theo</span>
             {getRepeatPreview().map((d, i) => (
               <span key={i} style={{ fontSize: 12, color: C.text.secondary }}>• {d}</span>
             ))}
-            {getRepeatPreview().length === 0 && <span style={{ fontSize: 12, color: C.text.subtle, fontStyle: "italic" }}>Set a date to preview</span>}
+            {getRepeatPreview().length === 0 && <span style={{ fontSize: 12, color: C.text.subtle, fontStyle: "italic" }}>Đặt ngày để xem trước</span>}
           </div>
         </div>
       )}
@@ -360,7 +371,7 @@ function ScheduleSection({ config, onChange }: {
       {mode === "auto_queue" && (
         <div style={{ ...S.col, gap: 10 }}>
           <div className="queue-hours-row" style={{ ...S.row, gap: 10 }}>
-            <InputRow label="Start">
+            <InputRow label="Bắt đầu">
               <input
                 type="time"
                 value={config?.autoQueue?.start ?? "09:00"}
@@ -372,7 +383,7 @@ function ScheduleSection({ config, onChange }: {
                 className="responsive-input"
               />
             </InputRow>
-            <InputRow label="End">
+            <InputRow label="Kết thúc">
               <input
                 type="time"
                 value={config?.autoQueue?.end ?? "20:00"}
@@ -385,31 +396,38 @@ function ScheduleSection({ config, onChange }: {
               />
             </InputRow>
           </div>
-          <InputRow label="Strategy">
+          <InputRow label="Chiến lược">
             <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-              {(["earliest", "balanced", "engagement"] as QueueStrategy[]).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => onChange({
-                    ...config, mode: "auto_queue",
-                    autoQueue: { ...config?.autoQueue, strategy: s },
-                  } as ScheduleConfig)}
-                  style={{
-                    padding: "5px 10px", borderRadius: 6,
-                    border: `1px solid ${config?.autoQueue?.strategy === s ? C.accent : C.border}`,
-                    background: config?.autoQueue?.strategy === s ? C.accent : C.bg.page,
-                    color: config?.autoQueue?.strategy === s ? "#fff" : C.text.muted,
-                    fontSize: 11, fontWeight: 600, cursor: "pointer",
-                    transition: "all 0.12s ease",
-                  }}
-                >
-                  {s === "earliest" ? "Earliest" : s === "balanced" ? "Balanced" : "High engagement"}
-                </button>
-              ))}
+              {(["earliest", "balanced", "engagement"] as QueueStrategy[]).map((s) => {
+                const strategyLabels: Record<QueueStrategy, string> = {
+                  earliest: "Sớm nhất",
+                  balanced: "Cân bằng",
+                  engagement: "Tương tác cao",
+                };
+                return (
+                  <button
+                    key={s}
+                    onClick={() => onChange({
+                      ...config, mode: "auto_queue",
+                      autoQueue: { ...config?.autoQueue, strategy: s },
+                    } as ScheduleConfig)}
+                    style={{
+                      padding: "5px 10px", borderRadius: 6,
+                      border: `1px solid ${config?.autoQueue?.strategy === s ? C.accent : C.border}`,
+                      background: config?.autoQueue?.strategy === s ? C.accent : C.bg.page,
+                      color: config?.autoQueue?.strategy === s ? "#fff" : C.text.muted,
+                      fontSize: 11, fontWeight: 600, cursor: "pointer",
+                      transition: "all 0.12s ease",
+                    }}
+                  >
+                    {strategyLabels[s]}
+                  </button>
+                );
+              })}
             </div>
           </InputRow>
           <div style={{ ...S.col, gap: 6, padding: "10px 12px", borderRadius: 8, background: C.bg.subtle }}>
-            <span style={{ fontSize: 11, fontWeight: 600, color: C.text.subtle }}>Generated slots</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: C.text.subtle }}>Các slot được tạo</span>
             {getQueuePreview().map((d, i) => (
               <span key={i} style={{ fontSize: 12, color: C.text.secondary }}>• {d}</span>
             ))}
@@ -421,7 +439,7 @@ function ScheduleSection({ config, onChange }: {
 }
 
 // =============================================================================
-// AUTOMATION SECTION
+// PHẦN TỰ ĐỘNG HÓA
 // =============================================================================
 
 function AutomationSection({ config, onChange }: {
@@ -432,11 +450,11 @@ function AutomationSection({ config, onChange }: {
 
   return (
     <div style={{ ...S.col, gap: 14 }}>
-      <Toggle checked={auto.autoPublish} onChange={(v) => onChange({ ...auto, autoPublish: v })} label="Auto publish" />
-      <Toggle checked={auto.retry.enabled} onChange={(v) => onChange({ ...auto, retry: { ...auto.retry, enabled: v } })} label="Retry if failed" />
+      <Toggle checked={auto.autoPublish} onChange={(v) => onChange({ ...auto, autoPublish: v })} label="Xuất bản tự động" />
+      <Toggle checked={auto.retry.enabled} onChange={(v) => onChange({ ...auto, retry: { ...auto.retry, enabled: v } })} label="Thử lại nếu thất bại" />
       {auto.retry.enabled && (
         <div className="automation-retry-box" style={{ ...S.col, gap: 10, padding: "12px 14px", borderRadius: 8, background: C.bg.subtle, marginLeft: 46 }}>
-          <InputRow label="Attempts">
+          <InputRow label="Nỗ lực">
             <input
               type="number" min={1} max={10}
               value={auto.retry.attempts}
@@ -444,7 +462,7 @@ function AutomationSection({ config, onChange }: {
               style={{ ...S.input, width: 60, textAlign: "center" }}
             />
           </InputRow>
-          <InputRow label="Delay">
+          <InputRow label="Độ trễ">
             <div style={{ ...S.row, gap: 6 }}>
               <input
                 type="number" min={5} max={120} step={5}
@@ -452,18 +470,18 @@ function AutomationSection({ config, onChange }: {
                 onChange={(e) => onChange({ ...auto, retry: { ...auto.retry, delay: parseInt(e.target.value) || 15 } })}
                 style={{ ...S.input, width: 70, textAlign: "center" }}
               />
-              <span style={{ fontSize: 12, color: C.text.muted }}>minutes</span>
+              <span style={{ fontSize: 12, color: C.text.muted }}>phút</span>
             </div>
           </InputRow>
         </div>
       )}
-      <Toggle checked={auto.notifyFailure} onChange={(v) => onChange({ ...auto, notifyFailure: v })} label="Notify on failure" />
+      <Toggle checked={auto.notifyFailure} onChange={(v) => onChange({ ...auto, notifyFailure: v })} label="Thông báo khi thất bại" />
     </div>
   );
 }
 
 // =============================================================================
-// ACTION BUTTON
+// NÚT HÀNH ĐỘNG
 // =============================================================================
 
 function ActionBtn({ icon, label, onClick, primary, danger }: { icon: React.ReactNode; label: string; onClick: () => void; primary?: boolean; danger?: boolean }) {
@@ -481,7 +499,7 @@ function ActionBtn({ icon, label, onClick, primary, danger }: { icon: React.Reac
 }
 
 // =============================================================================
-// DRAWER
+// NGĂN KÉO
 // =============================================================================
 
 function Drawer({ post, onClose, onEdit, onDuplicate, onPublishNow, onDelete, onUpdatePost }: {
@@ -522,7 +540,7 @@ function Drawer({ post, onClose, onEdit, onDuplicate, onPublishNow, onDelete, on
         animation: "slideIn 0.2s cubic-bezier(0.16,1,0.3,1)",
       }}>
         <div style={{ ...S.row, justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${C.borderLight}` }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: C.text.primary }}>Post Details</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: C.text.primary }}>Chi tiết bài đăng</span>
           <button onClick={onClose} style={{ padding: 4, borderRadius: 6, border: "none", background: "transparent", cursor: "pointer", color: C.text.subtle }}>
             <I.X s={18} />
           </button>
@@ -530,23 +548,23 @@ function Drawer({ post, onClose, onEdit, onDuplicate, onPublishNow, onDelete, on
 
         <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 20px", display: "flex", flexDirection: "column", gap: 4 }}>
 
-          {/* SECTION: Overview */}
-          <SectionHeader title="Overview" icon={<I.Calendar s={14} />} open={openSections.overview} onToggle={() => toggleSection("overview")} />
+          {/* PHẦN: Tổng quan */}
+          <SectionHeader title="Tổng quan" icon={<I.Calendar s={14} />} open={openSections.overview} onToggle={() => toggleSection("overview")} />
           {openSections.overview && (
             <div style={{ ...S.col, gap: 16, paddingBottom: 16, borderBottom: `1px solid ${C.borderLight}` }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: C.text.primary, margin: 0, lineHeight: 1.3 }}>{post.title}</h2>
               <div style={{ ...S.col, gap: 8 }}>
-                <span style={S.sectionLabel}>Status</span>
+                <span style={S.sectionLabel}>Trạng thái</span>
                 <div>{getStatusBadge(post.status)}</div>
               </div>
               <div style={{ ...S.col, gap: 8 }}>
-                <span style={S.sectionLabel}>Channel</span>
+                <span style={S.sectionLabel}>Kênh</span>
                 <span style={{ ...S.row, gap: 8, padding: "6px 12px", borderRadius: 8, background: chMeta.bg, color: chMeta.color, fontSize: 13, fontWeight: 600, width: "fit-content" }}>
                   {chMeta.icon} {chMeta.label}
                 </span>
               </div>
               <div style={{ ...S.col, gap: 8 }}>
-                <span style={S.sectionLabel}>Publish</span>
+                <span style={S.sectionLabel}>Xuất bản</span>
                 <div style={{ ...S.row, gap: 8, fontSize: 14, color: C.text.secondary }}>
                   <I.Calendar s={16} />
                   <span>{format(post.date, "dd/MM/yyyy")}</span>
@@ -558,37 +576,37 @@ function Drawer({ post, onClose, onEdit, onDuplicate, onPublishNow, onDelete, on
             </div>
           )}
 
-          {/* SECTION: Schedule */}
-          <SectionHeader title="Schedule" icon={<I.Repeat s={14} />} open={openSections.schedule} onToggle={() => toggleSection("schedule")} />
+          {/* PHẦN: Lịch */}
+          <SectionHeader title="Lịch" icon={<I.Repeat s={14} />} open={openSections.schedule} onToggle={() => toggleSection("schedule")} />
           {openSections.schedule && (
             <div style={{ paddingBottom: 16, borderBottom: `1px solid ${C.borderLight}` }}>
               <ScheduleSection config={draftSchedule} onChange={setDraftSchedule} />
             </div>
           )}
 
-          {/* SECTION: Automation */}
-          <SectionHeader title="Automation" icon={<I.Zap s={14} />} open={openSections.automation} onToggle={() => toggleSection("automation")} />
+          {/* PHẦN: Tự động hóa */}
+          <SectionHeader title="Tự động hóa" icon={<I.Zap s={14} />} open={openSections.automation} onToggle={() => toggleSection("automation")} />
           {openSections.automation && (
             <div style={{ paddingBottom: 16, borderBottom: `1px solid ${C.borderLight}` }}>
               <AutomationSection config={draftAutomation} onChange={setDraftAutomation} />
             </div>
           )}
 
-          {/* SECTION: Actions */}
-          <SectionHeader title="Actions" icon={<I.Settings s={14} />} open={openSections.actions} onToggle={() => toggleSection("actions")} />
+          {/* PHẦN: Hành động */}
+          <SectionHeader title="Hành động" icon={<I.Settings s={14} />} open={openSections.actions} onToggle={() => toggleSection("actions")} />
           {openSections.actions && (
             <div style={{ ...S.col, gap: 6, paddingBottom: 16 }}>
-              <ActionBtn icon={<I.Pencil s={14} />} label="Edit" onClick={() => onEdit(post)} />
-              <ActionBtn icon={<I.Copy s={14} />} label="Duplicate" onClick={() => onDuplicate(post)} />
-              <ActionBtn icon={<I.Rocket s={14} />} label="Publish Now" primary onClick={() => onPublishNow(post)} />
-              <ActionBtn icon={<I.Trash s={14} />} label="Delete" danger onClick={() => onDelete(post)} />
+              <ActionBtn icon={<I.Pencil s={14} />} label="Chỉnh sửa" onClick={() => onEdit(post)} />
+              <ActionBtn icon={<I.Copy s={14} />} label="Sao chép" onClick={() => onDuplicate(post)} />
+              <ActionBtn icon={<I.Rocket s={14} />} label="Xuất bản ngay" primary onClick={() => onPublishNow(post)} />
+              <ActionBtn icon={<I.Trash s={14} />} label="Xóa" danger onClick={() => onDelete(post)} />
             </div>
           )}
         </div>
 
         <div style={{ padding: "12px 20px", borderTop: `1px solid ${C.borderLight}`, background: C.bg.subtle }}>
           <button onClick={handleSave} style={{ ...S.btn, ...S.btnPrimary, width: "100%", justifyContent: "center" }}>
-            <I.Check s={14} /> Save Changes
+            <I.Check s={14} /> Lưu thay đổi
           </button>
         </div>
       </div>
@@ -604,7 +622,7 @@ export const Route = createFileRoute('/planner')({
 })
 
 // =============================================================================
-// MAIN CALENDAR DASHBOARD COMPONENT
+// THÀNH PHẦN BẢNG ĐIỀU KHIỂN LỊCH CHÍNH
 // =============================================================================
 
 export default function CalendarDashboard() {
@@ -642,7 +660,7 @@ export default function CalendarDashboard() {
     const duplicated: Post = {
       ...post,
       id: Math.random().toString(36).substr(2, 9),
-      title: `${post.title} (Copy)`,
+      title: `${post.title} (Bản sao)`,
       status: "draft"
     };
     setPosts(prev => [...prev, duplicated]);
@@ -652,11 +670,11 @@ export default function CalendarDashboard() {
   const handlePublishNow = useCallback((post: Post) => {
     setPosts(prev => prev.map(p => p.id === post.id ? { ...p, status: "scheduled" as Status } : p));
     setSelectedPost(null);
-    alert(`Publishing "${post.title}" now!`);
+    alert(`Đang xuất bản "${post.title}" ngay!`);
   }, []);
 
   const handleDelete = useCallback((post: Post) => {
-    if (confirm("Are you sure you want to delete this post?")) {
+    if (confirm("Bạn có chắc chắn muốn xóa bài đăng này không?")) {
       setPosts(prev => prev.filter(p => p.id !== post.id));
       setSelectedPost(null);
     }
@@ -735,7 +753,7 @@ export default function CalendarDashboard() {
 
   return (
     <div style={{ padding: 24, fontFamily: "system-ui, sans-serif", maxWidth: 1200, margin: "0 auto" }} className="dashboard-root">
-      {/* Top Controls Header */}
+      {/* Thanh điều khiển trên cùng */}
       <div className="controls-header" style={{ ...S.row, justifyContent: "space-between", marginBottom: 20, gap: 12, flexWrap: "wrap" }}>
         <div className="header-nav-group" style={{ ...S.row, gap: 12 }}>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: C.text.primary, margin: 0 }}>
@@ -743,17 +761,17 @@ export default function CalendarDashboard() {
           </h1>
           <div style={{ ...S.row, gap: 4, border: `1px solid ${C.border}`, borderRadius: 8, padding: 2 }}>
             <button onClick={handlePrev} style={{ ...S.btn, padding: 6, border: "none" }}><I.ChevronLeft s={16} /></button>
-            <button onClick={() => setCurrentDate(new Date())} style={{ ...S.btn, padding: "6px 12px", border: "none" }}>Today</button>
+            <button onClick={() => setCurrentDate(new Date())} style={{ ...S.btn, padding: "6px 12px", border: "none" }}>Hôm nay</button>
             <button onClick={handleNext} style={{ ...S.btn, padding: 6, border: "none" }}><I.ChevronRight s={16} /></button>
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Bộ lọc */}
         <div className="filters-group" style={{ ...S.row, gap: 8, flexWrap: "wrap" }}>
           <div style={{ ...S.row, gap: 6, position: "relative" }} className="search-wrapper">
             <input
               type="text"
-              placeholder="Search posts..."
+              placeholder="Tìm kiếm bài đăng..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ ...S.input, paddingLeft: 30, width: 180 }}
@@ -768,31 +786,38 @@ export default function CalendarDashboard() {
             style={S.input}
             className="responsive-input"
           >
-            <option value="all">All Channels</option>
+            <option value="all">Tất cả kênh</option>
             <option value="facebook">Facebook</option>
-            <option value="website">Website</option>
+            <option value="website">Trang web</option>
             <option value="instagram">Instagram</option>
           </select>
 
           <div style={{ ...S.row, gap: 2, border: `1px solid ${C.border}`, borderRadius: 8, padding: 2 }} className="viewmode-group">
-            {(["month", "week", "list"] as ViewMode[]).map(mode => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                style={{
-                  ...S.btn, border: "none", padding: "6px 12px", borderRadius: 6,
-                  background: viewMode === mode ? C.bg.hover : "transparent",
-                  fontWeight: viewMode === mode ? 600 : 500
-                }}
-              >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </button>
-            ))}
+            {(["month", "week", "list"] as ViewMode[]).map(mode => {
+              const modeLabels: Record<ViewMode, string> = {
+                month: "Tháng",
+                week: "Tuần",
+                list: "Danh sách",
+              };
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    ...S.btn, border: "none", padding: "6px 12px", borderRadius: 6,
+                    background: viewMode === mode ? C.bg.hover : "transparent",
+                    fontWeight: viewMode === mode ? 600 : 500
+                  }}
+                >
+                  {modeLabels[mode]}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Khu vực nội dung chính */}
       <div className="main-calendar-card" style={{ background: C.bg.page, borderRadius: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.05)", overflowX: "auto" }}>
         <div style={{ minWidth: 640 }}>
           {viewMode === "month" && renderMonthCells()}
@@ -800,30 +825,30 @@ export default function CalendarDashboard() {
         
         {viewMode !== "month" && (
           <div style={{ padding: 40, textAlign: "center", color: C.text.muted, fontSize: 14 }}>
-            Chế độ xem <b>{viewMode}</b> đang được phát triển nâng cao. Hãy dùng bộ lọc và lịch <b>Month</b> hiện tại.
+            Chế độ xem <b>{viewMode === "week" ? "tuần" : "danh sách"}</b> đang được phát triển nâng cao. Hãy dùng bộ lọc và lịch <b>Tháng</b> hiện tại.
           </div>
         )}
       </div>
 
-      {/* Slide-out Sidebar Drawer */}
+      {/* Ngăn kéo trượt sang một bên */}
       <Drawer
         post={selectedPost}
         onClose={() => setSelectedPost(null)}
-        onEdit={(p) => alert(`Editing: ${p.title}`)}
+        onEdit={(p) => alert(`Chỉnh sửa: ${p.title}`)}
         onDuplicate={handleDuplicate}
         onPublishNow={handlePublishNow}
         onDelete={handleDelete}
         onUpdatePost={handleUpdatePost}
       />
 
-      {/* GLOBAL RESPONSIVE MEDIA QUERIES */}
+      {/* CÁC TRUY VẤN PHƯƠNG TIỆN ĐÁP ỨNG TOÀN CẦU */}
       <style>{`
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
         .spin { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Mobile & Tablet Optimizations */
+        /* Tối ưu hóa dành cho thiết bị di động & máy tính bảng */
         @media (max-width: 768px) {
           .dashboard-root { padding: 12px !important; }
           .controls-header { flex-direction: column !important; alignItems: flex-start !important; gap: 16px !important; }
@@ -832,13 +857,13 @@ export default function CalendarDashboard() {
           .viewmode-group { width: 100% !important; justify-content: display-flex !important; display: flex !important; }
           .viewmode-group button { flex: 1 !important; text-align: center !important; justify-content: center !important; }
           
-          /* Calendar Cell adjustments for small screen compatibility */
+          /* Điều chỉnh ô lịch cho khả năng tương thích với màn hình nhỏ */
           .calendar-day-cell { min-height: 75px !important; padding: 4px !important; }
           .calendar-post-badge { padding: 2px 4px !important; font-size: 10px !important; }
-          .post-title-text { display: none !important; /* Hide long text on mobile, icons remain */ }
+          .post-title-text { display: none !important; /* Ẩn văn bản dài trên di động, biểu tượng vẫn giữ nguyên */ }
           .calendar-post-badge div { justify-content: center !important; }
 
-          /* Sidebar Drawer Responsive adjustments */
+          /* Điều chỉnh ngăn kéo cho đáp ứng */
           .drawer-container { width: 100% !important; max-width: 100% !important; }
           .schedule-modes-grid { grid-template-columns: 1fr !important; gap: 8px !important; }
           .automation-retry-box { margin-left: 0 !important; }

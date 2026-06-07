@@ -19,3 +19,4 @@ export const API_BASE = API;
 // Các đường dẫn liên quan đến marketing
 export const MARKETING_BASE_URL = `${API}/marketing`;
 export const BASE_URL = `${API}/marketing`;
+export const GROQ_API_KEY = import.meta.env.GROQ_API_KEY;

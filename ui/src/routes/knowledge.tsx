@@ -11,6 +11,9 @@ import {
   Trash2,
   ShieldCheck,
   Loader2,
+  Book,
+  Palette,
+  BarChart3,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,19 +29,50 @@ import {
 import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { BASE } from "@/config";
+
 // ─── Types ────────────────────────────────────────────────
 interface DocOut {
   id: number;
   title: string;
   status: "completed" | "failed" | "processing";
+  document_type: string;
   chunk_count: number;
   file_size: string | null;
   created_at: string;
 }
 
+// ─── Constants ────────────────────────────────────────────
+const DOC_TYPE_META: Record<
+  string,
+  {
+    label: string;
+    color: string;
+    icon: React.ReactNode;
+  }
+> = {
+  product_knowledge: {
+    label: "Kiến thức Sản phẩm",
+    color: "bg-blue-50 text-blue-600",
+    icon: <Book size={14} />,
+  },
+  brand_guideline: {
+    label: "Hướng dẫn Thương hiệu",
+    color: "bg-purple-50 text-purple-600",
+    icon: <Palette size={14} />,
+  },
+  competitor_analysis: {
+    label: "Phân tích Đối thủ",
+    color: "bg-orange-50 text-orange-600",
+    icon: <BarChart3 size={14} />,
+  },
+  web_page: {
+    label: "Trang Web",
+    color: "bg-emerald-50 text-emerald-600",
+    icon: <Globe size={14} />,
+  },
+};
+
 // ─── API (inline) ─────────────────────────────────────────
-
-
 const api = {
   list: (): Promise<DocOut[]> =>
     fetch(`${BASE}/`).then((r) => {
@@ -46,10 +80,11 @@ const api = {
       return r.json();
     }),
 
-  upload: async (title: string, file: File) => {
+  upload: async (title: string, file: File, document_type: string) => {
     const form = new FormData();
     form.append("title", title);
     form.append("file", file);
+    form.append("document_type", document_type);
     const r = await fetch(`${BASE}/upload/`, { method: "POST", body: form });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
@@ -58,11 +93,15 @@ const api = {
     return r.json();
   },
 
-  crawl: async (url: string) => {
+  crawl: async (url: string, docType: string) => {
     const r = await fetch(`${BASE}/crawl/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, title: url }),
+      body: JSON.stringify({
+        url,
+        title: url,
+        document_type: docType,
+      }),
     });
     if (!r.ok) {
       const e = await r.json().catch(() => ({}));
@@ -117,6 +156,7 @@ export default function KnowledgePage() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [urlInput, setUrlInput] = useState("");
+  const [docType, setDocType] = useState<string>("product_knowledge");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
 
@@ -130,17 +170,18 @@ export default function KnowledgePage() {
   // ── POST /rag/upload/ ─────────────────────────────────
   const uploadMutation = useMutation({
     mutationFn: ({ title, file }: { title: string; file: File }) =>
-      api.upload(title, file),
+      api.upload(title, file, docType),
     onSuccess: (data) => {
       toast.success(`"${data.title}" đã được ingest!`);
       qc.invalidateQueries({ queryKey: ["rag-docs"] });
+      setDocType("product_knowledge");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   // ── POST /rag/crawl/ ──────────────────────────────────
   const crawlMutation = useMutation({
-    mutationFn: (url: string) => api.crawl(url),
+    mutationFn: (url: string) => api.crawl(url, docType),
     onSuccess: (data) => {
       toast.success(`Đã crawl: "${data.title}"`);
       setUrlInput("");
@@ -236,6 +277,20 @@ export default function KnowledgePage() {
           <span className="hidden sm:inline">Tải file</span>
         </Button>
 
+        {/* Document Type Selector (Desktop) */}
+        <select
+          value={docType}
+          onChange={(e) => setDocType(e.target.value)}
+          className="h-8 px-2 text-xs border border-slate-200 rounded bg-slate-50 hidden sm:block text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          title="Loại tài liệu"
+        >
+          {Object.entries(DOC_TYPE_META).map(([key, meta]) => (
+            <option key={key} value={key}>
+              {meta.label}
+            </option>
+          ))}
+        </select>
+
         {/* Separator */}
         <div className="h-4 w-px bg-slate-200 hidden sm:block" />
 
@@ -323,6 +378,20 @@ export default function KnowledgePage() {
 
       {/* ─── MOBILE TOOLBAR (only on mobile) ─────────────────── */}
       <div className="sm:hidden flex flex-col gap-2 px-4 py-2 border-b border-slate-200 bg-white shrink-0">
+        {/* Document Type Selector (Mobile) */}
+        <select
+          value={docType}
+          onChange={(e) => setDocType(e.target.value)}
+          className="h-8 px-2 text-xs border border-slate-200 rounded bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full"
+          title="Loại tài liệu"
+        >
+          {Object.entries(DOC_TYPE_META).map(([key, meta]) => (
+            <option key={key} value={key}>
+              {meta.label}
+            </option>
+          ))}
+        </select>
+
         {/* URL Input Row */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
@@ -420,7 +489,9 @@ export default function KnowledgePage() {
           {!isLoading && filtered.length > 0 && (
             <div className="divide-y divide-slate-200 border border-slate-200 rounded-lg overflow-hidden bg-white">
               {filtered.map((doc) => {
-                const isWeb = doc.title.startsWith("http");
+                const meta =
+                  DOC_TYPE_META[doc.document_type] ||
+                  DOC_TYPE_META.product_knowledge;
                 return (
                   <div
                     key={doc.id}
@@ -432,14 +503,8 @@ export default function KnowledgePage() {
                     }`}
                   >
                     {/* Icon */}
-                    <div
-                      className={`p-1.5 rounded shrink-0 ${
-                        isWeb
-                          ? "bg-emerald-50 text-emerald-600"
-                          : "bg-blue-50 text-blue-600"
-                      }`}
-                    >
-                      {isWeb ? <Link2 size={16} /> : <FileText size={16} />}
+                    <div className={`p-1.5 rounded shrink-0 ${meta.color}`}>
+                      {meta.icon}
                     </div>
 
                     {/* Content */}
@@ -447,7 +512,12 @@ export default function KnowledgePage() {
                       <p className="text-sm font-medium text-slate-900 truncate">
                         {doc.title}
                       </p>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 line-clamp-1">
+                      <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 line-clamp-1 flex-wrap">
+                        {/* Document Type Badge */}
+                        <span className="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-medium whitespace-nowrap">
+                          {meta.label}
+                        </span>
+
                         <span>#{doc.id}</span>
                         {doc.file_size && (
                           <>
@@ -493,7 +563,10 @@ export default function KnowledgePage() {
           {/* Privacy Notice */}
           {!isEmpty && (
             <div className="flex items-start gap-2 text-xs text-slate-500 mt-4 pt-4 border-t border-slate-200">
-              <ShieldCheck size={14} className="mt-px shrink-0 text-emerald-600" />
+              <ShieldCheck
+                size={14}
+                className="mt-px shrink-0 text-emerald-600"
+              />
               <span>
                 Tài liệu được lưu trữ Private Cloud — không dùng cho training
                 công khai

@@ -31,9 +31,18 @@ class DocOut(BaseModel):
     id: int
     title: str
     status: str
+    document_type: str  # ✅ THÊM
     chunk_count: int
     file_size: Optional[str] = None
     created_at: str
+
+# ── Constants ──────────────────────────────────────
+DOCUMENT_TYPES = {
+    "product_knowledge": "📚 Kiến thức Sản phẩm",
+    "brand_guideline": "🎨 Hướng dẫn Thương hiệu",
+    "competitor_analysis": "📊 Phân tích Đối thủ",
+    "web_page": "🌐 Trang Web",
+}
 
 
 class UploadOut(BaseModel):

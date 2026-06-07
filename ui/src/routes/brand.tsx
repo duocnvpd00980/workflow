@@ -1,10 +1,10 @@
 /**
- * ScreenBrandVoice — Redesigned with P0 Audit Fixes
- * • Clean title ("Brand Engine" 1 line)
- * • Sticky save: bottom on mobile, top-right on desktop
- * • Collapsible sections with clear 1-2-3-4-5 numbering
- * • Simplified top bar (Save + Menu only)
- * • Integrated with async backend core & TanStack Query
+ * ScreenBrandVoice — Được thiết kế lại với Sửa chữa Kiểm toán P0
+ * • Tiêu đề sạch ("Công Cụ Thương Hiệu" 1 dòng)
+ * • Lưu cố định: dưới cùng trên di động, góc trên cùng bên phải trên máy tính
+ * • Các phần có thể thu gọn với đánh số rõ ràng 1-2-3-4-5
+ * • Thanh trên cùng được đơn giản hóa (Lưu + Menu)
+ * • Tích hợp với lõi backend bất đồng bộ & TanStack Query
  */
 
 import React, { useState } from "react";
@@ -19,7 +19,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-// ─── Shadcn UI Components ───────────────────────────────────────────────────
+// ─── Thành Phần UI Shadcn ──────────────────────────────────────────────────
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -45,7 +45,7 @@ const brandProfileKeys = {
   detail: (brandId: string) => ["brand-profile", "detail", brandId] as const,
 };
 
-// ─── Types Matched With Backend Schema ───────────────────────────────────────
+// ─── Các Kiểu Dữ Liệu Phù Hợp Với Lược Đồ Backend ──────────────────────────
 export interface BrandVoiceRules {
   forbidden_words: string[];
   tone_patterns: string[];
@@ -85,7 +85,7 @@ const DEFAULT_BRAND_ID = "default-brand-uuid-001";
 const COMPONENT_DEFAULT_DATA: BrandProfileSchema = {
   positioning:
     "Hệ thống AI Marketing tự động hóa chuỗi cung ứng nội dung cho doanh nghiệp.",
-  audience: "SMEs, Chủ shop online, Marketers tại Việt Nam",
+  audience: "Doanh nghiệp nhỏ vừa, Chủ cửa hàng trực tuyến, Chuyên gia tiếp thị tại Việt Nam",
   brand_voice_rules: {
     forbidden_words: ["cam kết 100%", "tuyệt đối"],
     tone_patterns: ["Thân thiện", "Chuyên nghiệp"],
@@ -95,11 +95,11 @@ const COMPONENT_DEFAULT_DATA: BrandProfileSchema = {
     ],
   },
   messaging: {
-    pain_points: ["Tiết kiệm 80% thời gian design", "Đồng bộ nhận diện 100% các kênh"],
+    pain_points: ["Tiết kiệm 80% thời gian thiết kế", "Đồng bộ nhận dạng 100% trên tất cả kênh"],
     objections: [
       {
         objection: "Giá cao?",
-        counter: "Tiết kiệm nhân sự vận hành lâu dài",
+        counter: "Tiết kiệm chi phí nhân sự vận hành lâu dài",
       },
     ],
     proof_points: ["Hơn 12 năm kinh nghiệm lập trình hệ thống web production"],
@@ -118,7 +118,7 @@ const COMPONENT_DEFAULT_DATA: BrandProfileSchema = {
   },
 };
 
-// ─── Route Definition ────────────────────────────────────────────────────────
+// ─── Định Nghĩa Tuyến Đường ────────────────────────────────────────────────
 export const Route = createFileRoute("/brand")({
   validateSearch: (search: Record<string, unknown>) => ({
     syncOpen: (search.syncOpen as boolean) || undefined,
@@ -153,7 +153,7 @@ export function ScreenBrandVoice() {
 
   const [lastSaved, setLastSaved] = useState<string | null>(null);
 
-  // ── TanStack Query (Fetch profile from Async DB) ──────────────────────────
+  // ── TanStack Query (Tìm nạp hồ sơ từ Cơ sở dữ liệu không đồng bộ) ──────────
   const { data, isLoading } = useQuery<BrandProfileSchema>({
     queryKey: brandProfileKeys.detail(DEFAULT_BRAND_ID),
     queryFn: async () => {
@@ -168,7 +168,7 @@ export function ScreenBrandVoice() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // ── Mutations ──────────────────────────────────────────────────────────────
+  // ── Các Phép Biến Đổi ──────────────────────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: async (payload: BrandProfileSchema) => {
       const res = await fetch(`${API_BASE}/brand-profile/${DEFAULT_BRAND_ID}`, {
@@ -190,7 +190,7 @@ export function ScreenBrandVoice() {
   const mineMutation = useMutation({
     mutationFn: async () => {
       const params = new URLSearchParams({
-        brand_name: brandName || "New Brand",
+        brand_name: brandName || "Thương Hiệu Mới",
         document_type: documentType,
       });
       if (websiteUrl) params.append("website_url", websiteUrl);
@@ -204,7 +204,7 @@ export function ScreenBrandVoice() {
       );
       if (!res.ok) {
         const errData = await res.json();
-        throw new Error(errData.detail || "Lỗi khai phá RAG");
+        throw new Error(errData.detail || "Lỗi khai phá dữ liệu");
       }
       const dataJson = await res.json();
       return dataJson.draft_profile as BrandProfileSchema;
@@ -247,7 +247,7 @@ export function ScreenBrandVoice() {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // ─── Section Component ──────────────────────────────────────────────────────
+  // ─── Thành Phần Phần ────────────────────────────────────────────────────────
   const Section = ({
     id,
     title,
@@ -285,7 +285,7 @@ export function ScreenBrandVoice() {
     </div>
   );
 
-  // ─── Tag Input Component ────────────────────────────────────────────────────
+  // ─── Thành Phần Nhập Thẻ ────────────────────────────────────────────────────
   const TagInput = ({
     tags,
     onAdd,
@@ -334,13 +334,13 @@ export function ScreenBrandVoice() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col">
-      {/* ── STICKY HEADER (Desktop: Top-right Save + Menu) ── */}
+      {/* ── ĐẦU TRANG CỐ ĐỊNH (Máy tính: Lưu góc trên cùng bên phải + Menu) ── */}
       <div className="sticky top-0 z-20 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div>
           
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Quản lý ngữ cảnh cho Multi-Agent
+              Quản lý bối cảnh cho Đa tác nhân
             </p>
           </div>
 
@@ -353,7 +353,7 @@ export function ScreenBrandVoice() {
                 navigate({ search: (prev: any) => ({ ...prev, previewOpen: true }) } as any)
               }
             >
-              Preview JSON
+              Xem Trước JSON
             </Button>
             <Button
               variant="secondary"
@@ -363,7 +363,7 @@ export function ScreenBrandVoice() {
                 navigate({ search: (prev: any) => ({ ...prev, syncOpen: true }) } as any)
               }
             >
-              Mine Data
+              Khai Phá Dữ Liệu
             </Button>
             <Button
               size="sm"
@@ -375,14 +375,14 @@ export function ScreenBrandVoice() {
                 <Loader2 className="w-3 h-3 animate-spin mr-1" />
               )}
               <Save className="w-4 h-4 mr-1" />
-              Save
+              Lưu
             </Button>
             <Button variant="ghost" size="sm" className="h-9 px-2">
               <MoreVertical className="w-4 h-4" />
             </Button>
           </div>
 
-          {/* Mobile Menu */}
+          {/* Trình Đơn Di Động */}
           <div className="sm:hidden flex items-center gap-1">
             <Button variant="ghost" size="sm" className="h-8 px-2">
               <MoreVertical className="w-4 h-4" />
@@ -391,35 +391,35 @@ export function ScreenBrandVoice() {
         </div>
       </div>
 
-      {/* ── MAIN CONTENT ── */}
+      {/* ── NỘI DUNG CHÍNH ── */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-32 sm:pb-8 space-y-4">
-          {/* Page Intro */}
+          {/* Giới Thiệu Trang */}
           <div className="mb-8">
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              Define how AI agents speak, write, and convert for your brand.
+              Xác định cách các tác nhân AI nói, viết và chuyển đổi cho thương hiệu của bạn.
             </p>
           </div>
 
-          {/* ─── Section 1: Voice & Tone ─── */}
-          <Section id={1} title="Voice & Tone">
+          {/* ─── Phần 1: Giọng Điệu & Tông ─── */}
+          <Section id={1} title="Giọng Điệu & Tông">
             <div className="space-y-5">
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 block">
-                  Positioning
+                  Định Vị
                 </Label>
                 <Textarea
                   rows={2}
                   value={data.positioning || ""}
                   onChange={(e) => updateField({ positioning: e.target.value })}
-                  placeholder="Define your core brand positioning..."
+                  placeholder="Xác định định vị cốt lõi của thương hiệu..."
                   className="text-xs font-medium"
                 />
               </div>
 
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 block">
-                  Tone Patterns
+                  Mẫu Tông
                 </Label>
                 <TagInput
                   tags={data.brand_voice_rules?.tone_patterns || []}
@@ -438,14 +438,14 @@ export function ScreenBrandVoice() {
                       ),
                     })
                   }
-                  placeholder="Add tone descriptor + Enter..."
+                  placeholder="Thêm mô tả tông + Enter..."
                   variant="outline"
                 />
               </div>
 
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 block">
-                  Forbidden Words
+                  Từ Bị Cấm
                 </Label>
                 <TagInput
                   tags={data.brand_voice_rules?.forbidden_words || []}
@@ -464,19 +464,19 @@ export function ScreenBrandVoice() {
                       ),
                     })
                   }
-                  placeholder="Add forbidden word + Enter..."
+                  placeholder="Thêm từ bị cấm + Enter..."
                   variant="destructive"
                 />
               </div>
             </div>
           </Section>
 
-          {/* ─── Section 2: Messaging ─── */}
-          <Section id={2} title="Messaging Architecture">
+          {/* ─── Phần 2: Kiến Trúc Thông Điệp ─── */}
+          <Section id={2} title="Kiến Trúc Thông Điệp">
             <div className="space-y-5">
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 block">
-                  Pain Points
+                  Điểm Đau Khó
                 </Label>
                 <TagInput
                   tags={data.messaging?.pain_points || []}
@@ -492,14 +492,14 @@ export function ScreenBrandVoice() {
                       ),
                     })
                   }
-                  placeholder="Add customer pain point + Enter..."
+                  placeholder="Thêm điểm đau khó của khách hàng + Enter..."
                   variant="secondary"
                 />
               </div>
 
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 block">
-                  Proof Points
+                  Điểm Chứng Minh
                 </Label>
                 <TagInput
                   tags={data.messaging?.proof_points || []}
@@ -518,19 +518,19 @@ export function ScreenBrandVoice() {
                       ),
                     })
                   }
-                  placeholder="Add proof point + Enter..."
+                  placeholder="Thêm điểm chứng minh + Enter..."
                   variant="secondary"
                 />
               </div>
             </div>
           </Section>
 
-          {/* ─── Section 3: Visual Identity ─── */}
-          <Section id={3} title="Visual Identity">
+          {/* ─── Phần 3: Nhân Dạng Hình Ảnh ─── */}
+          <Section id={3} title="Nhân Dạng Hình Ảnh">
             <div className="space-y-5">
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 block">
-                  Style Description
+                  Mô Tả Phong Cách
                 </Label>
                 <Input
                   value={data.visual_identity?.style_description || ""}
@@ -539,28 +539,28 @@ export function ScreenBrandVoice() {
                       style_description: e.target.value,
                     })
                   }
-                  placeholder="E.g., Ultra-realistic, cinematic, high contrast..."
+                  placeholder="Ví dụ: Siêu thực tế, điện ảnh, tương phản cao..."
                   className="h-9 text-xs"
                 />
               </div>
 
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 block">
-                  Mood
+                  Tâm Trạng
                 </Label>
                 <Input
                   value={data.visual_identity?.mood || ""}
                   onChange={(e) =>
                     updateNestedField("visual_identity", { mood: e.target.value })
                   }
-                  placeholder="E.g., Luxurious, minimalist, energetic..."
+                  placeholder="Ví dụ: Xa xỉ, tối giản, năng động..."
                   className="h-9 text-xs"
                 />
               </div>
 
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 block">
-                  Color Palette
+                  Bảng Màu
                 </Label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {(data.visual_identity?.color_palette || []).map((hex, i) => (
@@ -611,25 +611,25 @@ export function ScreenBrandVoice() {
             </div>
           </Section>
 
-          {/* ─── Section 4: Audience & CTA ─── */}
-          <Section id={4} title="Audience & Conversion">
+          {/* ─── Phần 4: Đối Tượng & Chuyển Đổi ─── */}
+          <Section id={4} title="Đối Tượng & Chuyển Đổi">
             <div className="space-y-5">
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 block">
-                  Target Audience
+                  Đối Tượng Mục Tiêu
                 </Label>
                 <Textarea
                   rows={2}
                   value={data.audience || ""}
                   onChange={(e) => updateField({ audience: e.target.value })}
-                  placeholder="Describe your target audience..."
+                  placeholder="Mô tả đối tượng mục tiêu của bạn..."
                   className="text-xs font-medium"
                 />
               </div>
 
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-3 block">
-                  CTA Patterns
+                  Mẫu CTA
                 </Label>
                 <TagInput
                   tags={data.brand_voice_rules?.cta_patterns || []}
@@ -648,19 +648,19 @@ export function ScreenBrandVoice() {
                       ),
                     })
                   }
-                  placeholder="Add CTA structure + Enter..."
+                  placeholder="Thêm cấu trúc CTA + Enter..."
                   variant="outline"
                 />
               </div>
             </div>
           </Section>
 
-          {/* ─── Section 5: Content Examples ─── */}
-          <Section id={5} title="Content Examples">
+          {/* ─── Phần 5: Ví Dụ Nội Dung ─── */}
+          <Section id={5} title="Ví Dụ Nội Dung">
             <div className="space-y-5">
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 block">
-                  Social Post Example
+                  Ví Dụ Bài Đăng Xã Hội
                 </Label>
                 <Textarea
                   rows={3}
@@ -670,14 +670,14 @@ export function ScreenBrandVoice() {
                       social_post: e.target.value,
                     })
                   }
-                  placeholder="Paste your brand voice example..."
+                  placeholder="Dán ví dụ giọng thương hiệu của bạn..."
                   className="text-xs font-mono"
                 />
               </div>
 
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 block">
-                  Blog Post Example
+                  Ví Dụ Bài Viết Blog
                 </Label>
                 <Textarea
                   rows={3}
@@ -687,14 +687,14 @@ export function ScreenBrandVoice() {
                       blog_post: e.target.value,
                     })
                   }
-                  placeholder="Paste blog content example..."
+                  placeholder="Dán ví dụ nội dung blog..."
                   className="text-xs font-mono"
                 />
               </div>
 
               <div>
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 block">
-                  Ad Copy Example
+                  Ví Dụ Bản Sao Quảng Cáo
                 </Label>
                 <Textarea
                   rows={2}
@@ -702,7 +702,7 @@ export function ScreenBrandVoice() {
                   onChange={(e) =>
                     updateNestedField("content_examples", { ad_copy: e.target.value })
                   }
-                  placeholder="Paste ad copy example..."
+                  placeholder="Dán ví dụ bản sao quảng cáo..."
                   className="text-xs font-mono"
                 />
               </div>
@@ -711,7 +711,7 @@ export function ScreenBrandVoice() {
         </div>
       </div>
 
-      {/* ── STICKY BOTTOM SAVE BAR (Mobile) ── */}
+      {/* ── THANH LƯU CỐ ĐỊNH DƯỚI CÙNG (Di Động) ── */}
       <div className="sm:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 px-4 py-4">
         <Button
           size="lg"
@@ -723,7 +723,7 @@ export function ScreenBrandVoice() {
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
           )}
           <Save className="w-4 h-4 mr-2" />
-          Save Changes
+          Lưu Thay Đổi
         </Button>
         <div className="flex items-center justify-between mt-3 text-xs">
           <button
@@ -732,7 +732,7 @@ export function ScreenBrandVoice() {
             }
             className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
           >
-            Mine Data
+            Khai Phá Dữ Liệu
           </button>
           <button
             onClick={() =>
@@ -740,15 +740,15 @@ export function ScreenBrandVoice() {
             }
             className="text-slate-500 dark:text-slate-400 hover:underline"
           >
-            Preview JSON
+            Xem Trước JSON
           </button>
           <span className="text-slate-400 dark:text-slate-500">
-            {lastSaved === "now" ? "Saved!" : ""}
+            {lastSaved === "now" ? "Đã lưu!" : ""}
           </span>
         </div>
       </div>
 
-      {/* ── MODAL 1: MINE DATA ── */}
+      {/* ── MODAL 1: KHAI PHÁ DỮ LIỆU ── */}
       <Dialog
         open={!!syncOpen}
         onOpenChange={(open) =>
@@ -759,15 +759,15 @@ export function ScreenBrandVoice() {
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-sm font-bold">Mine Brand Data</DialogTitle>
+            <DialogTitle className="text-sm font-bold">Khai Phá Dữ Liệu Thương Hiệu</DialogTitle>
             <DialogDescription className="text-xs">
-              Extract brand context from various sources using Groq JSON Mode.
+              Trích xuất bối cảnh thương hiệu từ các nguồn khác nhau bằng Chế độ JSON Groq.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3 pt-2">
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Brand Name</Label>
+              <Label className="text-xs font-semibold">Tên Thương Hiệu</Label>
               <Input
                 value={brandName}
                 onChange={(e) =>
@@ -775,13 +775,13 @@ export function ScreenBrandVoice() {
                     search: ((prev) => ({ ...prev, brandName: e.target.value })) as any,
                   })
                 }
-                placeholder="E.g., Holo AI, VinFast..."
+                placeholder="Ví dụ: Holo AI, VinFast..."
                 className="h-8 text-xs"
               />
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Document Type</Label>
+              <Label className="text-xs font-semibold">Loại Tài Liệu</Label>
               <Select
                 value={documentType}
                 onValueChange={(val) =>
@@ -791,19 +791,19 @@ export function ScreenBrandVoice() {
                 }
               >
                 <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select document type" />
+                  <SelectValue placeholder="Chọn loại tài liệu" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="brand_guideline">Brand Guideline</SelectItem>
-                  <SelectItem value="competitor_analysis">Competitor Analysis</SelectItem>
-                  <SelectItem value="product_brief">Product Brief</SelectItem>
-                  <SelectItem value="campaign_brief">Campaign Brief</SelectItem>
+                  <SelectItem value="brand_guideline">Hướng Dẫn Thương Hiệu</SelectItem>
+                  <SelectItem value="competitor_analysis">Phân Tích Cạnh Tranh</SelectItem>
+                  <SelectItem value="product_brief">Tóm Tắt Sản Phẩm</SelectItem>
+                  <SelectItem value="campaign_brief">Tóm Tắt Chiến Dịch</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Website URL</Label>
+              <Label className="text-xs font-semibold">URL Trang Web</Label>
               <Input
                 value={websiteUrl}
                 onChange={(e) =>
@@ -817,7 +817,7 @@ export function ScreenBrandVoice() {
             </div>
 
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Raw Text Content</Label>
+              <Label className="text-xs font-semibold">Nội Dung Văn Bản Thô</Label>
               <Textarea
                 rows={3}
                 value={rawTextContent}
@@ -826,7 +826,7 @@ export function ScreenBrandVoice() {
                       search: ((prev: any) => ({ ...prev, rawTextContent: e.target.value })) as any
                     })
                   }
-                placeholder="Paste brand guideline or content..."
+                placeholder="Dán hướng dẫn thương hiệu hoặc nội dung..."
                 className="text-xs"
               />
             </div>
@@ -839,13 +839,13 @@ export function ScreenBrandVoice() {
               {mineMutation.isPending && (
                 <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
               )}
-              Extract & Import
+              Trích Xuất & Nhập Khẩu
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* ── MODAL 2: PREVIEW PAYLOAD ── */}
+      {/* ── MODAL 2: XEM TRƯỚC PAYLOAD ── */}
       <Dialog
         open={!!previewOpen}
         onOpenChange={(open) =>
@@ -857,10 +857,10 @@ export function ScreenBrandVoice() {
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold">
-              Payload Preview
+              Xem Trước Payload
             </DialogTitle>
             <DialogDescription className="text-xs">
-              JSON structure ready for agent processing.
+              Cấu trúc JSON sẵn sàng để xử lý tác nhân.
             </DialogDescription>
           </DialogHeader>
           <div className="pt-2">
@@ -882,7 +882,7 @@ export function ScreenBrandVoice() {
               })
             }
           >
-            Close
+            Đóng
           </Button>
         </DialogContent>
       </Dialog>
