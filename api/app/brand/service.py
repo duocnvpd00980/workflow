@@ -6,8 +6,11 @@ from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, func
-from groq import Groq
 
+# CHUYỂN ĐỔI: Dùng AsyncGroq để tránh block hệ thống async
+from groq import AsyncGroq 
+
+from app.rag.models import DocumentPage
 from app.config import get_settings
 from .models import Brand, BrandProfile, BrandVoiceRule, BrandMessaging, BrandContentExample
 from .schemas import (
@@ -16,7 +19,9 @@ from .schemas import (
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
-groq_client = Groq(api_key=settings.GROQ_API_KEY)
+
+# Khởi tạo Async Client
+groq_client = AsyncGroq(api_key=settings.GROQ_API_KEY)
 
 class BrandProfileService:
     # In-memory cache: {brand_id: {scope_name: (profile, version, ttl)}}
@@ -24,10 +29,11 @@ class BrandProfileService:
     CACHE_TTL = 3600  # 1 hour
 
     @staticmethod
-    def call_groq_json(prompt: str) -> dict:
-        """Calls Groq forcing a clean native JSON object return"""
+    async def call_groq_json(prompt: str) -> dict:
+        """Calls Groq forcing a clean native JSON object return (Refactored to Async)"""
         try:
-            response = groq_client.chat.completions.create(
+            # Thêm await vào đây
+            response = await groq_client.chat.completions.create(
                 model=settings.GROQ_MODEL,
                 messages=[
                     {
@@ -45,41 +51,84 @@ class BrandProfileService:
             raise RuntimeError(f"Lỗi kết nối hoặc xử lý từ Groq LLM: {str(e)}")
 
     @classmethod
-    def mine_from_rag(cls, document_content: str, document_type: str = "brand_guideline") -> dict:
-        """Mines comprehensive brand profile properties from raw context based on specified document type focus"""
-        prompt = f"""Analyze this raw text context comprehensively. The source document type is explicitly labeled as '{document_type}'. 
-Use this target context classification to prioritize guidelines, rules, or identity metrics discovered inside the content.
+    async def extract_brand_profile(cls, context: str) -> dict:
+        """Extracts brand profile (Refactored to Async)"""
+        prompt = f"""
+    You are an elite brand strategist.
 
-Context Data:
-{document_content}
+    Analyze the following knowledge base.
 
-The returned JSON must strictly comply with this structural blueprint:
-{{
-    "positioning": "one line differentiator string",
-    "audience": "target audience description string",
-    "brand_voice_rules": {{
-        "forbidden_words": ["word1", "word2"],
-        "tone_patterns": ["descriptor1", "descriptor2"],
-        "cta_patterns": ["example_cta1"]
-    }},
-    "messaging": {{
-        "pain_points": ["problem1", "problem2"],
-        "objections": [{{ "objection": "challenge?", "counter": "solution" }}],
-        "proof_points": ["metric or evidence"]
-    }},
-    "content_examples": {{
-        "blog_post": "full example text or null",
-        "social_post": "full example text or null",
-        "ad_copy": "full example text or null",
-        "landing_page": "full example text or null"
-    }},
-    "visual_identity": {{
-        "style_description": "visual tone description",
-        "color_palette": ["#hex", "color_name"],
-        "mood": "aesthetic feel descriptive string"
+    Knowledge:
+    {context}
+
+    Return ONLY valid JSON.
+
+    {{
+        "positioning": "",
+        "audience": "",
+        "brand_voice_rules": {{
+            "forbidden_words": [],
+            "tone_patterns": [],
+            "cta_patterns": []
+        }},
+        "messaging": {{
+            "pain_points": [],
+            "objections": [
+                {{
+                    "objection": "",
+                    "counter": ""
+                }}
+            ],
+            "proof_points": []
+        }},
+        "content_examples": {{
+            "blog_post": null,
+            "social_post": null,
+            "ad_copy": null,
+            "landing_page": null
+        }},
+        "visual_identity": {{
+            "style_description": "",
+            "color_palette": [],
+            "mood": ""
+        }}
     }}
-}}"""
-        return cls.call_groq_json(prompt)
+    """
+        # Await hàm call_groq_json đã chuyển sang async
+        result = await cls.call_groq_json(prompt)
+        BrandProfileSchema(**result)
+        return result
+
+    @classmethod
+    async def generate_from_documents(
+        cls,
+        db: AsyncSession,
+        brand_id: str,
+        document_ids: list[int],
+    ) -> BrandProfileSchema:
+        """SỬA LỖI: Thụt lề chuẩn hóa và tích hợp async liền mạch"""
+        result = await db.execute(
+            select(DocumentPage)
+            .where(DocumentPage.document_id.in_(document_ids))
+        )
+
+        pages = result.scalars().all()
+
+        if not pages:
+            raise ValueError("Không tìm thấy dữ liệu knowledge page.")
+
+        context = "\n\n".join(
+            page.content for page in pages if page.content
+        )
+
+        # Thêm await vào đây
+        profile_data = await cls.extract_brand_profile(context=context)
+
+        return await cls.save_profile(
+            db=db,
+            brand_id=brand_id,
+            data=profile_data,
+        )
 
     @staticmethod
     def validate_input(data: dict) -> dict:
@@ -106,7 +155,7 @@ The returned JSON must strictly comply with this structural blueprint:
 
     @classmethod
     async def save_profile(cls, db: AsyncSession, brand_id: str, data: dict) -> BrandProfileSchema:
-        """Saves or updates brand profile using Bulk Saving to avoid database overhead (Refactored to Async)"""
+        """Saves or updates brand profile using Bulk Saving to avoid database overhead"""
         data = cls.validate_input(data)
         schema = BrandProfileSchema(**data)
         
@@ -162,7 +211,7 @@ The returned JSON must strictly comply with this structural blueprint:
 
     @classmethod
     async def get_full_profile(cls, db: AsyncSession, brand_id: str) -> BrandProfileSchema:
-        """Get full brand profile with high speed query groupings (Async implementation)"""
+        """Get full brand profile with high speed query groupings"""
         cached = cls._get_cache(brand_id, "full")
         if cached:
             return cached
@@ -220,9 +269,9 @@ The returned JSON must strictly comply with this structural blueprint:
                 "social_post": full.content_examples.social_post
             }
         )
-        res_p = await db.execute(select(BrandProfile).filter(BrandProfile.brand_id == brand_id))
-        profile = res_p.scalars().first()
-        cls._set_cache(brand_id, "writer", scope, profile.version)
+        # TỐI ƯU: Trích xuất version trực tiếp từ cache vừa nạp của hàm get_full_profile
+        version = cls._cache[f"{brand_id}:full"][1]
+        cls._set_cache(brand_id, "writer", scope, version)
         return scope
 
     @classmethod
@@ -232,9 +281,9 @@ The returned JSON must strictly comply with this structural blueprint:
         
         full = await cls.get_full_profile(db, brand_id)
         scope = DesignerScope(positioning=full.positioning, visual_identity=full.visual_identity)
-        res_p = await db.execute(select(BrandProfile).filter(BrandProfile.brand_id == brand_id))
-        profile = res_p.scalars().first()
-        cls._set_cache(brand_id, "designer", scope, profile.version)
+        
+        version = cls._cache[f"{brand_id}:full"][1]
+        cls._set_cache(brand_id, "designer", scope, version)
         return scope
 
     @classmethod
@@ -248,9 +297,9 @@ The returned JSON must strictly comply with this structural blueprint:
             brand_voice_rules=full.brand_voice_rules, messaging=full.messaging,
             content_examples={"ad_copy": full.content_examples.ad_copy}
         )
-        res_p = await db.execute(select(BrandProfile).filter(BrandProfile.brand_id == brand_id))
-        profile = res_p.scalars().first()
-        cls._set_cache(brand_id, "ads", scope, profile.version)
+        
+        version = cls._cache[f"{brand_id}:full"][1]
+        cls._set_cache(brand_id, "ads", scope, version)
         return scope
 
     @classmethod
@@ -260,9 +309,9 @@ The returned JSON must strictly comply with this structural blueprint:
         
         full = await cls.get_full_profile(db, brand_id)
         scope = LandingPageScope(**full.model_dump())
-        res_p = await db.execute(select(BrandProfile).filter(BrandProfile.brand_id == brand_id))
-        profile = res_p.scalars().first()
-        cls._set_cache(brand_id, "landing_page", scope, profile.version)
+        
+        version = cls._cache[f"{brand_id}:full"][1]
+        cls._set_cache(brand_id, "landing_page", scope, version)
         return scope
 
     @staticmethod

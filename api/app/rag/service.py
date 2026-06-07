@@ -519,3 +519,6 @@ class RAG:
             "rerank_model": RERANK_MODEL,
             "device": DEVICE,
         }
+    
+
+

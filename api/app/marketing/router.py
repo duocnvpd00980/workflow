@@ -18,8 +18,11 @@ async def create_session():
 
 @router.post("/start", response_model=WorkflowResponse)
 async def start(body: StartRequest):
-    # Thêm auto_mode support
-    result = await service.start(body.request, auto_mode=body.auto_mode)
+    result = await service.start(
+        request=body.request, 
+        brand_id=body.brand_id, 
+        auto_mode=body.auto_mode
+    )
     return WorkflowResponse(**result)
 
 @router.get("/{session_id}", response_model=WorkflowResponse)

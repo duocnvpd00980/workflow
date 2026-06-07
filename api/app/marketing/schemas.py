@@ -1,9 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Literal, Dict, Any, List
 
 class StartRequest(BaseModel):
-    request: str
-    auto_mode: Optional[bool] = False  # Thêm: True = skip review
+    request: str = Field(..., description="Yêu cầu từ người dùng (VD: Viết bài blog về AI)")
+    brand_id: str = Field(..., description="ID của thương hiệu để lấy context") 
+    auto_mode: bool = Field(default=False, description="Chế độ tự động duyệt bài")
 
 class ResumeRequest(BaseModel):
     action: Literal["approve", "edit", "reject"]

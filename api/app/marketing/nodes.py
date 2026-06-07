@@ -10,13 +10,14 @@ All other nodes unchanged — they consume state["context"] the same way.
 from langgraph.types import interrupt
 from groq import Groq
 import uuid
-
+import logging
 from app.brand.service import BrandProfileService
 from app.db import AsyncSessionLocal
 
 from .config import settings
 # ── PATCH: import brand voice store ──────────────────────────────────────────
 
+logger = logging.getLogger(__name__)
 
 client = Groq(api_key=settings.GROQ_API_KEY)
 MODEL = settings.GROQ_MODEL
@@ -53,8 +54,11 @@ def _merge_usage(current: dict, tokens: int, node: str) -> dict:
 
 
 # ── Nodes ─────────────────────────────────────────────────────────────────────
+# ── Nodes ─────────────────────────────────────────────────────────────────────
 async def prepare(state: dict) -> dict:
-    r = state["request"].lower()
+    # 0. Tránh lỗi KeyError nếu 'request' không tồn tại
+    r = state.get("request", "").lower()
+    
     template = (
         "social"   if any(w in r for w in ["tweet", "caption", "post", "social", "instagram", "fb"]) else
         "blog"     if any(w in r for w in ["article", "blog", "write", "bài viết"]) else
@@ -63,29 +67,35 @@ async def prepare(state: dict) -> dict:
         "social"
     )
 
-    # Khởi tạo object scope trống để dự phòng
-    scope = None
     brand_id = state.get("brand_id", "default")
+    context = None
 
     # 1. Thử lấy dữ liệu từ Service trong DB
     try:
         async with AsyncSessionLocal() as db:
             scope = await BrandProfileService.get_writer_scope(db, brand_id)
             
-        # Nếu lấy thành công từ DB, map dữ liệu chuẩn vào context
-        context = {
-            "brand_voice": getattr(scope, "positioning", "Chuyên nghiệp, sáng tạo công nghệ"),
-            "tone": getattr(scope.brand_voice_rules, "tone_patterns", "Thân thiện, tin cậy"),
-            "voice_rules": getattr(scope.brand_voice_rules, "forbidden_words", []),
-            "cta_samples": getattr(scope.brand_voice_rules, "cta_patterns", ["Khám phá ngay"]),
-            "target_audience": getattr(scope, "audience", ["Khách hàng đại chúng"]),
-            "products": [],
-            "core_message": "Giải pháp tự động hóa quy trình thông minh.",
-            "credits": 100,
-        }
+        # Kiểm tra xem scope nhận về có thực sự tồn tại hay không
+        if scope:
+            # Lấy an toàn các sub-object để tránh AttributeError
+            voice_rules = getattr(scope, "brand_voice_rules", None)
+            
+            context = {
+                "brand_voice": getattr(scope, "positioning", "Chuyên nghiệp, sáng tạo công nghệ"),
+                "tone": getattr(voice_rules, "tone_patterns", "Thân thiện, tin cậy"),
+                "voice_rules": getattr(voice_rules, "forbidden_words", []),
+                "cta_samples": getattr(voice_rules, "cta_patterns", ["Khám phá ngay"]),
+                "target_audience": getattr(scope, "audience", ["Khách hàng đại chúng"]),
+                "products": [],
+                "core_message": "Giải pháp tự động hóa quy trình thông minh.",
+                "credits": 100,
+            }
     except Exception as e:
-        # Cơ chế FALLBACK: Nếu lỗi DB hoặc không tìm thấy ID 'default', nạp cấu hình cơ bản để cứu cánh
-        print(f"[WARNING] Không tìm thấy Brand ID '{brand_id}' hoặc lỗi DB: {str(e)}. Đang sử dụng cấu hình mặc định.")
+        logger.error(f"Lỗi kết nối hoặc truy vấn Database: {str(e)}")
+
+    # 2. Cơ chế FALLBACK: Kích hoạt nếu lỗi DB HOẶC nếu DB không trả về data (scope là None)
+    if not context:
+        logger.warning(f"Không tìm thấy dữ liệu cho Brand ID '{brand_id}'. Đang nạp cấu hình mặc định.")
         context = {
             "brand_voice": "Chuyên nghiệp, sáng tạo, hướng tới tương lai công nghệ",
             "tone": "Thân thiện, rõ ràng, giàu năng lượng",
@@ -97,17 +107,24 @@ async def prepare(state: dict) -> dict:
             "credits": 100,
         }
 
+    # 3. Kiểm tra Credits điều hướng luồng lỗi
     if context["credits"] <= 0:
-        return {"error": "fatal", "context": context, "template": template}
+        return {
+            **state,  # Giữ lại các thông tin gốc của state
+            "error": "fatal", 
+            "context": context, 
+            "template": template
+        }
 
+    # 4. Trả về state cập nhật (Hợp nhất dữ liệu mới vào state cũ thay vì ghi đè mất state)
     return {
+        **state,
         "template": template,
         "context":  context,
         "usage":    {"total_tokens": 0, "total_cost": 0.0, "calls": []},
         "approved": False,
         "error":    None,
     }
-
 
 def _build_brand_block(ctx: dict) -> str:
     """

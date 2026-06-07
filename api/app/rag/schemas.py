@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 from pydantic import BaseModel
-
+from pydantic import BaseModel, HttpUrl  
+from typing import Optional
 
 # ── Internal pipeline types ───────────────────────────────
 @dataclass
@@ -74,3 +75,44 @@ class SearchRequest(BaseModel):
     top_k: int = 4
     # Quan trọng: Thêm tag này để RAG Engine biết đường cô lập vùng tìm kiếm
     document_type: Optional[str] = None
+
+
+
+# ── Business crawl schemas ────────────────────────────────────────────────────
+
+class CrawlBusinessIn(BaseModel):
+    url: str
+    title: str = ""
+    document_type: str = "brand"
+
+
+class PageSummaryOut(BaseModel):
+    """Dùng cho GET /rag/{doc_id}/pages — danh sách tóm tắt."""
+    id: int
+    url: str
+    title: str
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class PageDetailOut(BaseModel):
+    """Dùng cho GET /rag/page/{page_id} — chi tiết đầy đủ."""
+    id: int
+    document_id: int
+    url: str
+    title: str
+    content: Optional[str]
+    extracted: Optional[dict]
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class CrawlBusinessIn(BaseModel):
+    """Schema cho business crawl — dùng HttpUrl để validate URL."""
+    url: HttpUrl  # Đổi từ str sang HttpUrl
+    title: str = ""
+    document_type: str = "brand"
+
+    model_config = {"from_attributes": True}

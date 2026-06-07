@@ -14,6 +14,7 @@ from .nodes import (
 class WorkflowState(TypedDict):
     session_id: str
     request: str
+    brand_id: str
     template: Optional[Literal["social", "blog", "image", "research"]]
     context: dict
     draft: Optional[dict]
@@ -21,6 +22,7 @@ class WorkflowState(TypedDict):
     publish_status: Optional[Literal["pending", "published", "failed", "dead_letter"]]
     usage: Annotated[dict, operator.or_]
     error: Optional[Literal["timeout", "rate_limit", "invalid", "fatal"]]
+   
 
 
 workflow = StateGraph(WorkflowState)

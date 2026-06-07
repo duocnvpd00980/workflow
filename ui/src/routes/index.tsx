@@ -9,7 +9,7 @@ import {
   Zap, Search, FileText, Megaphone, Lightbulb, ChevronRight,
   MoreHorizontal, RefreshCw,
 } from "lucide-react";
-import { BASE_URL } from "@/config";
+import { BASE_URL, API_BASE } from "@/config";
 
 // ==========================================
 // TYPES
@@ -60,7 +60,14 @@ const api = {
     if (!res.ok) throw new Error("Failed to create session");
     return res.json();
   },
-  startWorkflow: async (body: { request: string; auto_mode?: boolean }): Promise<WorkflowResponse> => {
+  getBrands: async (ownerId: string = "string"): Promise<{ brands: any[]; total: number }> => {
+    const res = await fetch(`${API_BASE}/brand-profile?owner_id=${ownerId}&limit=10&offset=0`, {
+      headers: { "accept": "application/json" }
+    });
+    if (!res.ok) throw new Error("Failed to fetch brands");
+    return res.json();
+  },
+  startWorkflow: async (body: { request: string; brand_id: string; auto_mode?: boolean }): Promise<WorkflowResponse> => {
     const res = await fetch(`${BASE_URL}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -430,7 +437,16 @@ function CreateContent({
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [audience, setAudience] = useState("Dân văn phòng");
   const [promo, setPromo] = useState("Tặng kèm nước ngọt");
-
+  const [selectedBrandId, setSelectedBrandId] = useState("");
+  const { data: brandsData, isLoading: isLoadingBrands } = useQuery({
+    queryKey: ["brands"],
+    queryFn: () => api.getBrands("string"),
+  });
+  useEffect(() => {
+    if (brandsData?.brands?.length && !selectedBrandId) {
+      setSelectedBrandId(brandsData.brands[0].id);
+    }
+  }, [brandsData, selectedBrandId]);
   const startMutation = useMutation({
     mutationFn: async () => {
       const fullRequest = [
@@ -441,7 +457,13 @@ function CreateContent({
       ]
         .filter(Boolean)
         .join(". ");
-      return api.startWorkflow({ request: fullRequest, auto_mode: autoMode });
+      
+      // 4. 🔥 TRUYỀN BRAND_ID ĐỘNG TỪ STATE VÀO ĐÂY
+      return api.startWorkflow({ 
+        request: fullRequest, 
+        brand_id: selectedBrandId, 
+        auto_mode: autoMode 
+      });
     },
     onSuccess: (data) => {
       onSessionCreated(data.session_id, data.draft?.content ?? "", autoMode);
@@ -453,7 +475,7 @@ function CreateContent({
   const toggleTag = (tag: string) =>
     setSelectedTags((p) => (p.includes(tag) ? p.filter((t) => t !== tag) : [...p, tag]));
 
-  const canSubmit = request.trim().length > 0 && !startMutation.isPending;
+  const canSubmit = request.trim().length > 0 && selectedBrandId && !startMutation.isPending;
 
   return (
     <div className="flex flex-col flex-1 min-h-0 bg-white">
@@ -471,6 +493,29 @@ function CreateContent({
 
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5">
         {/* Request textarea */}
+
+        <div>
+    <label className="block text-xs font-semibold text-stone-700 mb-2">Chọn thương hiệu áp dụng</label>
+    {isLoadingBrands ? (
+      <div className="flex items-center gap-2 text-xs text-stone-400 py-2">
+        <Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang tải danh sách thương hiệu...
+      </div>
+    ) : (
+      <select
+        className="w-full px-3 py-2.5 text-sm text-stone-900 border border-stone-200 rounded-xl bg-stone-50 outline-none focus:border-stone-400 transition"
+        value={selectedBrandId}
+        onChange={(e) => setSelectedBrandId(e.target.value)}
+      >
+        <option value="" disabled>-- Vui lòng chọn thương hiệu --</option>
+        {brandsData?.brands?.map((brand) => (
+          <option key={brand.id} value={brand.id}>
+            {brand.name === "string" ? `Mặc định (${brand.id.slice(0,6)})` : brand.name}
+          </option>
+        ))}
+      </select>
+    )}
+  </div>
+
         <div>
           <label className="block text-xs font-semibold text-stone-700 mb-2">Yêu cầu nội dung</label>
           <div className="border border-stone-200 rounded-xl overflow-hidden focus-within:border-stone-400 transition">
@@ -820,7 +865,7 @@ function Workspace({
                 </div>
               </div>
             )}
-
+            
             {/* Inline input */}
             {showInlineInput && !inlineSuggestion && (
               <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 space-y-2">
@@ -1128,8 +1173,26 @@ function AutoMode({
   const [request, setRequest] = useState("");
   const [started, setStarted] = useState(!!existingSessionId);
 
+
+  // 🔥 1. THÊM STATE VÀ USEQUERY VÀO ĐÂY
+  const [selectedBrandId, setSelectedBrandId] = useState("");
+
+  const { data: brandsData, isLoading: isLoadingBrands } = useQuery({
+    queryKey: ["brands-auto"],
+    queryFn: () => api.getBrands("string"), // Gọi API lấy list brand
+    enabled: !existingSessionId, // Chỉ gọi API nếu đây là campaign mới (chưa có sessionId)
+  });
+
+  // Tự động chọn brand đầu tiên khi load xong danh sách
+  useEffect(() => {
+    if (brandsData?.brands?.length && !selectedBrandId) {
+      setSelectedBrandId(brandsData.brands[0].id);
+    }
+  }, [brandsData, selectedBrandId]);
+
   const startMutation = useMutation({
-    mutationFn: (req: string) => api.startWorkflow({ request: req, auto_mode: true }),
+    // 🔥 2. SỬA CHỖ NÀY: Truyền selectedBrandId từ state vào API
+    mutationFn: (req: string) => api.startWorkflow({ request: req, brand_id: selectedBrandId, auto_mode: true }),
     onSuccess: (data) => {
       setSessionId(data.session_id);
       setStoredSessionId(data.session_id);

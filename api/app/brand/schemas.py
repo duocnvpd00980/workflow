@@ -64,3 +64,10 @@ class LandingPageScope(BaseModel):
     messaging: Messaging
     content_examples: ContentExamples
     visual_identity: VisualIdentity
+
+class GenerateBrandProfileIn(BaseModel):
+    document_ids: List[int]
+
+class CreateBrandIn(BaseModel):
+    name: str
+    owner_id: str 

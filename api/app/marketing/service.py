@@ -12,16 +12,16 @@ class WorkflowService:
     def create_session(self) -> str:
         return str(uuid.uuid4())[:8]
 
-    async def start(self, request: str, auto_mode: bool = False) -> dict:
+    async def start(self, request: str, brand_id: str, auto_mode: bool = False) -> dict: # <── THÊM THAM SỐ
         thread_id = f"wf-{uuid.uuid4().hex[:6]}"
         config = {"configurable": {"thread_id": thread_id}}
         session_id = self.create_session()
 
         draft, status, usage = None, "running", {}
 
-        # Nếu auto_mode: thêm flag để workflow skip review
         initial_state = {
             "session_id": session_id,
+            "brand_id": brand_id,
             "request": request,
             "template": None,
             "context": {},
@@ -34,11 +34,9 @@ class WorkflowService:
 
         async for event in graph.astream(initial_state, config=config):
             if "__interrupt__" in event:
-                # Nếu auto_mode: tự động approve, không pause
                 if auto_mode:
                     status = "running"
-                    # Auto-resume với approve
-                    result_auto = graph.invoke(
+                    result_auto = await graph.ainvoke(
                         Command(resume={"action": "approve"}),
                         config=config
                     )
@@ -47,24 +45,10 @@ class WorkflowService:
                     status = "completed" if result_auto.get("publish_status") == "published" else "paused"
                     break
                 
-                # Normal mode: pause chờ user
                 status = "paused"
                 data = event["__interrupt__"][0].value
                 draft, usage = data["draft"], data["usage"]
                 break
-
-        async with AsyncSessionLocal() as db:
-            s = WorkflowSession(
-                id=session_id,
-                thread_id=thread_id,
-                request=request,
-                template=draft["metadata"]["type"] if draft else None,
-                status=status,
-                draft=draft,
-                usage=usage
-            )
-            db.add(s)
-            await db.commit()
 
         return {"session_id": session_id, "status": status, "draft": draft, "usage": usage}
 

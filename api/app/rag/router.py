@@ -13,16 +13,36 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_rag, get_loader
 from app.db import get_db
-from app.rag.schemas import DocOut, SearchOut, UploadOut
+from app.rag.schemas import DocOut, SearchOut, UploadOut, CrawlBusinessIn, PageSummaryOut, PageDetailOut
 from app.rag.service import RAG
 from app.rag.loader import DocumentLoader
-from .models import DocumentSource
+from .models import DocumentSource, DocumentPage
+from app.rag.business_service import BusinessCrawler
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/rag", tags=["rag"])
 
 
-# ── GET /rag/ ─────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# RESPONSE SCHEMA MỚI CHO BUSINESS CRAWL
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class CrawlBusinessOut(BaseModel):
+    """Response chi tiết cho business crawl — bao gồm extracted data."""
+    id: int
+    title: str
+    status: str
+    document_type: str
+    chunk_count: int
+    extracted_summary: Optional[dict] = None
+    message: str
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EXISTING ENDPOINTS (giữ nguyên)
+# ═══════════════════════════════════════════════════════════════════════════════
+
 @router.get("/", response_model=list[DocOut])
 async def list_docs(db: AsyncSession = Depends(get_db)):
     rows = await db.execute(
@@ -35,7 +55,7 @@ async def list_docs(db: AsyncSession = Depends(get_db)):
             id=d.id,
             title=d.title,
             status=d.status,
-            document_type=d.document_type,  # ✅ THÊM
+            document_type=d.document_type,
             chunk_count=d.chunk_count,
             file_size=(
                 f"{Path(d.file_path).stat().st_size // 1024} KB"
@@ -48,7 +68,6 @@ async def list_docs(db: AsyncSession = Depends(get_db)):
     ]
 
 
-# ── POST /rag/upload/ ─────────────────────────────────────
 @router.post("/upload/", response_model=UploadOut, status_code=201)
 async def upload(
     title: str = Form(...),
@@ -105,7 +124,6 @@ async def upload(
         raise HTTPException(400, f"Lỗi: {e}")
 
 
-# ── POST /rag/crawl/ ──────────────────────────────────────
 class CrawlIn(BaseModel):
     url: HttpUrl
     title: str = ""
@@ -149,7 +167,6 @@ async def crawl(
         raise HTTPException(400, f"Lỗi crawl: {e}")
 
 
-# ── POST /rag/search/ ─────────────────────────────────────
 @router.post("/search/", response_model=SearchOut)
 async def search(
     query: str = Form(...),
@@ -168,7 +185,6 @@ async def search(
     )
 
 
-# ── DELETE /rag/{doc_id}/ ─────────────────────────────────
 @router.delete("/{doc_id}/", status_code=204)
 async def delete(doc_id: int, db: AsyncSession = Depends(get_db)):
     doc = await db.get(DocumentSource, doc_id)
@@ -176,3 +192,123 @@ async def delete(doc_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(404, "Không tìm thấy tài liệu.")
     await db.delete(doc)
     await db.commit()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BUSINESS CRAWL ENDPOINTS (ĐÃ SỬA)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/crawl-business/", response_model=CrawlBusinessOut, status_code=201)
+async def crawl_business(
+    payload: CrawlBusinessIn,
+    db: AsyncSession = Depends(get_db),
+    rag: RAG = Depends(get_rag),
+    loader: DocumentLoader = Depends(get_loader),
+):
+    url_str = str(payload.url)
+    title   = payload.title.strip() or url_str
+
+    doc = DocumentSource(
+        title=title,
+        status="processing",
+        document_type=payload.document_type,
+    )
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+
+    try:
+        crawler    = BusinessCrawler(rag=rag, loader=loader, db=db)
+        page_count = await crawler.crawl_business(
+            url=url_str,
+            document_type=payload.document_type,
+            document_id=doc.id,
+        )
+
+        # Lấy page đầu tiên để trả về extracted summary
+        page = await db.execute(
+            select(DocumentPage)
+            .where(DocumentPage.document_id == doc.id)
+            .order_by(DocumentPage.created_at.desc())
+            .limit(1)
+        )
+        first_page = page.scalar_one_or_none()
+        
+        extracted_summary = None
+        if first_page and first_page.extracted:
+            extracted = first_page.extracted
+            extracted_summary = {
+                "brand_name": extracted.get("brand_identity", {}).get("brand_name"),
+                "phones": extracted.get("contact_details", {}).get("phones", []),
+                "addresses": extracted.get("contact_details", {}).get("addresses", []),
+                "social_links": extracted.get("contact_details", {}).get("social_links", {}),
+                "main_products": extracted.get("brand_identity", {}).get("main_products", []),
+                "chunk_quality": extracted.get("chunk_quality", {}),
+            }
+
+        doc.status      = "completed"
+        doc.chunk_count = page_count
+        await db.commit()
+
+        return CrawlBusinessOut(
+            id=doc.id,
+            title=doc.title,
+            status="completed",
+            document_type=doc.document_type,
+            chunk_count=page_count,
+            extracted_summary=extracted_summary,
+            message=f"Đã crawl thành công {page_count} page.",
+        )
+
+    except Exception as e:
+        doc.status        = "failed"
+        doc.error_message = str(e)
+        await db.commit()
+        logger.error("[crawl_business] doc_id=%s error=%s", doc.id, e)
+        raise HTTPException(400, f"Lỗi crawl business: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PAGE ENDPOINTS (ĐÃ SỬA PATH ĐỂ TRÁNH CONFLICT)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/doc/{doc_id}/pages", response_model=list[PageSummaryOut])
+async def list_pages(doc_id: int, db: AsyncSession = Depends(get_db)):
+    """Lấy danh sách pages của một document. 
+    Path đổi từ /{doc_id}/pages → /doc/{doc_id}/pages để tránh conflict với /page/{page_id}"""
+    doc = await db.get(DocumentSource, doc_id)
+    if not doc:
+        raise HTTPException(404, "Không tìm thấy tài liệu.")
+
+    rows = await db.execute(
+        select(DocumentPage)
+        .where(DocumentPage.document_id == doc_id)
+        .order_by(DocumentPage.created_at.asc())
+    )
+    return [
+        PageSummaryOut(
+            id=p.id,
+            url=p.url,
+            title=p.title,
+            created_at=p.created_at.isoformat(),
+        )
+        for p in rows.scalars()
+    ]
+
+
+@router.get("/page/{page_id}", response_model=PageDetailOut)
+async def get_page(page_id: int, db: AsyncSession = Depends(get_db)):
+    """Lấy chi tiết một page."""
+    page = await db.get(DocumentPage, page_id)
+    if not page:
+        raise HTTPException(404, "Không tìm thấy page.")
+
+    return PageDetailOut(
+        id=page.id,
+        document_id=page.document_id,
+        url=page.url,
+        title=page.title,
+        content=page.content,
+        extracted=page.extracted,
+        created_at=page.created_at.isoformat(),
+    )
