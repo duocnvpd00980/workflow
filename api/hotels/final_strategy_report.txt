@@ -1,60 +1,62 @@
-**Báo cáo chiến lược cho Sontra Sea Hotel**
+## A. CUSTOMER PERSONAS
 
-**A. CUSTOMER PERSONAS**
+Dưới đây là 3 customer personas có thể đại diện cho khách hàng tiềm năng của Sontra Sea Hotel:
 
-Dưới đây là 3 customer personas chính cho Sontra Sea Hotel:
+- **Persona 1: Du khách trẻ (20-35 tuổi)**
+  - Tên: Linh
+  - Nghề nghiệp: Sinh viên, nhân viên văn phòng
+  - Mục tiêu: Tìm kiếm nơi lưu trú giá cả phải chăng, view đẹp, gần biển, và có thể tận hưởng thời gian thư giãn cùng bạn bè.
+  - Hành vi: Thích khám phá, đi du lịch thường xuyên, quan tâm đến giá cả và chất lượng.
+  - Ước tính ngân sách: 800.000 - 1.500.000 VND/phòng/đêm.
 
-* **Persona 1: Du khách trẻ**
- + Tên: Linh
- + Mô tả ngắn: Du khách trẻ tuổi, thích khám phá và trải nghiệm mới.
- + Demographics: 18-30 tuổi, thu nhập 10-20 triệu đồng/tháng, đến từ Hà Nội hoặc TP.HCM.
- + Pain points: Tìm kiếm nơi lưu trú giá cả phải chăng, tiện nghi và gần các điểm du lịch.
- + Motivations: Trải nghiệm du lịch, khám phá văn hóa và ẩm thực địa phương.
- + Kênh tiếp cận: TikTok, Facebook, Instagram.
-* **Persona 2: Gia đình**
- + Tên: Minh
- + Mô tả ngắn: Gia đình với con nhỏ, tìm kiếm nơi lưu trú thoải mái và an toàn.
- + Demographics: 30-50 tuổi, thu nhập 20-50 triệu đồng/tháng, đến từ các tỉnh thành khác nhau.
- + Pain points: Tìm kiếm nơi lưu trú có phòng rộng rãi, tiện nghi và gần các điểm du lịch.
- + Motivations: Trải nghiệm du lịch gia đình, tạo kỉ niệm với con.
- + Kênh tiếp cận: Facebook, Google, OTA (Online Travel Agent).
-* **Persona 3: Cặp đôi**
- + Tên: Lan
- + Mô tả ngắn: Cặp đôi mới cưới hoặc đang yêu, tìm kiếm nơi lưu trú lãng mạn và tiện nghi.
- + Demographics: 20-40 tuổi, thu nhập 15-30 triệu đồng/tháng, đến từ Hà Nội hoặc TP.HCM.
- + Pain points: Tìm kiếm nơi lưu trú có phòng lãng mạn, tiện nghi và gần các điểm du lịch.
- + Motivations: Trải nghiệm du lịch lãng mạn, tạo kỉ niệm với người yêu.
- + Kênh tiếp cận: Instagram, Facebook, TikTok.
+- **Persona 2: Gia đình (35-50 tuổi)**
+  - Tên: Minh
+  - Nghề nghiệp: Doanh nhân, nhân viên văn phòng
+  - Mục tiêu: Tìm kiếm nơi lưu trú thoải mái, an toàn cho gia đình, gần biển và có các tiện ích cho trẻ em.
+  - Hành vi: Ưu tiên sự tiện nghi, an toàn, và dịch vụ tốt.
+  - Ước tính ngân sách: 1.500.000 - 3.000.000 VND/phòng/đêm.
 
-**B. CHIẾN LƯỢC TIẾP CẬN TỪNG PERSONA**
+- **Persona 3: Cặp đôi (25-40 tuổi)**
+  - Tên: Lan & Huy
+  - Nghề nghiệp: Doanh nhân, nhân viên văn phòng
+  - Mục tiêu: Tìm kiếm nơi lưu trú lãng mạn, view biển, và có thể tận hưởng không gian riêng tư.
+  - Hành vi: Thích trải nghiệm mới, quan tâm đến không gian và dịch vụ lãng mạn.
+  - Ước tính ngân sách: 2.000.000 - 4.000.000 VND/phòng/đêm.
 
-Dưới đây là chiến lược tiếp cận cho từng persona:
+## B. CHIẾN LƯỢC TIẾP CẬN TỪNG PERSONA
 
-* **Persona 1: Du khách trẻ**
- + Message chính: "Khám phá Đà Nẵng với giá cả phải chăng!"
- + Offer đề xuất: Giảm giá phòng cho khách đặt sớm, tặng kèm dịch vụ xe đạp miễn phí.
- + Kênh quảng cáo: TikTok, Facebook, Instagram.
- + Content format: Video ngắn, ảnh đẹp, blog du lịch.
-* **Persona 2: Gia đình**
- + Message chính: "Lưu trú thoải mái và an toàn cho gia đình bạn!"
- + Offer đề xuất: Phòng rộng rãi, tiện nghi, tặng kèm dịch vụ babysitting.
- + Kênh quảng cáo: Facebook, Google, OTA.
- + Content format: Ảnh gia đình, video giới thiệu phòng, blog du lịch gia đình.
-* **Persona 3: Cặp đôi**
- + Message chính: "Trải nghiệm lãng mạn tại Sontra Sea Hotel!"
- + Offer đề xuất: Phòng lãng mạn, tặng kèm dịch vụ champagne và hoa hồng.
- + Kênh quảng cáo: Instagram, Facebook, TikTok.
- + Content format: Ảnh lãng mạn, video giới thiệu phòng, blog du lịch lãng mạn.
+- **Đối với Persona 1 (Linh):**
+  - Sử dụng TikTok và Instagram để tiếp cận, với nội dung ngắn gọn, hấp dẫn (video, hình ảnh về view biển, phòng ở, tiện ích).
+  - Cung cấp chương trình khuyến mãi, giảm giá cho đặt phòng trực tuyến.
 
-**C. ĐỀ XUẤT CHIẾN DỊCH 30 NGÀY**
+- **Đối với Persona 2 (Minh):**
+  - Tập trung vào website và Fanpage Facebook với thông tin chi tiết về tiện ích cho gia đình, dịch vụ và chương trình cho trẻ em.
+  - Cung cấp các gói dịch vụ gia đình, bao gồm ăn uống và hoạt động giải trí.
 
-Dưới đây là đề xuất chiến dịch 30 ngày:
+- **Đối với Persona 3 (Lan & Huy):**
+  - Tạo nội dung lãng mạn, riêng tư trên các kênh truyền thông xã hội (hình ảnh phòng đôi, sunset view, dịch vụ đặc biệt cho ngày lễ).
+  - Cung cấp các chương trình khuyến mãi cho cặp đôi, dịch vụ lãng mạn.
 
-* **Tuần 1-2: Awareness**
- + Ngày 1-7: Quảng cáo trên TikTok, Facebook, Instagram để tăng cường nhận thức về thương hiệu Sontra Sea Hotel.
- + Ngày 8-14: Tạo và đăng tải nội dung blog du lịch, video ngắn và ảnh đẹp trên các kênh truyền thông xã hội.
-* **Tuần 3-4: Conversion**
- + Ngày 15-21: Quảng cáo trên Google, OTA và Facebook để tăng cường chuyển đổi.
- + Ngày 22-30: Gửi email và tin nhắn nhắc nhở khách hàng đã đặt phòng, cung cấp thông tin và hỗ trợ khách hàng.
+## C. CHIẾN DỊCH 30 NGÀY
 
-Hy vọng báo cáo chiến lược này sẽ giúp Sontra Sea Hotel đạt được mục tiêu kinh doanh và tăng cường vị thế trên thị trường du lịch Đà Nẵng.
+**Tuần 1: Tạo nhận thức**
+
+- Ngày 1-3: Đăng bài trên TikTok và Instagram về Sontra Sea Hotel, bao gồm hình ảnh và video về view biển và phòng ở.
+- Ngày 4-7: Chia sẻ trải nghiệm của khách hàng trên các kênh truyền thông xã hội.
+
+**Tuần 2: Tăng tương tác**
+
+- Ngày 8-14: Tổ chức minigame trên Fanpage Facebook để tăng tương tác.
+- Ngày 10: Livestream trên TikTok về các tiện ích và dịch vụ của khách sạn.
+
+**Tuần 3: Khuyến mãi**
+
+- Ngày 15-21: Cung cấp chương trình giảm giá 10% cho đặt phòng trực tuyến.
+- Ngày 18: Gửi email về chương trình khuyến mãi đặc biệt cho khách hàng tiềm năng.
+
+**Tuần 4: Chốt sale**
+
+- Ngày 22-28: Tổng hợp và chia sẻ đánh giá của khách hàng đã lưu trú.
+- Ngày 25: Thông báo về chương trình cuối cùng: giảm giá thêm 5% cho khách hàng đặt phòng trong tuần.
+
+Chiến dịch này sẽ giúp tăng nhận thức về Sontra Sea Hotel, tăng tương tác với khách hàng tiềm năng, và cuối cùng là tăng doanh số đặt phòng.

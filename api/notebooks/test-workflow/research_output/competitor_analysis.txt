@@ -1,0 +1,41 @@
+**Báo cáo phân tích dữ liệu đối thủ**
+
+**1. PHÂN LOẠI ĐỐI THỦ (Direct/Indirect)**
+
+Đối thủ trực tiếp (Direct): Các khách sạn, resort, homestay ở khu vực Sơn Trà/Đà Nẵng có cùng phân khúc 3 sao với Sontra Sea Hotel.
+
+* Premier Village Danang Resort (5 sao, nhưng có thể cạnh tranh về chất lượng dịch vụ)
+* Saha Casa Boutique Hotel Da Nang (5 sao, nhưng có thể cạnh tranh về chất lượng phòng)
+* The HEM Hotel and Apartment (4 sao, nhưng có thể cạnh tranh về giá cả)
+* Hotel Chavana (không rõ xếp hạng sao, nhưng có thể cạnh tranh về chất lượng dịch vụ)
+
+Đối thủ gián tiếp (Indirect): Các khách sạn, resort, homestay ở khu vực khác tại Đà Nẵng.
+
+* Lotus (không rõ xếp hạng sao, không rõ vị trí)
+
+**2. ĐỐI THỦ CHÍNH: Điểm mạnh/yếu, giá ước tính, target khách hàng**
+
+* **Premier Village Danang Resort**
+ + Điểm mạnh: 5 sao, bãi biển riêng, nhiều tiện ích (hồ bơi, fitness center, spa)
+ + Điểm yếu: Giá cao (từ 389$/đêm)
+ + Target khách hàng: Khách du lịch cao cấp, gia đình, cặp đôi
+* **Saha Casa Boutique Hotel Da Nang**
+ + Điểm mạnh: 5 sao, thiết kế boutique, vị trí thuận tiện
+ + Điểm yếu: Giá cao (không rõ giá cụ thể)
+ + Target khách hàng: Khách du lịch cao cấp, cặp đôi, doanh nhân
+* **The HEM Hotel and Apartment**
+ + Điểm mạnh: 4 sao, giá cả hợp lý, vị trí thuận tiện
+ + Điểm yếu: Không có bãi biển riêng, ít tiện ích
+ + Target khách hàng: Khách du lịch bình dân, gia đình, khách doanh nhân
+* **Hotel Chavana**
+ + Điểm mạnh: Thiết kế hiện đại, vị trí thuận tiện
+ + Điểm yếu: Không rõ xếp hạng sao, giá cả không rõ ràng
+ + Target khách hàng: Khách du lịch trẻ, cặp đôi, khách doanh nhân
+
+**3. CHIẾN LƯỢC ĐỀ XUẤT: 3-5 hành động cụ thể**
+
+1. **Tăng cường chất lượng dịch vụ**: Cải thiện chất lượng phòng, tăng cường đào tạo nhân viên để nâng cao chất lượng dịch vụ của Sontra Sea Hotel.
+2. **Giá cả cạnh tranh**: Điều chỉnh giá cả của Sontra Sea Hotel để cạnh tranh với các đối thủ trực tiếp và gián tiếp.
+3. **Tăng cường quảng cáo**: Tăng cường quảng cáo trên các kênh truyền thông xã hội, Google Ads để tăng cường nhận thức về thương hiệu Sontra Sea Hotel.
+4. **Phát triển các chương trình khuyến mãi**: Phát triển các chương trình khuyến mãi, giảm giá để thu hút khách hàng mới và giữ chân khách hàng cũ.
+5. **Cải thiện tiện ích**: Cải thiện tiện ích của Sontra Sea Hotel, chẳng hạn như hồ bơi, fitness center, spa để cạnh tranh với các đối thủ trực tiếp.

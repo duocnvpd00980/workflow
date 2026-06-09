@@ -1,0 +1,37 @@
+Dưới đây là báo cáo phân tích dữ liệu đối thủ và đề xuất chiến lược cho Sontra Sea Hotel:
+
+**1. PHÂN LOẠI ĐỐI THỦ (Direct/Indirect)**
+
+Đối thủ trực tiếp (Direct): Các khách sạn tại khu vực Sơn Trà, Đà Nẵng có cùng phân khúc 3 sao.
+
+* Rosamia Da Nang Hotel (5 sao)
+* My Khe 2 Danang Seafront Hotel
+* Khách sạn khác tại khu vực Sơn Trà, Đà Nẵng
+
+Đối thủ gián tiếp (Indirect): Các khách sạn tại Đà Nẵng nhưng có phân khúc khác hoặc vị trí khác.
+
+* Nesta Hotel Group
+* Các resort và khách sạn sang trọng ở Đà Nẵng (danh sách 14+)
+
+**2. ĐỐI THỦ CHÍNH: Điểm mạnh/yếu, giá ước tính, target khách hàng**
+
+* **Rosamia Da Nang Hotel (5 sao)**
+ + Điểm mạnh: Vị trí tốt, tiện nghi cao cấp, dịch vụ chất lượng.
+ + Điểm yếu: Giá cao.
+ + Giá ước tính: 5-7 triệu đồng/phòng/đêm.
+ + Target khách hàng: Khách hàng cao cấp, doanh nhân, du khách quốc tế.
+* **My Khe 2 Danang Seafront Hotel**
+ + Điểm mạnh: Vị trí tốt, gần biển, giá cả hợp lý.
+ + Điểm yếu: Tiện nghi và dịch vụ chưa bằng khách sạn 5 sao.
+ + Giá ước tính: 2-4 triệu đồng/phòng/đêm.
+ + Target khách hàng: Du khách trong nước, khách hàng tầm trung.
+
+**3. CHIẾN LƯỢC ĐỀ XUẤT: 3-5 hành động cụ thể**
+
+1. **Tăng cường quảng cáo trực tuyến**: Tăng cường quảng cáo trên các nền tảng trực tuyến như Google Ads, Facebook Ads để tăng độ nhận biết và thu hút khách hàng.
+2. **Cải thiện tiện nghi và dịch vụ**: Cải thiện tiện nghi và dịch vụ của khách sạn để tăng cường trải nghiệm khách hàng và cạnh tranh với đối thủ.
+3. **Tạo gói dịch vụ hấp dẫn**: Tạo gói dịch vụ hấp dẫn cho khách hàng, bao gồm cả dịch vụ ăn uống, giải trí, và hoạt động ngoài trời để tăng doanh thu.
+4. **Tăng cường hợp tác với các đối tác du lịch**: Tăng cường hợp tác với các đối tác du lịch để tăng cường quảng cáo và thu hút khách hàng.
+5. **Đánh giá và điều chỉnh giá**: Đánh giá và điều chỉnh giá của khách sạn để đảm bảo tính cạnh tranh và phù hợp với thị trường.
+
+Hy vọng báo cáo này sẽ giúp Sontra Sea Hotel có cái nhìn tổng quan về thị trường và đối thủ, cũng như đề xuất chiến lược phù hợp để tăng cường cạnh tranh và thu hút khách hàng.

@@ -3,116 +3,170 @@ from typing import AsyncGenerator, Dict, Any
 import json
 import asyncio
 
-from app.research.models import HotelResearchState
-from app.research.workflow import NODE_META, build_graph
+from sqlalchemy import select
 
-# 📦 Bộ lưu trữ trạng thái các Task chạy ngầm trên RAM
+from app.db import AsyncSessionLocal
+from app.research.models import HotelResearchState, PipelineTask, PipelineEvent, ResearchResult
+from app.research.workflow import build_graph
+
+# ── RAM cache ───────────────────────────────────────────────────
 TASK_STORE: Dict[str, Dict[str, Any]] = {}
 
+# ── NODE_META: đồng bộ tên node với workflow.py ─────────────────
+NODE_META = [
+    ("screenshots",       "📸 Chụp ảnh màn hình",      10),
+    ("vision_extract",    "🔍 Trích xuất dữ liệu",      25),
+    ("competitor_branch", "🏆 Phân tích đối thủ",       50),
+    ("social_branch",     "📱 Dữ liệu mạng xã hội",    50),
+    ("merge_data",        "🔄 Tổng hợp dữ liệu",       65),
+    ("final_report",      "📝 Báo cáo chiến lược",      85),
+    ("cleanup",           "🧹 Dọn dẹp",                 95),
+]
 
-def create_initial_state(
-    hotel_dir: str,
-    business_name: str,
-    address: str,
-    industry: str,
-) -> HotelResearchState:
+
+# ── Helpers DB ───────────────────────────────────────────────────
+
+async def _db_create_task(task_id: str, business_name: str, address: str, industry: str) -> None:
+    async with AsyncSessionLocal() as session:
+        session.add(PipelineTask(
+            task_id=task_id,
+            business_name=business_name,
+            address=address,
+            industry=industry,
+            status="running",
+        ))
+        await session.commit()
+
+
+async def _db_append_event(task_id: str, seq: int, payload: str) -> None:
+    async with AsyncSessionLocal() as session:
+        session.add(PipelineEvent(task_id=task_id, seq=seq, payload=payload))
+        await session.commit()
+
+
+async def _db_finish_task(task_id: str, status: str, result: dict | None = None, error: str | None = None) -> None:
+    async with AsyncSessionLocal() as session:
+        task = await session.get(PipelineTask, task_id)
+        if task:
+            task.status = status
+            task.result = result
+            task.error  = error
+            await session.commit()
+
+
+async def _db_save_result(task_id: str, data: dict) -> None:
+    """Lưu kết quả pipeline đầy đủ vào research_results."""
+    async with AsyncSessionLocal() as session:
+        session.add(ResearchResult(
+            task_id=task_id,
+            business_name=data.get("business_name"),
+            competitors_clean=data.get("competitors_clean"),
+            competitors_scraped=data.get("competitors_scraped"),
+            competitor_analysis=data.get("competitor_analysis"),
+            tiktok_comments=data.get("tiktok_comments"),
+            final_report=data.get("final_report"),
+        ))
+        await session.commit()
+
+
+async def load_task_from_db(task_id: str) -> bool:
+    async with AsyncSessionLocal() as session:
+        task = await session.get(PipelineTask, task_id)
+        if not task:
+            return False
+
+        result = await session.execute(
+            select(PipelineEvent)
+            .where(PipelineEvent.task_id == task_id)
+            .order_by(PipelineEvent.seq)
+        )
+        events = result.scalars().all()
+
+        TASK_STORE[task_id] = {
+            "status": task.status,
+            "events": [e.payload for e in events],
+        }
+        return True
+
+
+# ── State factory ─────────────────────────────────────────────────
+
+def create_initial_state(hotel_dir: str, business_name: str, address: str, industry: str) -> HotelResearchState:
+    # FIX: chỉ giữ đúng fields có trong HotelResearchState TypedDict
     return {
         "business_name": business_name,
         "address": address,
         "industry": industry,
-
         "hotel_dir": hotel_dir,
         "screenshot_paths": [],
-        "ocr_raw_text": "",
         "competitors_clean": [],
         "competitors_with_website": [],
         "competitors_scraped": [],
         "competitor_analysis": "",
-        "social_sources": [],
-        "tiktok_html_path": "",
-        "tiktok_content": "",
-        "tiktok_comment_html_paths": [],
+        "tiktok_data": [],
         "tiktok_comments": [],
+        "social_sources": [],
         "final_report": "",
         "errors": [],
     }
 
 
-async def run_pipeline(
-    business_name: str,
-    address: str,
-    industry: str,
-) -> HotelResearchState:
-    
+def _make_config(business_name: str) -> dict:
+    return {"configurable": {"thread_id": f"hotel-research-{business_name}"}}
+
+
+# ── Đồng bộ ──────────────────────────────────────────────────────
+
+async def run_pipeline(business_name: str, address: str, industry: str) -> HotelResearchState:
     hotel_dir = "hotels"
     Path(hotel_dir).mkdir(parents=True, exist_ok=True)
-
     graph = build_graph()
+    state = create_initial_state(hotel_dir=hotel_dir, business_name=business_name, address=address, industry=industry)
+    config = _make_config(business_name)
+    return await graph.ainvoke(state, config=config)
 
-    return await graph.ainvoke(
-        create_initial_state(
-            hotel_dir=hotel_dir,
-            business_name=business_name,
-            address=address,
-            industry=industry,
-        )
-    )
 
+# ── Stream generator ─────────────────────────────────────────────
 
 async def run_pipeline_stream(
     business_name: str,
     address: str,
     industry: str,
 ) -> AsyncGenerator[str, None]:
+
     hotel_dir = "hotels"
     Path(hotel_dir).mkdir(parents=True, exist_ok=True)
 
-    state = create_initial_state(
-        hotel_dir=hotel_dir,
-        business_name=business_name,
-        address=address,
-        industry=industry,
-    )
-
+    state = create_initial_state(hotel_dir=hotel_dir, business_name=business_name, address=address, industry=industry)
     node_map = {name: (label, pct) for name, label, pct in NODE_META}
     graph = build_graph()
+    config = _make_config(business_name)
 
     def sse(payload: dict) -> str:
         return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
-    async for event in graph.astream(state, stream_mode="updates"):
+    async for event in graph.astream(state, config=config, stream_mode="updates"):
         for node_name, node_state in event.items():
             label, progress = node_map.get(node_name, (node_name, 0))
 
-            state = {**state, **node_state}
+            # FIX: guard None — sub-graph crash có thể trả node_state=None
+            if node_state and isinstance(node_state, dict):
+                state = {**state, **node_state}
 
-            summary = {}
-
-            if node_name == "ocr_images":
-                summary["chars"] = len(state.get("ocr_raw_text", ""))
-
-            elif node_name == "llm_clean_hotels":
+            summary: dict = {}
+            if node_name == "screenshots":
+                summary["screenshots"] = len(state.get("screenshot_paths", []))
+            elif node_name == "vision_extract":
                 summary["hotels_found"] = len(state.get("competitors_clean", []))
                 summary["sample"] = state.get("competitors_clean", [])[:3]
-
-            elif node_name == "find_websites":
-                summary["with_website"] = len([
-                    h
-                    for h in state.get("competitors_with_website", [])
-                    if h.get("website")
-                ])
-
-            elif node_name == "crawl_websites":
-                summary["crawled_ok"] = len([
-                    s
-                    for s in state.get("competitors_scraped", [])
-                    if s.get("success")
-                ])
-
-            elif node_name == "parse_tiktok_comments":
+            elif node_name == "competitor_branch":
+                summary["with_website"] = len([h for h in state.get("competitors_with_website", []) if h.get("website")])
+                summary["crawled_ok"] = len([s for s in state.get("competitors_scraped", []) if s.get("success")])
+                summary["analysis_chars"] = len(state.get("competitor_analysis", ""))
+            elif node_name == "social_branch":
                 summary["comments"] = len(state.get("tiktok_comments", []))
-
-            elif node_name == "final_strategy_report":
+                summary["social_sources"] = len(state.get("social_sources", []))
+            elif node_name == "final_report":
                 summary["report_chars"] = len(state.get("final_report", ""))
                 summary["errors"] = state.get("errors", [])
 
@@ -134,6 +188,8 @@ async def run_pipeline_stream(
         "data": {
             "business_name": state.get("business_name"),
             "address": state.get("address"),
+            "competitors_scraped": state.get("competitors_scraped", []),   # thêm
+            "tiktok_comments": state.get("tiktok_comments", []),           # thêm
             "industry": state.get("industry"),
             "competitors_clean": state.get("competitors_clean", []),
             "competitor_analysis": state.get("competitor_analysis", ""),
@@ -143,29 +199,43 @@ async def run_pipeline_stream(
     })
 
 
-# 🛠️ HÀM MỚI BỔ SUNG: Chạy ngầm hấp thụ data từ generator và lưu lại
-async def pipeline_worker_task(task_id: str, business_name: str, address: str, industry: str):
-    TASK_STORE[task_id] = {
-        "status": "running",
-        "events": []
-    }
+# ── Background worker ────────────────────────────────────────────
+
+async def pipeline_worker_task(task_id: str, business_name: str, address: str, industry: str) -> None:
+    # FIX: KHÔNG set RAM ở đây — router.py đã set trước khi add_task
+    # tránh race condition ghi đè events nếu UI kết nối cực nhanh
+
+    # Tạo DB row — await để đảm bảo tồn tại trước khi append events
+    await _db_create_task(task_id, business_name, address, industry)
+
+    seq = 0
     try:
         async for event_str in run_pipeline_stream(business_name, address, industry):
             TASK_STORE[task_id]["events"].append(event_str)
-            
-            # Nếu thấy flag kết thúc từ generator thì cập nhật status tổng
+            asyncio.create_task(_db_append_event(task_id, seq, event_str))
+            seq += 1
+
             if '"node": "FINISHED"' in event_str:
                 TASK_STORE[task_id]["status"] = "completed"
-                
+                try:
+                    result_data = json.loads(event_str.removeprefix("data: ").strip()).get("data", {})
+                except Exception:
+                    result_data = {}
+                # Lưu kết quả đầy đủ vào research_results + cập nhật pipeline_tasks
+                asyncio.create_task(_db_save_result(task_id, result_data))
+                asyncio.create_task(_db_finish_task(task_id, "completed", result=result_data))
+
     except Exception as e:
         TASK_STORE[task_id]["status"] = "failed"
-        # Bắn thêm 1 event lỗi giả lập theo cấu trúc SSE để UI React nhận diện được luôn
         error_payload = {
             "node": "ERROR",
             "label": "❌ Thất bại",
             "status": "failed",
             "progress": 0,
             "message": str(e),
-            "data": {}
+            "data": {},
         }
-        TASK_STORE[task_id]["events"].append(f"data: {json.dumps(error_payload, ensure_ascii=False)}\n\n")
+        error_str = f"data: {json.dumps(error_payload, ensure_ascii=False)}\n\n"
+        TASK_STORE[task_id]["events"].append(error_str)
+        asyncio.create_task(_db_append_event(task_id, seq, error_str))
+        asyncio.create_task(_db_finish_task(task_id, "failed", error=str(e)))
