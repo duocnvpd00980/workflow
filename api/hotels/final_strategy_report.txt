@@ -1,62 +1,80 @@
-## A. CUSTOMER PERSONAS
+## Báo Cáo Phân Tích Đối Thủ & Chiến Lược Marketing
 
-Dưới đây là 3 customer personas có thể đại diện cho khách hàng tiềm năng của Sontra Sea Hotel:
+### A. CUSTOMER PERSONAS
 
-- **Persona 1: Du khách trẻ (20-35 tuổi)**
-  - Tên: Linh
+Dựa trên phân tích thị trường và khách sạn Sontra Sea Hotel, dưới đây là 3 customer personas chính:
+
+* **Persona 1: Khách Du Lịch Ngân Sách**
+  - Độ tuổi: 18-35
   - Nghề nghiệp: Sinh viên, nhân viên văn phòng
-  - Mục tiêu: Tìm kiếm nơi lưu trú giá cả phải chăng, view đẹp, gần biển, và có thể tận hưởng thời gian thư giãn cùng bạn bè.
-  - Hành vi: Thích khám phá, đi du lịch thường xuyên, quan tâm đến giá cả và chất lượng.
-  - Ước tính ngân sách: 800.000 - 1.500.000 VND/phòng/đêm.
+  - Mức thu nhập: 5-15 triệu VND/tháng
+  - Mục tiêu: Tìm kiếm nơi lưu trú giá cả hợp lý, gần biển, có view đẹp
+  - Hành vi: Tìm kiếm thông tin trên mạng xã hội, đặt phòng trực tuyến
 
-- **Persona 2: Gia đình (35-50 tuổi)**
-  - Tên: Minh
+* **Persona 2: Cặp Đôi Trẻ**
+  - Độ tuổi: 25-40
   - Nghề nghiệp: Doanh nhân, nhân viên văn phòng
-  - Mục tiêu: Tìm kiếm nơi lưu trú thoải mái, an toàn cho gia đình, gần biển và có các tiện ích cho trẻ em.
-  - Hành vi: Ưu tiên sự tiện nghi, an toàn, và dịch vụ tốt.
-  - Ước tính ngân sách: 1.500.000 - 3.000.000 VND/phòng/đêm.
+  - Mức thu nhập: 15-30 triệu VND/tháng
+  - Mục tiêu: Tìm kiếm nơi lưu trú lãng mạn, có dịch vụ tốt, gần biển
+  - Hành vi: Tìm kiếm thông tin trên mạng xã hội, đặt phòng trực tuyến, đọc đánh giá
 
-- **Persona 3: Cặp đôi (25-40 tuổi)**
-  - Tên: Lan & Huy
+* **Persona 3: Gia Đình**
+  - Độ tuổi: 30-50
   - Nghề nghiệp: Doanh nhân, nhân viên văn phòng
-  - Mục tiêu: Tìm kiếm nơi lưu trú lãng mạn, view biển, và có thể tận hưởng không gian riêng tư.
-  - Hành vi: Thích trải nghiệm mới, quan tâm đến không gian và dịch vụ lãng mạn.
-  - Ước tính ngân sách: 2.000.000 - 4.000.000 VND/phòng/đêm.
+  - Mức thu nhập: 20-50 triệu VND/tháng
+  - Mục tiêu: Tìm kiếm nơi lưu trú thoải mái, có tiện ích cho trẻ em, gần biển
+  - Hành vi: Tìm kiếm thông tin trên mạng xã hội, đặt phòng trực tuyến, liên hệ trực tiếp với khách sạn
 
-## B. CHIẾN LƯỢC TIẾP CẬN TỪNG PERSONA
+### B. CHIẾN LƯỢC TIẾP CẬN TỪNG PERSONA
 
-- **Đối với Persona 1 (Linh):**
-  - Sử dụng TikTok và Instagram để tiếp cận, với nội dung ngắn gọn, hấp dẫn (video, hình ảnh về view biển, phòng ở, tiện ích).
-  - Cung cấp chương trình khuyến mãi, giảm giá cho đặt phòng trực tuyến.
+* **Persona 1: Khách Du Lịch Ngân Sách**
+  - Chiến lược: Cung cấp giá phòng hợp lý, khuyến mãi hấp dẫn, tăng cường quảng cáo trên mạng xã hội
+  - Kênh tiếp cận: TikTok, Facebook, Google Ads
 
-- **Đối với Persona 2 (Minh):**
-  - Tập trung vào website và Fanpage Facebook với thông tin chi tiết về tiện ích cho gia đình, dịch vụ và chương trình cho trẻ em.
-  - Cung cấp các gói dịch vụ gia đình, bao gồm ăn uống và hoạt động giải trí.
+* **Persona 2: Cặp Đôi Trẻ**
+  - Chiến lược: Cung cấp dịch vụ lãng mạn, view đẹp, tăng cường quảng cáo trên mạng xã hội
+  - Kênh tiếp cận: Instagram, Facebook, Pinterest
 
-- **Đối với Persona 3 (Lan & Huy):**
-  - Tạo nội dung lãng mạn, riêng tư trên các kênh truyền thông xã hội (hình ảnh phòng đôi, sunset view, dịch vụ đặc biệt cho ngày lễ).
-  - Cung cấp các chương trình khuyến mãi cho cặp đôi, dịch vụ lãng mạn.
+* **Persona 3: Gia Đình**
+  - Chiến lược: Cung cấp tiện ích cho trẻ em, dịch vụ gia đình, tăng cường quảng cáo trên mạng xã hội
+  - Kênh tiếp cận: Facebook, Google Ads, email marketing
 
-## C. CHIẾN DỊCH 30 NGÀY
+### C. CHIẾN DỊCH 30 NGÀY
 
-**Tuần 1: Tạo nhận thức**
+**Tuần 1: Chuẩn bị**
 
-- Ngày 1-3: Đăng bài trên TikTok và Instagram về Sontra Sea Hotel, bao gồm hình ảnh và video về view biển và phòng ở.
-- Ngày 4-7: Chia sẻ trải nghiệm của khách hàng trên các kênh truyền thông xã hội.
+* Tạo nội dung trên mạng xã hội (hình ảnh, video, bài viết)
+* Thiết lập quảng cáo trên mạng xã hội (TikTok, Facebook, Google Ads)
+* Gửi email marketing đến khách hàng tiềm năng
 
-**Tuần 2: Tăng tương tác**
+**Tuần 2: Triển khai**
 
-- Ngày 8-14: Tổ chức minigame trên Fanpage Facebook để tăng tương tác.
-- Ngày 10: Livestream trên TikTok về các tiện ích và dịch vụ của khách sạn.
+* Triển khai quảng cáo trên mạng xã hội
+* Tăng cường tương tác trên mạng xã hội (trả lời câu hỏi, bình luận)
+* Cung cấp khuyến mãi hấp dẫn cho khách hàng
 
-**Tuần 3: Khuyến mãi**
+**Tuần 3: Đánh giá**
 
-- Ngày 15-21: Cung cấp chương trình giảm giá 10% cho đặt phòng trực tuyến.
-- Ngày 18: Gửi email về chương trình khuyến mãi đặc biệt cho khách hàng tiềm năng.
+* Đánh giá hiệu quả của chiến dịch
+* Điều chỉnh quảng cáo và nội dung trên mạng xã hội
+* Tăng cường quảng cáo trên mạng xã hội
 
-**Tuần 4: Chốt sale**
+**Tuần 4: Kết thúc**
 
-- Ngày 22-28: Tổng hợp và chia sẻ đánh giá của khách hàng đã lưu trú.
-- Ngày 25: Thông báo về chương trình cuối cùng: giảm giá thêm 5% cho khách hàng đặt phòng trong tuần.
+* Kết thúc chiến dịch
+* Đánh giá hiệu quả của chiến dịch
+* Lập kế hoạch cho chiến dịch tiếp theo
 
-Chiến dịch này sẽ giúp tăng nhận thức về Sontra Sea Hotel, tăng tương tác với khách hàng tiềm năng, và cuối cùng là tăng doanh số đặt phòng.
+KPI:
+
+* Số lượng khách hàng mới: 100
+* Số lượng phòng được đặt: 50
+* Doanh thu: 500 triệu VND
+* Tương tác trên mạng xã hội: 1000 lượt thích, 500 lượt bình luận, 200 lượt chia sẻ
+
+Timeline:
+
+* Ngày 1-7: Chuẩn bị
+* Ngày 8-14: Triển khai
+* Ngày 15-21: Đánh giá
+* Ngày 22-30: Kết thúc và lập kế hoạch cho chiến dịch tiếp theo
