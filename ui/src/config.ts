@@ -8,8 +8,8 @@ console.log("Chế độ chạy hiện tại của Vite (dev hay build):", impor
 // - Nếu ĐANG DEV (npm run dev) -> Ép nhận localhost luôn, bất chấp các file .env khác.
 // - Nếu ĐANG BUILD (npm run build) -> Ưu tiên lấy biến trong file .env cấu hình deploy, nếu không có mới fallback.
 const API = import.meta.env.DEV 
-  ? "http://localhost:8000/api/v1" 
-  : (import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1");
+  ? "https://viable-superb-basilisk.ngrok-free.app/api/v1" 
+  : (import.meta.env.VITE_API_BASE_URL || "https://viable-superb-basilisk.ngrok-free.app/api/v1");
 
 // 3. Sử dụng biến gốc để phân tách các đường dẫn, dẹp sạch lặp code VITE_
 export const API_BASE_URL = `${API}/rag`;

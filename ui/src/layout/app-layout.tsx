@@ -60,6 +60,7 @@ const primaryNav: NavItem[] = [
   { label: "Tri thức", to: "/knowledge", icon: BrainCircuit },
   { label: "Brand", to: "/brand", icon: Palette },
   { label: "Kế hoạch", to: "/planner", icon: Zap },
+  { label: "Tra cứu", to: "/research", icon: Zap },
   
 ];
 

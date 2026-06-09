@@ -1,0 +1,52 @@
+**Báo cáo phân tích dữ liệu đối thủ**
+
+**1. PHÂN LOẠI ĐỐI THỦ (Direct / Indirect)**
+
+* Direct: Các khách sạn, resort, homestay ở khu vực Sơn Trà/Đà Nẵng có cùng phân khúc và đối tượng khách hàng tương tự Sontra Sea Hotel.
+* Indirect: Các khách sạn, resort, homestay ở khu vực khác hoặc có phân khúc khác.
+
+Các đối thủ trực tiếp (Direct) của Sontra Sea Hotel:
+
+* Wink Hotel Danang Riverside
+* Ania Beachside Hotel Da Nang
+* Le Sands Oceanfront Danang Hotel
+* Palmier Hotel Da Nang
+* Peninsula Hotel Danang
+
+**2. ĐỐI THỦ CHÍNH (Direct)**
+
+* **Wink Hotel Danang Riverside**
+ + Điểm mạnh: Vị trí đắc địa gần sông Hàn, thiết kế hiện đại, nhiều tiện ích.
+ + Điểm yếu: Giá cao, không gian hạn chế.
+ + Giá ước tính: 2.500.000 - 5.000.000 VND/phòng/đêm.
+ + Khách hàng mục tiêu: Du khách trẻ, cặp đôi, gia đình.
+* **Ania Beachside Hotel Da Nang**
+ + Điểm mạnh: Vị trí gần biển, phòng rộng rãi.
+ + Điểm yếu: Khai trương gần đây, chưa có nhiều đánh giá.
+ + Giá ước tính: 1.800.000 - 3.500.000 VND/phòng/đêm.
+ + Khách hàng mục tiêu: Gia đình, nhóm bạn.
+* **Le Sands Oceanfront Danang Hotel**
+ + Điểm mạnh: Vị trí đắc địa gần biển, phòng sang trọng.
+ + Điểm yếu: Giá cao, không gian hạn chế.
+ + Giá ước tính: 3.000.000 - 6.000.000 VND/phòng/đêm.
+ + Khách hàng mục tiêu: Cặp đôi, gia đình giàu có.
+* **Palmier Hotel Da Nang**
+ + Điểm mạnh: Thiết kế độc đáo, vị trí gần biển.
+ + Điểm yếu: Giá cao, không gian hạn chế.
+ + Giá ước tính: 2.000.000 - 4.000.000 VND/phòng/đêm.
+ + Khách hàng mục tiêu: Du khách trẻ, cặp đôi.
+* **Peninsula Hotel Danang**
+ + Điểm mạnh: Vị trí đắc địa gần biển, phòng sang trọng.
+ + Điểm yếu: Giá cao, không gian hạn chế.
+ + Giá ước tính: 4.000.000 - 8.000.000 VND/phòng/đêm.
+ + Khách hàng mục tiêu: Cặp đôi, gia đình giàu có.
+
+**3. CHIẾN LƯỢC ĐỀ XUẤT**
+
+Dưới đây là 3-5 hành động cụ thể cho Sontra Sea Hotel:
+
+* **Tăng cường quảng cáo trên mạng xã hội**: Tăng cường quảng cáo trên Facebook, Instagram để thu hút khách hàng trẻ.
+* **Cải thiện dịch vụ**: Cải thiện dịch vụ phòng, dịch vụ ăn uống để tăng mức độ hài lòng của khách hàng.
+* **Tổ chức sự kiện**: Tổ chức sự kiện, hoạt động giải trí để thu hút khách hàng và tăng cường trải nghiệm.
+* **Giảm giá và khuyến mãi**: Giảm giá và khuyến mãi để thu hút khách hàng trong mùa thấp điểm.
+* **Tăng cường hợp tác với các đại lý du lịch**: Tăng cường hợp tác với các đại lý du lịch để tăng cường số lượng khách hàng.

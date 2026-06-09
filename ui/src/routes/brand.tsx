@@ -420,7 +420,7 @@ export function ScreenBrandVoice() {
                 onClick={() => navigate({ search: (prev: any) => ({ ...prev, syncOpen: true }) } as any)}
               >
                 <Sparkles className="w-3.5 h-3.5 mr-1.5 text-indigo-500 fill-indigo-500/10" />
-                Khai phá từ tài liệu
+                Tài liệu
               </Button>
             </div>
           </div>

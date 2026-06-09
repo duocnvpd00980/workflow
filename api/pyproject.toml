@@ -41,6 +41,7 @@ dependencies = [
     "nodriver>=0.50.3",
     "beautifulsoup4>=4.14.3",
     "groq>=1.4.0",
+    "easyocr>=1.7.2",
 ]
 
 [dependency-groups]

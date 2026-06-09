@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ResearchRouteImport } from './routes/research'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
@@ -22,6 +23,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResearchRoute = ResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlannerRoute = PlannerRouteImport.update({
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/planner': typeof PlannerRoute
+  '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/planner': typeof PlannerRoute
+  '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/planner': typeof PlannerRoute
+  '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/knowledge'
     | '/planner'
+    | '/research'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/knowledge'
     | '/planner'
+    | '/research'
     | '/settings'
   id:
     | '__root__'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/knowledge'
     | '/planner'
+    | '/research'
     | '/settings'
   fileRoutesById: FileRoutesById
 }
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   IntegrationsRoute: typeof IntegrationsRoute
   KnowledgeRoute: typeof KnowledgeRoute
   PlannerRoute: typeof PlannerRoute
+  ResearchRoute: typeof ResearchRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -154,6 +167,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/research': {
+      id: '/research'
+      path: '/research'
+      fullPath: '/research'
+      preLoaderRoute: typeof ResearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/planner': {
@@ -224,6 +244,7 @@ const rootRouteChildren: RootRouteChildren = {
   IntegrationsRoute: IntegrationsRoute,
   KnowledgeRoute: KnowledgeRoute,
   PlannerRoute: PlannerRoute,
+  ResearchRoute: ResearchRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
