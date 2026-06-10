@@ -32,6 +32,8 @@ import { toast } from "sonner";
 import { createFileRoute } from "@tanstack/react-router";
 import { BASE } from "@/config";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { useNavigate } from "@tanstack/react-router";
+
 
 // ─── Types ────────────────────────────────────────────────
 interface DocOut {
@@ -78,7 +80,7 @@ interface PageDetail {
 // ─── Constants ────────────────────────────────────────────
 const DOC_TYPE_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   product_knowledge: {
-    label: "Kiến thức Sản phẩm",
+    label: "Sản phẩm & dịch vụ",
     color: "bg-blue-50 text-blue-600",
     icon: <Book size={14} />,
   },
@@ -87,21 +89,7 @@ const DOC_TYPE_META: Record<string, { label: string; color: string; icon: React.
     color: "bg-violet-50 text-violet-600",
     icon: <Sparkles size={14} />,
   },
-  brand_guideline: {
-    label: "Hướng dẫn Thương hiệu",
-    color: "bg-purple-50 text-purple-600",
-    icon: <Palette size={14} />,
-  },
-  competitor_analysis: {
-    label: "Phân tích Đối thủ",
-    color: "bg-orange-50 text-orange-600",
-    icon: <BarChart3 size={14} />,
-  },
-  web_page: {
-    label: "Trang Web",
-    color: "bg-emerald-50 text-emerald-600",
-    icon: <Globe size={14} />,
-  },
+
 };
 
 // ─── API ──────────────────────────────────────────────────
@@ -198,6 +186,7 @@ function BrandIdentityPanel({ pageId, onClose }: { pageId: number; onClose: () =
     queryFn: () => api.pageDetail(pageId),
   });
 
+
   const identity = data?.extracted?.identity;
   const brandPages = data?.extracted?.brand_pages ?? [];
   const wordCount = data?.extracted?.word_count;
@@ -205,12 +194,13 @@ function BrandIdentityPanel({ pageId, onClose }: { pageId: number; onClose: () =
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      {/* Backdrop nền tối mờ, click ra ngoài để đóng */}
-      <div 
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-300" 
-        onClick={onClose} 
+
+
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
+        onClick={onClose}
       />
-      
+
       {/* Khung nội dung mọc từ bên phải (Right Drawer) */}
       <div className="relative bg-white h-full w-full max-w-md md:max-w-lg shadow-2xl flex flex-col z-10 border-l border-slate-200 animate-in slide-in-from-right duration-300 ease-out">
         {/* Header */}
@@ -236,7 +226,7 @@ function BrandIdentityPanel({ pageId, onClose }: { pageId: number; onClose: () =
 
         {/* Content */}
         <div className="overflow-y-auto flex-1 px-5 py-5 space-y-5">
-         
+
 
           {isLoading && (
             <div className="space-y-3">
@@ -289,7 +279,7 @@ function BrandIdentityPanel({ pageId, onClose }: { pageId: number; onClose: () =
               </p>
               <div className="space-y-1">
                 {brandPages.map((u) => (
-                  <a 
+                  <a
                     key={u}
                     href={u}
                     target="_blank"
@@ -326,8 +316,8 @@ function Field({ label, value, highlight }: { label: string; value: string; high
 function TagField({ label, items, color }: { label: string; items: string[]; color: string }) {
   const colorMap: Record<string, string> = {
     violet: "bg-violet-50 text-violet-700 border-violet-100",
-    blue:   "bg-blue-50 text-blue-700 border-blue-100",
-    emerald:"bg-emerald-50 text-emerald-700 border-emerald-100",
+    blue: "bg-blue-50 text-blue-700 border-blue-100",
+    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
   };
   return (
     <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100">
@@ -351,12 +341,13 @@ export const Route = createFileRoute("/knowledge")({
 export default function KnowledgePage() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [brandPanelPageId, setBrandPanelPageId] = useState<number | null>(null);
   const [urlInput, setUrlInput] = useState("");
-  const [docType, setDocType] = useState<string>("product_knowledge");
+  const docType = "brand";
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
 
@@ -378,20 +369,11 @@ export default function KnowledgePage() {
     onSuccess: (data) => {
       toast.success(`"${data.title}" đã được ingest!`);
       qc.invalidateQueries({ queryKey: ["rag-docs"] });
-      setDocType("product_knowledge");
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const crawlMutation = useMutation({
-    mutationFn: (url: string) => api.crawl(url, docType),
-    onSuccess: (data) => {
-      toast.success(`Đã crawl: "${data.title}"`);
-      setUrlInput("");
-      qc.invalidateQueries({ queryKey: ["rag-docs"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+
 
   const crawlBrandMutation = useMutation({
     mutationFn: (url: string) => api.crawlBusiness(url),
@@ -423,7 +405,7 @@ export default function KnowledgePage() {
     },
   });
 
-  const isCrawling = crawlMutation.isPending || crawlBrandMutation.isPending;
+  const isCrawling = crawlBrandMutation.isPending;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -435,11 +417,7 @@ export default function KnowledgePage() {
   const handleCrawl = () => {
     const url = urlInput.trim();
     if (!url || !isUrl(url)) return;
-    if (docType === "brand") {
-      crawlBrandMutation.mutate(url);
-    } else {
-      crawlMutation.mutate(url);
-    }
+    crawlBrandMutation.mutate(url);  // Luôn dùng brand
   };
 
   const handleDocClick = async (doc: DocOut) => {
@@ -467,6 +445,27 @@ export default function KnowledgePage() {
 
   return (
     <div className="flex flex-col h-full bg-white">
+
+      <div className="flex items-center gap-1  sm:flex shrink-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate({ to: "/knowledge" })}
+          className="h-8 text-xs text-slate-600 hover:text-slate-900 gap-1"
+        >
+          <Sparkles size={13} />
+          <span>Thương hiệu</span>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate({ to: "/products" })}
+          className="h-8 text-xs text-slate-600 hover:text-slate-900 gap-1"
+        >
+          <Book size={13} />
+          <span>Sản phẩm & dịch vụ</span>
+        </Button>
+      </div>
       {/* ─── TOOLBAR ──────────────────────────────────────────── */}
       <div className="h-14 border-b border-slate-200 flex items-center gap-2 px-4 shrink-0 bg-white">
         <input
@@ -486,17 +485,9 @@ export default function KnowledgePage() {
           <span className="hidden sm:inline">Tải file</span>
         </Button>
 
-        <select
-          value={docType}
-          onChange={(e) => setDocType(e.target.value)}
-          className="h-8 px-2 text-xs border border-slate-200 rounded bg-slate-50 hidden sm:block text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        >
-          {Object.entries(DOC_TYPE_META).map(([key, meta]) => (
-            <option key={key} value={key}>{meta.label}</option>
-          ))}
-        </select>
 
-        <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+
+
 
         <div className="flex-1 hidden sm:flex items-start gap-2 min-w-0 max-w-sm">
           <div className="relative flex-1">
@@ -544,15 +535,7 @@ export default function KnowledgePage() {
 
       {/* ─── MOBILE TOOLBAR ───────────────────────────────────── */}
       <div className="sm:hidden flex flex-col gap-2 px-4 py-2 border-b border-slate-200 bg-white shrink-0">
-        <select
-          value={docType}
-          onChange={(e) => setDocType(e.target.value)}
-          className="h-8 px-2 text-xs border border-slate-200 rounded bg-slate-50 text-slate-700 focus:outline-none w-full"
-        >
-          {Object.entries(DOC_TYPE_META).map(([key, meta]) => (
-            <option key={key} value={key}>{meta.label}</option>
-          ))}
-        </select>
+
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Globe size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -611,7 +594,7 @@ export default function KnowledgePage() {
 
           {isLoading && (
             <div className="space-y-2">
-              {[1,2,3,4,5].map((i) => (
+              {[1, 2, 3, 4, 5].map((i) => (
                 <div key={i} className="h-16 bg-slate-100 rounded-lg animate-pulse" />
               ))}
             </div>
@@ -626,9 +609,8 @@ export default function KnowledgePage() {
                   <div
                     key={doc.id}
                     onClick={() => handleDocClick(doc)}
-                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
-                      selectedId === doc.id ? "bg-indigo-50/50" : "hover:bg-slate-50/50"
-                    }`}
+                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${selectedId === doc.id ? "bg-indigo-50/50" : "hover:bg-slate-50/50"
+                      }`}
                   >
                     <div className={`p-1.5 rounded shrink-0 ${meta.color}`}>{meta.icon}</div>
 

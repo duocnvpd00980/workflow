@@ -938,7 +938,7 @@ function Workspace({
                   className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl bg-stone-900 text-white text-xs font-semibold hover:bg-stone-800 active:bg-stone-700 disabled:opacity-50 transition"
                 >
                   {publishMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                  Đăng bài ngay
+                  Lưu vào kho
                 </button>
               )}
             </div>

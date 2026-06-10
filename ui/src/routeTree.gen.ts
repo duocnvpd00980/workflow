@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResearchRouteImport } from './routes/research'
+import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
@@ -28,6 +29,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ResearchRoute = ResearchRouteImport.update({
   id: '/research',
   path: '/research',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlannerRoute = PlannerRouteImport.update({
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/planner': typeof PlannerRoute
+  '/products': typeof ProductsRoute
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
 }
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/planner': typeof PlannerRoute
+  '/products': typeof ProductsRoute
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
 }
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/planner': typeof PlannerRoute
+  '/products': typeof ProductsRoute
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
 }
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/knowledge'
     | '/planner'
+    | '/products'
     | '/research'
     | '/settings'
   fileRoutesByTo: FileRoutesByTo
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/knowledge'
     | '/planner'
+    | '/products'
     | '/research'
     | '/settings'
   id:
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/integrations'
     | '/knowledge'
     | '/planner'
+    | '/products'
     | '/research'
     | '/settings'
   fileRoutesById: FileRoutesById
@@ -156,6 +168,7 @@ export interface RootRouteChildren {
   IntegrationsRoute: typeof IntegrationsRoute
   KnowledgeRoute: typeof KnowledgeRoute
   PlannerRoute: typeof PlannerRoute
+  ProductsRoute: typeof ProductsRoute
   ResearchRoute: typeof ResearchRoute
   SettingsRoute: typeof SettingsRoute
 }
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/research'
       fullPath: '/research'
       preLoaderRoute: typeof ResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/planner': {
@@ -244,6 +264,7 @@ const rootRouteChildren: RootRouteChildren = {
   IntegrationsRoute: IntegrationsRoute,
   KnowledgeRoute: KnowledgeRoute,
   PlannerRoute: PlannerRoute,
+  ProductsRoute: ProductsRoute,
   ResearchRoute: ResearchRoute,
   SettingsRoute: SettingsRoute,
 }
