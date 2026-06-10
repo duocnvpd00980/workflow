@@ -12,7 +12,7 @@ class WorkflowService:
     def create_session(self) -> str:
         return str(uuid.uuid4())[:8]
 
-    async def start(self, request: str, brand_id: str, auto_mode: bool = False) -> dict: # <── THÊM THAM SỐ
+    async def start(self, request: str, brand_id: str, auto_mode: bool = False) -> dict:
         thread_id = f"wf-{uuid.uuid4().hex[:6]}"
         config = {"configurable": {"thread_id": thread_id}}
         session_id = self.create_session()
@@ -32,23 +32,65 @@ class WorkflowService:
             "error": None
         }
 
-        async for event in graph.astream(initial_state, config=config):
-            if "__interrupt__" in event:
-                if auto_mode:
-                    status = "running"
-                    result_auto = await graph.ainvoke(
-                        Command(resume={"action": "approve"}),
-                        config=config
-                    )
-                    draft = result_auto.get("draft")
-                    usage = result_auto.get("usage", {})
-                    status = "completed" if result_auto.get("publish_status") == "published" else "paused"
+        # FIX: Lưu DB ngay trước khi chạy graph
+        async with AsyncSessionLocal() as db:
+            session = WorkflowSession(
+                id=session_id,
+                thread_id=thread_id,
+                request=request,
+                status="running",
+                draft=None,
+                usage={},
+                publish_status=None,
+                approved=0,
+                error=None
+            )
+            db.add(session)
+            await db.commit()
+
+        try:
+            async for event in graph.astream(initial_state, config=config):
+                if "__interrupt__" in event:
+                    if auto_mode:
+                        status = "running"
+                        result_auto = await graph.ainvoke(
+                            Command(resume={"action": "approve"}),
+                            config=config
+                        )
+                        draft = result_auto.get("draft")
+                        usage = result_auto.get("usage", {})
+                        status = "completed" if result_auto.get("publish_status") == "published" else "paused"
+                        break
+
+                    status = "paused"
+                    data = event["__interrupt__"][0].value
+                    draft, usage = data["draft"], data["usage"]
                     break
-                
-                status = "paused"
-                data = event["__interrupt__"][0].value
-                draft, usage = data["draft"], data["usage"]
-                break
+
+        except Exception as e:
+            status = "error"
+            error_msg = str(e)[:50]
+            # Update DB với error
+            async with AsyncSessionLocal() as db:
+                stmt = select(WorkflowSession).filter_by(id=session_id)
+                result = await db.execute(stmt)
+                s = result.scalars().first()
+                if s:
+                    s.status = "error"
+                    s.error = error_msg
+                    await db.commit()
+            raise
+
+        # Update DB sau khi chạy xong
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorkflowSession).filter_by(id=session_id)
+            result = await db.execute(stmt)
+            s = result.scalars().first()
+            if s:
+                s.status = status
+                s.draft = draft
+                s.usage = usage
+                await db.commit()
 
         return {"session_id": session_id, "status": status, "draft": draft, "usage": usage}
 
@@ -84,7 +126,8 @@ class WorkflowService:
             if action == "edit" and content:
                 resume_cmd["content"] = content
 
-            result_graph = graph.invoke(Command(resume=resume_cmd), config=config)
+            # FIX: Dùng await graph.ainvoke (async)
+            result_graph = await graph.ainvoke(Command(resume=resume_cmd), config=config)
 
             # Lưu version history (cho Màn 4 Diff Review)
             current_draft = result_graph.get("draft")

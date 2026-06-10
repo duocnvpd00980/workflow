@@ -1,80 +1,58 @@
-## Báo Cáo Phân Tích Đối Thủ & Chiến Lược Marketing
+**A. CUSTOMER PERSONAS**
 
-### A. CUSTOMER PERSONAS
+Dựa trên phân tích dữ liệu và thị trường, tôi xây dựng các customer personas sau:
 
-Dựa trên phân tích thị trường và khách sạn Sontra Sea Hotel, dưới đây là 3 customer personas chính:
+* **Persona 1: Khách du lịch trẻ (20-30 tuổi)**
+ + Tên: Linh
+ + Độ tuổi: 25
+ + Giới tính: Nữ
+ + Nghề nghiệp: Nhân viên văn phòng
+ + Mức thu nhập: 15 triệu đồng/tháng
+ + Sở thích: Du lịch, khám phá, ăn uống, chụp ảnh
+ + Mục tiêu: Tìm kiếm nơi lưu trú giá cả phải chăng, tiện nghi, gần biển
+* **Persona 2: Khách du lịch gia đình (35-50 tuổi)**
+ + Tên: Huy
+ + Độ tuổi: 40
+ + Giới tính: Nam
+ + Nghề nghiệp: Doanh nhân
+ + Mức thu nhập: 30 triệu đồng/tháng
+ + Sở thích: Du lịch, nghỉ dưỡng, tham gia hoạt động ngoài trời
+ + Mục tiêu: Tìm kiếm nơi lưu trú thoải mái, an toàn, có tiện ích cho gia đình
+* **Persona 3: Khách doanh nhân (30-50 tuổi)**
+ + Tên: Anh
+ + Độ tuổi: 35
+ + Giới tính: Nam
+ + Nghề nghiệp: Giám đốc
+ + Mức thu nhập: 50 triệu đồng/tháng
+ + Sở thích: Du lịch, kinh doanh, mạng lưới
+ + Mục tiêu: Tìm kiếm nơi lưu trú tiện nghi, có dịch vụ tốt, gần trung tâm thành phố
 
-* **Persona 1: Khách Du Lịch Ngân Sách**
-  - Độ tuổi: 18-35
-  - Nghề nghiệp: Sinh viên, nhân viên văn phòng
-  - Mức thu nhập: 5-15 triệu VND/tháng
-  - Mục tiêu: Tìm kiếm nơi lưu trú giá cả hợp lý, gần biển, có view đẹp
-  - Hành vi: Tìm kiếm thông tin trên mạng xã hội, đặt phòng trực tuyến
+**B. CHIẾN LƯỢC TIẾP CẬN TỪNG PERSONA**
 
-* **Persona 2: Cặp Đôi Trẻ**
-  - Độ tuổi: 25-40
-  - Nghề nghiệp: Doanh nhân, nhân viên văn phòng
-  - Mức thu nhập: 15-30 triệu VND/tháng
-  - Mục tiêu: Tìm kiếm nơi lưu trú lãng mạn, có dịch vụ tốt, gần biển
-  - Hành vi: Tìm kiếm thông tin trên mạng xã hội, đặt phòng trực tuyến, đọc đánh giá
+* **Persona 1: Khách du lịch trẻ**
+ + Kênh tiếp cận: TikTok, Instagram, Facebook
+ + Nội dung: Hình ảnh, video về khách sạn, biển Sơn Trà, hoạt động du lịch
+ + Ưu đãi: Giảm giá phòng, tặng kèm dịch vụ
+* **Persona 2: Khách du lịch gia đình**
+ + Kênh tiếp cận: Facebook, Google Ads, Email
+ + Nội dung: Thông tin về tiện ích, dịch vụ cho gia đình, hình ảnh phòng
+ + Ưu đãi: Giảm giá phòng, tặng kèm dịch vụ cho trẻ em
+* **Persona 3: Khách doanh nhân**
+ + Kênh tiếp cận: LinkedIn, Email, Phone
+ + Nội dung: Thông tin về dịch vụ, tiện ích cho doanh nhân, hình ảnh phòng
+ + Ưu đãi: Giảm giá phòng, tặng kèm dịch vụ cho doanh nhân
 
-* **Persona 3: Gia Đình**
-  - Độ tuổi: 30-50
-  - Nghề nghiệp: Doanh nhân, nhân viên văn phòng
-  - Mức thu nhập: 20-50 triệu VND/tháng
-  - Mục tiêu: Tìm kiếm nơi lưu trú thoải mái, có tiện ích cho trẻ em, gần biển
-  - Hành vi: Tìm kiếm thông tin trên mạng xã hội, đặt phòng trực tuyến, liên hệ trực tiếp với khách sạn
+**C. CHIẾN DỊCH 30 NGÀY**
 
-### B. CHIẾN LƯỢC TIẾP CẬN TỪNG PERSONA
-
-* **Persona 1: Khách Du Lịch Ngân Sách**
-  - Chiến lược: Cung cấp giá phòng hợp lý, khuyến mãi hấp dẫn, tăng cường quảng cáo trên mạng xã hội
-  - Kênh tiếp cận: TikTok, Facebook, Google Ads
-
-* **Persona 2: Cặp Đôi Trẻ**
-  - Chiến lược: Cung cấp dịch vụ lãng mạn, view đẹp, tăng cường quảng cáo trên mạng xã hội
-  - Kênh tiếp cận: Instagram, Facebook, Pinterest
-
-* **Persona 3: Gia Đình**
-  - Chiến lược: Cung cấp tiện ích cho trẻ em, dịch vụ gia đình, tăng cường quảng cáo trên mạng xã hội
-  - Kênh tiếp cận: Facebook, Google Ads, email marketing
-
-### C. CHIẾN DỊCH 30 NGÀY
-
-**Tuần 1: Chuẩn bị**
-
-* Tạo nội dung trên mạng xã hội (hình ảnh, video, bài viết)
-* Thiết lập quảng cáo trên mạng xã hội (TikTok, Facebook, Google Ads)
-* Gửi email marketing đến khách hàng tiềm năng
-
-**Tuần 2: Triển khai**
-
-* Triển khai quảng cáo trên mạng xã hội
-* Tăng cường tương tác trên mạng xã hội (trả lời câu hỏi, bình luận)
-* Cung cấp khuyến mãi hấp dẫn cho khách hàng
-
-**Tuần 3: Đánh giá**
-
-* Đánh giá hiệu quả của chiến dịch
-* Điều chỉnh quảng cáo và nội dung trên mạng xã hội
-* Tăng cường quảng cáo trên mạng xã hội
-
-**Tuần 4: Kết thúc**
-
-* Kết thúc chiến dịch
-* Đánh giá hiệu quả của chiến dịch
-* Lập kế hoạch cho chiến dịch tiếp theo
-
-KPI:
-
-* Số lượng khách hàng mới: 100
-* Số lượng phòng được đặt: 50
-* Doanh thu: 500 triệu VND
-* Tương tác trên mạng xã hội: 1000 lượt thích, 500 lượt bình luận, 200 lượt chia sẻ
-
-Timeline:
-
-* Ngày 1-7: Chuẩn bị
-* Ngày 8-14: Triển khai
-* Ngày 15-21: Đánh giá
-* Ngày 22-30: Kết thúc và lập kế hoạch cho chiến dịch tiếp theo
+* **Tuần 1: Tạo nhận thức về thương hiệu**
+ + Ngày 1-3: Tạo nội dung trên TikTok, Instagram, Facebook
+ + Ngày 4-7: Chạy quảng cáo trên Google Ads, Facebook
+* **Tuần 2: Tăng cường tương tác**
+ + Ngày 8-14: Tổ chức cuộc thi trên TikTok, Instagram
+ + Ngày 15-17: Tương tác với khách hàng trên Facebook, Email
+* **Tuần 3: Ưu đãi và khuyến mãi**
+ + Ngày 18-24: Giảm giá phòng, tặng kèm dịch vụ
+ + Ngày 25-27: Gửi email về ưu đãi, khuyến mãi
+* **Tuần 4: Đánh giá và cải thiện**
+ + Ngày 28-30: Đánh giá kết quả chiến dịch
+ + Ngày 31: Cải thiện và điều chỉnh chiến dịch cho tương lai

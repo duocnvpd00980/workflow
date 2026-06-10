@@ -7,9 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.chat.router import router as chat_router
 from app.rag.router import router as rag_router
+from app.rag.image_router import router as image_router
 from app.marketing.router import router as marketing_router
 from app.brand.router import router as brand_router
 from app.research.router import router as research_router
+from app.rag.hotel_router import router as hotel_router
 
 from app.db import init_db
 
@@ -38,7 +40,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://viable-superb-basilisk.ngrok-free.app"],
+    allow_origins=["http://localhost:5173", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +51,8 @@ app.include_router(rag_router, prefix="/api/v1")
 app.include_router(marketing_router, prefix="/api/v1")
 app.include_router(brand_router, prefix="/api/v1")
 app.include_router(research_router, prefix="/api/v1")
+app.include_router(image_router, prefix="/api/v1")
+app.include_router(hotel_router, prefix="/api/v1")
 
 @app.get("/metrics/system", tags=["Monitoring"])
 def system_metrics():

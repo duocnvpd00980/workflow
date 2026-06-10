@@ -1,137 +1,119 @@
 [
   {
     "name": "Dưới đây là danh sách các khách sạn, resort, homestay ở khu vực Sơn Trà/Đà Nẵng:",
-    "website": "https://sontraseahotel.com/sontra-sea-hotel-da-nang/",
+    "website": "https://sidiningdanang.com/vi/resort-sang-trong-da-nang/",
     "search_results": [
-      "https://sontraseahotel.com/sontra-sea-hotel-da-nang/",
-      "https://2trip.vn/toplist/resort-da-nang",
-      "https://queendananghotel.vn/khach-san-trung-tam-da-nang-co-be-boi/"
+      "https://www.booking.com/district/vn/danang/sontrapenisula.vi.html",
+      "https://sidiningdanang.com/vi/resort-sang-trong-da-nang/",
+      "https://www.skyscanner.com.vn/khach-san/viet-nam/đa-nang-hotels/near-son-tra/pl-206568685"
     ]
   },
   {
-    "name": "1. UrbanR Danang Beach",
-    "website": "https://rosamiahotel.com/",
+    "name": "1. Anstay Homestay",
+    "website": "https://ca.trip.com/hotels/halong-bay-hotel-detail-120219657/a-la-carte-ha-long-bay-managed-by-anstay/",
     "search_results": [
-      "https://rosamiahotel.com/",
-      "https://blog.mytour.vn/bai-viet/melia-resort-da-nang-co-gi-ngot-ngao-ma-ai-den-cung-say.html",
-      "https://nestahotel.com.vn/blog/lich-trinh-du-lich-da-nang-3-ngay-2-dem/"
+      "https://www.agoda.com/anstay-homestay-apartment/hotel/da-n-ng-vn.html",
+      "https://ca.trip.com/hotels/halong-bay-hotel-detail-120219657/a-la-carte-ha-long-bay-managed-by-anstay/",
+      "https://www.booking.com/pets/city/vn/danang.en-gb.html"
     ]
   },
   {
-    "name": "2. Seaflow Staycation",
-    "website": "https://www.tiket.com/id-id/hotel/vietnam/seaflow-staycation-901001769124992117",
+    "name": "2. Bluesun Danang Beach Hotel",
+    "website": "https://bluesunhotel.com.vn/",
     "search_results": [
-      "https://www.tiket.com/id-id/hotel/vietnam/seaflow-staycation-901001769124992117",
-      "https://nestahotel.com.vn/blog/lich-trinh-du-lich-da-nang-3-ngay-2-dem/",
-      "https://www.youtube.com/watch?v=m0nNBXEbg8U"
+      "https://bluesunhotel.com.vn/",
+      "https://bluesundanang1danang.vn-hotel.com/en/",
+      "https://www.booking.com/hotel/vn/bluesun.vi.html"
     ]
   },
   {
-    "name": "3. Saha Casa Boutique Hotel Da Nang",
-    "website": "https://sahacasaboutique.com/",
+    "name": "3. Four Points by Sheraton",
+    "website": "https://www.fourpointsdanang.com.vn/",
     "search_results": [
-      "https://sahacasaboutique.com/",
-      "https://sahacasaboutique.com/vi/",
-      "https://www.booking.com/hotel/vn/saha-casa-boutique-da-nang.html"
+      "https://www.fourpointsdanang.com.vn/",
+      "https://fourpointsdanang.hoteldanang.net/en/",
+      "https://bana.danang.gov.vn/en/web/dng/w/four-points-by-sheraton-danang"
     ]
   },
   {
-    "name": "4. The HEM Hotel and Apartment",
-    "website": "https://www.facebook.com/thehemdn/",
+    "name": "4. InterContinental",
+    "website": "https://en.wikipedia.org/wiki/Vietnam_Football_Federation",
     "search_results": [
-      "https://www.facebook.com/thehemdn/",
-      "https://www.booking.com/hotel/vn/the-hem-apartment-amp.vi.html",
-      "https://www.booking.com/hotel/vn/the-hem-apartment-amp.html"
+      "https://en.wikipedia.org/wiki/Vietnam_Football_Federation",
+      "https://en.wikipedia.org/wiki/Miss_Vietnam",
+      "https://www.tripadvisor.com/Restaurant_Review-g298085-d33026993-Reviews-Outta_Da_Blue_Da_N_ng_Danang_Specialty_Coffee_Shop-Da_Nang.html"
     ]
   },
   {
-    "name": "5. Hotel Chavana Da Nana",
-    "website": "https://jazz.hoteldanang.net/vi/",
+    "name": "5. Lotus",
+    "website": "https://en.wikipedia.org/wiki/Vietnam_Film_Festival",
     "search_results": [
-      "https://www.booking.com/hotel/vn/hotel-chavana-da-nang.en-gb.html",
-      "https://jazz.hoteldanang.net/vi/",
-      "https://www.tripadvisor.com/Hotel_Review-g28132641-d33302604-Reviews-Hotel_Chavana-Man_Thai_Son_Tra_Peninsula_Da_Nang.html"
+      "https://en.wikipedia.org/wiki/Vietnam_Film_Festival",
+      "https://en.wikipedia.org/wiki/Hoian",
+      "https://en.wikipedia.org/wiki/Quang_Nam"
     ]
   },
   {
-    "name": "6. Danang Elites Residence",
-    "website": "https://noburesidences.vn/",
+    "name": "6. The Anam Danang",
+    "website": null,
     "search_results": [
-      "https://www.booking.com/hotel/vn/elites.html",
-      "https://noburesidences.vn/",
-      "https://vn.trip.com/hotels/da-nang-hotel-detail-120387298/elites-hotel/"
+      "https://www.tripadvisor.com.sg/Tourism-g293921-Vietnam-Vacations.html",
+      "https://www.tripadvisor.co.nz/Tourism-g293921-Vietnam-Vacations.html",
+      "https://www.tripadvisor.ie/Tourism-g293921-Vietnam-Vacations.html"
     ]
   },
   {
-    "name": "7. Mella Hotels & Resorts",
-    "website": "https://www.jumeirah.com/",
+    "name": "(không có trong dữ liệu gốc, nếu có thêm tên khách sạn trong dữ liệu gốc thì sẽ được thêm vào)",
+    "website": "https://www.studocu.vn/vn/document/hoc-vien-ngan-hang/he-quan-tri-co-so-du-lieu-dbms/he-quan-tri-co-so-du-lieu-dat-phong-khach-san/88209590",
     "search_results": [
-      "https://www.jumeirah.com/",
-      "https://charmington.org/aria-da-nang.html",
-      "https://www.lottehotel.com/global/en"
+      "https://www.studocu.vn/vn/document/hoc-vien-ngan-hang/he-quan-tri-co-so-du-lieu-dbms/he-quan-tri-co-so-du-lieu-dat-phong-khach-san/88209590",
+      "https://developers.google.com/hotels/hotel-prices/structured-data/hotel-price-structured-data?hl=vi",
+      "https://www.studocu.vn/vn/document/truong-dai-hoc-kinh-te-dai-hoc-da-nang/quan-tri-co-so-du-lieu/quan-ly-khach-san-tao-va-cap-nhat-co-so-du-lieu-ddl-dml/125244931"
     ]
   },
   {
-    "name": "8. THE GRACE An Thuong Hotel",
-    "website": "https://rosamiahotel.com/",
+    "name": "Sau khi xem xét dữ liệu gốc, tôi có thể thêm một số khách sạn khác:",
+    "website": "https://www.klook.com/vi/blog/khach-san-da-nang-gan-bien/",
     "search_results": [
-      "https://www.booking.com/hotel/vn/the-grace-an-thuong-amp-apartment.en-gb.html",
-      "https://rosamiahotel.com/",
-      "https://www.vietnamdrive.com/en/an-thuong/"
+      "https://www.klook.com/vi/blog/khach-san-da-nang-gan-bien/",
+      "https://www.abay.vn/tin-tuc/du-lich-da-nang-nen-book-khach-san-gan-bien-hay-o-trung-tam.aspx",
+      "https://khachsan.chudu24.com/t.da-nang.html"
     ]
   },
   {
-    "name": "9. F Resort Da Nang",
-    "website": "https://furamavietnam.com/",
+    "name": "1. Anstay Homestay",
+    "website": "https://www.facebook.com/mydearjunnecca/posts/touchdown-da-nang-️-first-things-first-after-arriving-at-da-nang-international-a/914750224786438/",
     "search_results": [
-      "https://furamavietnam.com/",
-      "https://mikazuki.com.vn/",
-      "https://www.marriott.com/en-us/hotels/dadmr-danang-marriott-resort-and-spa/overview/"
+      "https://www.agoda.com/anstay-homestay-apartment/hotel/da-n-ng-vn.html",
+      "https://www.facebook.com/mydearjunnecca/posts/touchdown-da-nang-️-first-things-first-after-arriving-at-da-nang-international-a/914750224786438/",
+      "https://www.facebook.com/groups/vietnamtravelguideofficial/posts/1281475190834675/"
     ]
   },
   {
-    "name": "10. Coastal Residence",
-    "website": "https://www.facebook.com/koiresortdanang/",
+    "name": "2. Bluesun Danang Beach Hotel",
+    "website": "https://bluesundanangbeach.hoteldanang.net/en/",
     "search_results": [
-      "https://www.facebook.com/koiresortdanang/",
-      "https://sunurbancityhanam.vn/sun-costa-residence/",
-      "https://suncostaresidences.com.vn/"
+      "https://bluesundanangbeach.hoteldanang.net/en/",
+      "https://bluesun.danang-hotels.com/en/",
+      "https://www.agoda.com/bluesun-hotel/hotel/da-nang-vn.html"
     ]
   },
   {
-    "name": "11. Hotel Del Luna Boutique",
-    "website": "https://del-luna.danang-hotels.com/",
+    "name": "3. Lotus",
+    "website": "https://lotus.goldenlotushotel.vn/",
     "search_results": [
-      "https://del-luna.danang-hotels.com/",
-      "https://www.trivago.com.my/en-MY/oar/hotel-del-luna-boutique-da-nang?search=100-25233542",
-      "https://www.agoda.com/ru-ru/hotel-del-luna/hotel/da-nang-vn.html"
+      "https://lotus.goldenlotushotel.vn/",
+      "https://royallotusdanang.com/",
+      "https://danangfantasticity.com/en/royal-lotus-hotel-danang"
     ]
   },
   {
-    "name": "12. M Hotel Danang",
-    "website": "https://grandtouranehotel.com/en/news-view-top-5--five-star-hotels-in-da-nang-for-family-on-vietnam-national-day/",
+    "name": "Có 3 tên khách sạn trong dữ liệu gốc.",
+    "website": null,
     "search_results": [
-      "https://www.tripadvisor.com/Hotel_Review-g298085-d1575735-Reviews-One_Opera_Danang_Hotel-Da_Nang.html",
-      "https://www.tripadvisor.com/Hotel_Review-g298085-d8544487-Reviews-Avatar_Hotel_Da_Nang-Da_Nang.html",
-      "https://grandtouranehotel.com/en/news-view-top-5--five-star-hotels-in-da-nang-for-family-on-vietnam-national-day/"
-    ]
-  },
-  {
-    "name": "13. The Sail Hotel",
-    "website": "https://www.thesailhotel.vn/en/booking/",
-    "search_results": [
-      "https://www.thesailhotel.vn/en/booking/",
-      "https://www.facebook.com/TheSailHotelDanang/",
-      "https://locthien.vn/linh-vuc-khach-san/"
-    ]
-  },
-  {
-    "name": "14. Misa Hotel & Apartment",
-    "website": "https://es.trip.com/hotels/da-nang-hotel-detail-57137067/misa-hotel-apartment/",
-    "search_results": [
-      "https://es.trip.com/hotels/da-nang-hotel-detail-57137067/misa-hotel-apartment/",
-      "https://t.me/s/DaNangRentAFlat",
-      "https://disantrangan.vn/khach-san-da-nang-gan-bien"
+      "https://www.expedia.com.vn/All-Da-Nang-Hotels.d974.Huong-dan-du-lich-Thanh-pho-Tat-ca-khach-san",
+      "https://www.booking.com/threestars/city/vn/danang.html",
+      "https://www.tripadvisor.com/Hotels-g298085-Da_Nang-Hotels.html"
     ]
   }
 ]

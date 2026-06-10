@@ -27,7 +27,11 @@ NODE_META = [
 # ── Helpers DB ───────────────────────────────────────────────────
 
 async def _db_create_task(task_id: str, business_name: str, address: str, industry: str) -> None:
+    """Tạo task mới trong DB. Nếu đã tồn tại thì bỏ qua (idempotent)."""
     async with AsyncSessionLocal() as session:
+        existing = await session.get(PipelineTask, task_id)
+        if existing:
+            return  # Đã tồn tại, không tạo lại
         session.add(PipelineTask(
             task_id=task_id,
             business_name=business_name,
@@ -92,7 +96,6 @@ async def load_task_from_db(task_id: str) -> bool:
 # ── State factory ─────────────────────────────────────────────────
 
 def create_initial_state(hotel_dir: str, business_name: str, address: str, industry: str) -> HotelResearchState:
-    # FIX: chỉ giữ đúng fields có trong HotelResearchState TypedDict
     return {
         "business_name": business_name,
         "address": address,
@@ -149,7 +152,6 @@ async def run_pipeline_stream(
         for node_name, node_state in event.items():
             label, progress = node_map.get(node_name, (node_name, 0))
 
-            # FIX: guard None — sub-graph crash có thể trả node_state=None
             if node_state and isinstance(node_state, dict):
                 state = {**state, **node_state}
 
@@ -188,8 +190,8 @@ async def run_pipeline_stream(
         "data": {
             "business_name": state.get("business_name"),
             "address": state.get("address"),
-            "competitors_scraped": state.get("competitors_scraped", []),   # thêm
-            "tiktok_comments": state.get("tiktok_comments", []),           # thêm
+            "competitors_scraped": state.get("competitors_scraped", []),
+            "tiktok_comments": state.get("tiktok_comments", []),
             "industry": state.get("industry"),
             "competitors_clean": state.get("competitors_clean", []),
             "competitor_analysis": state.get("competitor_analysis", ""),
@@ -202,10 +204,8 @@ async def run_pipeline_stream(
 # ── Background worker ────────────────────────────────────────────
 
 async def pipeline_worker_task(task_id: str, business_name: str, address: str, industry: str) -> None:
-    # FIX: KHÔNG set RAM ở đây — router.py đã set trước khi add_task
-    # tránh race condition ghi đè events nếu UI kết nối cực nhanh
-
-    # Tạo DB row — await để đảm bảo tồn tại trước khi append events
+    # FIX: KHÔNG gọi _db_create_task ở đây — router đã tạo row rồi
+    # Chỉ cần đảm bảo row tồn tại (trường hợp server restart)
     await _db_create_task(task_id, business_name, address, industry)
 
     seq = 0
@@ -221,7 +221,6 @@ async def pipeline_worker_task(task_id: str, business_name: str, address: str, i
                     result_data = json.loads(event_str.removeprefix("data: ").strip()).get("data", {})
                 except Exception:
                     result_data = {}
-                # Lưu kết quả đầy đủ vào research_results + cập nhật pipeline_tasks
                 asyncio.create_task(_db_save_result(task_id, result_data))
                 asyncio.create_task(_db_finish_task(task_id, "completed", result=result_data))
 

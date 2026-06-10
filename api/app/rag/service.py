@@ -26,7 +26,7 @@ log = logging.getLogger("rag")
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-PERSIST_DIR = Path("./rag_storage")
+PERSIST_DIR = Path(__file__).parent.parent.parent / "rag_storage"
 EMBED_MODEL = "BAAI/bge-m3"
 RERANK_MODEL = "BAAI/bge-reranker-v2-m3"
 DIM = 1024
@@ -522,3 +522,182 @@ class RAG:
     
 
 
+
+
+
+# ── Image Embedder ────────────────────────────────────────────────────────────
+
+IMAGE_EMBED_MODEL = "google/siglip-base-patch16-224"
+IMAGE_DIM = 768
+IMAGE_PERSIST_DIR = Path(__file__).parent.parent.parent / "rag_storage" / "image"
+
+class ImageEmbedder:
+    def __init__(self):
+        self._processor = None
+        self._model = None
+
+    def _load(self):
+        if self._model is not None:
+            return
+        from transformers import AutoProcessor, AutoModel
+        log.info(f"[image_embed] loading {IMAGE_EMBED_MODEL}...")
+        self._processor = AutoProcessor.from_pretrained(IMAGE_EMBED_MODEL)
+        self._model = AutoModel.from_pretrained(IMAGE_EMBED_MODEL)
+        self._model.eval()
+        log.info("[image_embed] loaded")
+
+    async def encode(self, images: List["Image.Image"]) -> np.ndarray:
+        self._load()
+        loop = asyncio.get_running_loop()
+
+        def _run():
+            inputs = self._processor(images=images, return_tensors="pt")
+            with torch.no_grad():
+                outputs = self._model.vision_model(**inputs)
+                emb = outputs.pooler_output
+            emb = emb / emb.norm(dim=-1, keepdim=True)
+            return emb.cpu().numpy()
+
+        return await loop.run_in_executor(None, _run)
+
+    async def encode_text(self, texts: List[str]) -> np.ndarray:
+        self._load()
+        loop = asyncio.get_running_loop()
+
+        def _run():
+            inputs = self._processor(text=texts, return_tensors="pt", padding=True, truncation=True)
+            with torch.no_grad():
+                outputs = self._model.text_model(**inputs)
+                emb = outputs.pooler_output
+            emb = emb / emb.norm(dim=-1, keepdim=True)
+            return emb.cpu().numpy()
+
+        return await loop.run_in_executor(None, _run)
+
+
+# ── Image Store ───────────────────────────────────────────────────────────────
+
+class ImageStore:
+    def __init__(self, embed: ImageEmbedder):
+        self._embed = embed
+        self._idx = faiss.IndexFlatIP(IMAGE_DIM)
+        self._ids: List[str] = []
+        self._metas: List[dict] = []
+        self._hashes: Set[str] = set()
+        self._lock = asyncio.Lock()
+        IMAGE_PERSIST_DIR.mkdir(parents=True, exist_ok=True)
+
+    async def add(self, image: "Image.Image", image_id: str, **meta) -> str:
+        h = hashlib.sha256(image_id.encode()).hexdigest()[:16]
+        if h in self._hashes:
+            return "duplicate"
+
+        async with self._lock:
+            if h in self._hashes:
+                return "duplicate"
+
+            embs = await self._embed.encode([image])
+            emb = np.array(embs, dtype=np.float32)
+            faiss.normalize_L2(emb)
+            self._idx.add(emb)
+
+            self._ids.append(image_id)
+            self._metas.append({"image_id": image_id, **meta})
+            self._hashes.add(h)
+            self._save()
+            log.info(f"[image_add] {image_id}")
+            return "ok"
+
+    async def search(self, image: "Image.Image", k: int = 5) -> List[dict]:
+        if not self._idx.ntotal:
+            return []
+        embs = await self._embed.encode([image])
+        v = np.array(embs, dtype=np.float32)
+        faiss.normalize_L2(v)
+        scores, ids = self._idx.search(v, k)
+        return [
+            {"image_id": self._ids[i], "score": float(s), "meta": self._metas[i]}
+            for s, i in zip(scores[0], ids[0])
+            if i >= 0 and s > 0
+        ]
+
+    async def search_by_text(self, text: str, k: int = 5) -> List[dict]:
+        if not self._idx.ntotal:
+            return []
+        embs = await self._embed.encode_text([text])
+        v = np.array(embs, dtype=np.float32)
+        faiss.normalize_L2(v)
+        scores, ids = self._idx.search(v, k)
+        return [
+            {"image_id": self._ids[i], "score": float(s), "meta": self._metas[i]}
+            for s, i in zip(scores[0], ids[0])
+            if i >= 0  # bỏ "and s > 0"
+        ]
+
+    def stats(self) -> dict:
+        return {"images": len(self._ids), "faiss_vectors": self._idx.ntotal}
+
+    def _save(self):
+        data = {"ids": self._ids, "metas": self._metas, "hashes": list(self._hashes)}
+        tmp = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=IMAGE_PERSIST_DIR, delete=False, suffix=".tmp")
+        try:
+            json.dump(data, tmp, ensure_ascii=False)
+            tmp.close()
+            os.replace(tmp.name, IMAGE_PERSIST_DIR / "data.json")
+        except Exception:
+            os.unlink(tmp.name)
+            raise
+        tmp_idx = tempfile.NamedTemporaryFile(dir=IMAGE_PERSIST_DIR, delete=False, suffix=".tmp")
+        try:
+            tmp_idx.close()
+            faiss.write_index(self._idx, tmp_idx.name)
+            os.replace(tmp_idx.name, IMAGE_PERSIST_DIR / "faiss.index")
+        except Exception:
+            os.path.exists(tmp_idx.name) and os.unlink(tmp_idx.name)
+            raise
+
+    def _load(self):
+        dp = IMAGE_PERSIST_DIR / "data.json"
+        fp = IMAGE_PERSIST_DIR / "faiss.index"
+        if not (dp.exists() and fp.exists()):
+            return
+        try:
+            with open(dp, encoding="utf-8") as f:
+                d = json.load(f)
+            self._ids = d["ids"]
+            self._metas = d["metas"]
+            self._hashes = set(d["hashes"])
+            self._idx = faiss.read_index(str(fp))
+            log.info(f"[image_load] {len(self._ids)} images restored")
+        except Exception as e:
+            log.warning(f"[image_load] corrupt, starting fresh: {e}")
+            self._ids, self._metas, self._hashes = [], [], set()
+            self._idx = faiss.IndexFlatIP(IMAGE_DIM)
+
+
+# ── Image RAG ─────────────────────────────────────────────────────────────────
+
+class ImageRAG:
+    def __init__(self):
+        self._embed = ImageEmbedder()
+        self._store: Optional[ImageStore] = None
+
+    async def _lazy_init(self):
+        if self._store is None:
+            self._store = ImageStore(self._embed)
+            self._store._load()
+
+    async def add(self, image: "Image.Image", image_id: str, **meta) -> str:
+        await self._lazy_init()
+        return await self._store.add(image, image_id, **meta)
+
+    async def search(self, image: "Image.Image", k: int = 5) -> List[dict]:
+        await self._lazy_init()
+        return await self._store.search(image, k)
+
+    async def search_by_text(self, text: str, k: int = 5) -> List[dict]:
+        await self._lazy_init()
+        return await self._store.search_by_text(text, k)
+
+    def stats(self) -> dict:
+        return self._store.stats() if self._store else {"images": 0, "faiss_vectors": 0}

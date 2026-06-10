@@ -3,7 +3,7 @@ name = "workflow"
 version = "0.1.0"
 description = "FastAPI + LangGraph agent"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.14"
 dependencies = [
     "fastapi>=0.136.3",
     "uvicorn[standard]>=0.48.0",
@@ -42,6 +42,10 @@ dependencies = [
     "beautifulsoup4>=4.14.3",
     "groq>=1.4.0",
     "easyocr>=1.7.2",
+    "numpy>=2.4.6",
+    "torchvision>=0.27.0",
+    "sentencepiece>=0.2.1",
+    "alembic>=1.18.4",
 ]
 
 [dependency-groups]
@@ -52,3 +56,16 @@ dev = [
     "jupyterlab-widgets>=3.0.16",
     "ruff>=0.15.15",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
