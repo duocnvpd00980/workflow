@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 import tempfile
 import uuid
@@ -12,24 +10,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_rag, get_loader
-from app.db import get_db
+from app.db import get_db, AsyncSessionLocal
 from app.rag.schemas import DocOut, SearchOut, UploadOut, CrawlBusinessIn, PageSummaryOut, PageDetailOut
 from app.rag.service import RAG
 from app.rag.loader import DocumentLoader
 from .models import DocumentSource, DocumentPage
 from app.rag.business_service import BusinessCrawler
+from app.tasks import create_task, finish_task, fail_task   # ← THÊM
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/rag", tags=["rag"])
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# RESPONSE SCHEMA MỚI CHO BUSINESS CRAWL
-# ═══════════════════════════════════════════════════════════════════════════════
-
 class CrawlBusinessOut(BaseModel):
-    """Response chi tiết cho business crawl — bao gồm extracted data."""
     id: int
     title: str
     status: str
@@ -40,7 +34,7 @@ class CrawlBusinessOut(BaseModel):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# EXISTING ENDPOINTS (giữ nguyên)
+# EXISTING ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/", response_model=list[DocOut])
@@ -84,13 +78,26 @@ async def upload(
     content = await file.read()
 
     doc = DocumentSource(
-        title=title.strip(), 
-        status="processing", 
+        title=title.strip(),
+        status="processing",
         document_type=document_type
     )
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
+
+    # ── Tạo background task ───────────────────────────────────
+    async with AsyncSessionLocal() as tdb:
+        bg_task = await create_task(
+            tdb,
+            source="rag",
+            source_id=str(doc.id),
+            title=f"Upload: {title.strip()[:180]}",
+            triggered_by="user",
+            steps_total=1,
+        )
+        bg_task_id = bg_task.id
+    # ─────────────────────────────────────────────────────────
 
     tmp_path = None
     try:
@@ -111,6 +118,12 @@ async def upload(
         doc.status      = "completed"
         doc.chunk_count = len(docs)
         await db.commit()
+
+        # ── Hoàn thành ────────────────────────────────────────
+        async with AsyncSessionLocal() as tdb:
+            await finish_task(tdb, bg_task_id, steps_done=1)
+        # ─────────────────────────────────────────────────────
+
         return UploadOut(id=doc.id, title=doc.title,
                          status="completed", message="Đã ingest thành công.")
 
@@ -120,6 +133,12 @@ async def upload(
         doc.status        = "failed"
         doc.error_message = str(e)
         await db.commit()
+
+        # ── Thất bại ──────────────────────────────────────────
+        async with AsyncSessionLocal() as tdb:
+            await fail_task(tdb, bg_task_id, error_message=str(e))
+        # ─────────────────────────────────────────────────────
+
         logger.error("[upload] %s: %s", doc.id, e)
         raise HTTPException(400, f"Lỗi: {e}")
 
@@ -141,21 +160,40 @@ async def crawl(
     title   = payload.title.strip() or url_str
 
     doc = DocumentSource(
-        title=title, 
-        status="processing", 
+        title=title,
+        status="processing",
         document_type=payload.document_type
     )
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
 
+    # ── Tạo background task ───────────────────────────────────
+    async with AsyncSessionLocal() as tdb:
+        bg_task = await create_task(
+            tdb,
+            source="rag",
+            source_id=str(doc.id),
+            title=f"Crawl: {title[:180]}",
+            triggered_by="user",
+            steps_total=1,
+        )
+        bg_task_id = bg_task.id
+    # ─────────────────────────────────────────────────────────
+
     try:
-        loaded  = loader.load_web(url_str, document_type=payload.document_type)          
+        loaded  = loader.load_web(url_str, document_type=payload.document_type)
         await rag.add(loaded.text, **loaded.metadata)
 
         doc.status      = "completed"
-        doc.chunk_count = 1                          
+        doc.chunk_count = 1
         await db.commit()
+
+        # ── Hoàn thành ────────────────────────────────────────
+        async with AsyncSessionLocal() as tdb:
+            await finish_task(tdb, bg_task_id, steps_done=1)
+        # ─────────────────────────────────────────────────────
+
         return UploadOut(id=doc.id, title=doc.title,
                          status="completed", message="Đã crawl thành công.")
 
@@ -163,6 +201,12 @@ async def crawl(
         doc.status        = "failed"
         doc.error_message = str(e)
         await db.commit()
+
+        # ── Thất bại ──────────────────────────────────────────
+        async with AsyncSessionLocal() as tdb:
+            await fail_task(tdb, bg_task_id, error_message=str(e))
+        # ─────────────────────────────────────────────────────
+
         logger.error("[crawl] %s: %s", doc.id, e)
         raise HTTPException(400, f"Lỗi crawl: {e}")
 
@@ -195,7 +239,7 @@ async def delete(doc_id: int, db: AsyncSession = Depends(get_db)):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# BUSINESS CRAWL ENDPOINTS (ĐÃ SỬA)
+# BUSINESS CRAWL
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.post("/crawl-business/", response_model=CrawlBusinessOut, status_code=201)
@@ -217,6 +261,19 @@ async def crawl_business(
     await db.commit()
     await db.refresh(doc)
 
+    # ── Tạo background task ───────────────────────────────────
+    async with AsyncSessionLocal() as tdb:
+        bg_task = await create_task(
+            tdb,
+            source="rag",
+            source_id=str(doc.id),
+            title=f"Crawl business: {title[:170]}",
+            triggered_by="user",
+            steps_total=1,
+        )
+        bg_task_id = bg_task.id
+    # ─────────────────────────────────────────────────────────
+
     try:
         crawler    = BusinessCrawler(rag=rag, loader=loader, db=db)
         page_count = await crawler.crawl_business(
@@ -225,7 +282,6 @@ async def crawl_business(
             document_id=doc.id,
         )
 
-        # Lấy page đầu tiên để trả về extracted summary
         page = await db.execute(
             select(DocumentPage)
             .where(DocumentPage.document_id == doc.id)
@@ -233,7 +289,7 @@ async def crawl_business(
             .limit(1)
         )
         first_page = page.scalar_one_or_none()
-        
+
         extracted_summary = None
         if first_page and first_page.extracted:
             extracted = first_page.extracted
@@ -250,6 +306,11 @@ async def crawl_business(
         doc.chunk_count = page_count
         await db.commit()
 
+        # ── Hoàn thành ────────────────────────────────────────
+        async with AsyncSessionLocal() as tdb:
+            await finish_task(tdb, bg_task_id, steps_done=1)
+        # ─────────────────────────────────────────────────────
+
         return CrawlBusinessOut(
             id=doc.id,
             title=doc.title,
@@ -264,18 +325,22 @@ async def crawl_business(
         doc.status        = "failed"
         doc.error_message = str(e)
         await db.commit()
+
+        # ── Thất bại ──────────────────────────────────────────
+        async with AsyncSessionLocal() as tdb:
+            await fail_task(tdb, bg_task_id, error_message=str(e))
+        # ─────────────────────────────────────────────────────
+
         logger.error("[crawl_business] doc_id=%s error=%s", doc.id, e)
         raise HTTPException(400, f"Lỗi crawl business: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PAGE ENDPOINTS (ĐÃ SỬA PATH ĐỂ TRÁNH CONFLICT)
+# PAGE ENDPOINTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/doc/{doc_id}/pages", response_model=list[PageSummaryOut])
 async def list_pages(doc_id: int, db: AsyncSession = Depends(get_db)):
-    """Lấy danh sách pages của một document. 
-    Path đổi từ /{doc_id}/pages → /doc/{doc_id}/pages để tránh conflict với /page/{page_id}"""
     doc = await db.get(DocumentSource, doc_id)
     if not doc:
         raise HTTPException(404, "Không tìm thấy tài liệu.")
@@ -298,7 +363,6 @@ async def list_pages(doc_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.get("/page/{page_id}", response_model=PageDetailOut)
 async def get_page(page_id: int, db: AsyncSession = Depends(get_db)):
-    """Lấy chi tiết một page."""
     page = await db.get(DocumentPage, page_id)
     if not page:
         raise HTTPException(404, "Không tìm thấy page.")

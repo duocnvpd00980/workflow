@@ -43,9 +43,11 @@ async def init_db() -> None:
     from app.rag.models       import Base as RagBase
     from app.marketing.models import Base as MarketingBase
     from app.brand.models     import Base as BrandBase
-    from app.research.models  import Base as ResearchBase   # ← thêm mới
+    from app.research.models  import Base as ResearchBase 
+    from app.tasks.models import Base as TaskBase
 
     async with engine.begin() as conn:
+        await conn.run_sync(TaskBase.metadata.create_all) 
         await conn.run_sync(ChatBase.metadata.create_all)
         await conn.run_sync(RagBase.metadata.create_all)
         await conn.run_sync(MarketingBase.metadata.create_all)

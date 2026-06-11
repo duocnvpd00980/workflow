@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Literal, Dict, Any, List
+from datetime import datetime
+
 
 class StartRequest(BaseModel):
     request: str = Field(..., description="Yêu cầu từ người dùng (VD: Viết bài blog về AI)")
@@ -49,3 +51,22 @@ class VersionHistoryResponse(BaseModel):
     session_id: str
     versions: List[Dict[str, Any]]
     current_version: int
+
+
+class SessionListItem(BaseModel):
+    session_id: str
+    status: Literal["running", "paused", "completed", "error"]
+    request: Optional[str] = None
+    draft: Optional[Dict[str, Any]] = None
+    publish_status: Optional[str] = None
+    approved: Optional[bool] = None
+    usage: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+class SessionListResponse(BaseModel):
+    items: List[SessionListItem]
+    total: int
+    limit: int
+    offset: int

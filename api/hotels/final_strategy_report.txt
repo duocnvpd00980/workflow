@@ -1,58 +1,58 @@
 **A. CUSTOMER PERSONAS**
 
-Dựa trên phân tích dữ liệu và thị trường, tôi xây dựng các customer personas sau:
+Dưới đây là 3-5 customer personas cho Sontra Sea Hotel:
 
-* **Persona 1: Khách du lịch trẻ (20-30 tuổi)**
+* **Persona 1: Du khách trẻ**
  + Tên: Linh
- + Độ tuổi: 25
- + Giới tính: Nữ
- + Nghề nghiệp: Nhân viên văn phòng
- + Mức thu nhập: 15 triệu đồng/tháng
- + Sở thích: Du lịch, khám phá, ăn uống, chụp ảnh
- + Mục tiêu: Tìm kiếm nơi lưu trú giá cả phải chăng, tiện nghi, gần biển
-* **Persona 2: Khách du lịch gia đình (35-50 tuổi)**
- + Tên: Huy
- + Độ tuổi: 40
- + Giới tính: Nam
- + Nghề nghiệp: Doanh nhân
- + Mức thu nhập: 30 triệu đồng/tháng
- + Sở thích: Du lịch, nghỉ dưỡng, tham gia hoạt động ngoài trời
- + Mục tiêu: Tìm kiếm nơi lưu trú thoải mái, an toàn, có tiện ích cho gia đình
-* **Persona 3: Khách doanh nhân (30-50 tuổi)**
- + Tên: Anh
- + Độ tuổi: 35
- + Giới tính: Nam
- + Nghề nghiệp: Giám đốc
- + Mức thu nhập: 50 triệu đồng/tháng
- + Sở thích: Du lịch, kinh doanh, mạng lưới
- + Mục tiêu: Tìm kiếm nơi lưu trú tiện nghi, có dịch vụ tốt, gần trung tâm thành phố
+ + Tuổi: 25-30
+ + Nghề nghiệp: Sinh viên, nhân viên văn phòng
+ + Sở thích: Du lịch, khám phá, ẩm thực
+ + Mục tiêu: Tìm kiếm khách sạn giá cả phải chăng, vị trí thuận tiện, tiện ích và dịch vụ tốt
+ + Hành vi: Tìm kiếm thông tin trên mạng xã hội, trang web du lịch
+* **Persona 2: Doanh nhân**
+ + Tên: Anh Tuấn
+ + Tuổi: 35-45
+ + Nghề nghiệp: Doanh nhân, quản lý
+ + Sở thích: Công việc, du lịch, nghỉ dưỡng
+ + Mục tiêu: Tìm kiếm khách sạn cao cấp, tiện ích và dịch vụ tốt, vị trí thuận tiện
+ + Hành vi: Tìm kiếm thông tin trên mạng xã hội, trang web du lịch, liên hệ trực tiếp với khách sạn
+* **Persona 3: Gia đình**
+ + Tên: Chị Mai
+ + Tuổi: 30-40
+ + Nghề nghiệp: Nhân viên văn phòng, giáo viên
+ + Sở thích: Du lịch, nghỉ dưỡng, gia đình
+ + Mục tiêu: Tìm kiếm khách sạn gia đình, tiện ích và dịch vụ tốt, vị trí thuận tiện
+ + Hành vi: Tìm kiếm thông tin trên mạng xã hội, trang web du lịch, liên hệ trực tiếp với khách sạn
 
 **B. CHIẾN LƯỢC TIẾP CẬN TỪNG PERSONA**
 
-* **Persona 1: Khách du lịch trẻ**
- + Kênh tiếp cận: TikTok, Instagram, Facebook
- + Nội dung: Hình ảnh, video về khách sạn, biển Sơn Trà, hoạt động du lịch
- + Ưu đãi: Giảm giá phòng, tặng kèm dịch vụ
-* **Persona 2: Khách du lịch gia đình**
- + Kênh tiếp cận: Facebook, Google Ads, Email
- + Nội dung: Thông tin về tiện ích, dịch vụ cho gia đình, hình ảnh phòng
- + Ưu đãi: Giảm giá phòng, tặng kèm dịch vụ cho trẻ em
-* **Persona 3: Khách doanh nhân**
- + Kênh tiếp cận: LinkedIn, Email, Phone
- + Nội dung: Thông tin về dịch vụ, tiện ích cho doanh nhân, hình ảnh phòng
- + Ưu đãi: Giảm giá phòng, tặng kèm dịch vụ cho doanh nhân
+Dưới đây là chiến lược tiếp cận từng persona:
+
+* **Persona 1: Du khách trẻ**
+ + Chiến lược: Quảng cáo trên mạng xã hội (Facebook, Instagram), trang web du lịch (Booking.com, Agoda.com)
+ + Nội dung: Giá cả phải chăng, vị trí thuận tiện, tiện ích và dịch vụ tốt
+ + Ưu đãi: Khuyến mãi, giảm giá phòng
+* **Persona 2: Doanh nhân**
+ + Chiến lược: Quảng cáo trên mạng xã hội (LinkedIn), trang web du lịch (Expedia.com)
+ + Nội dung: Tiện ích và dịch vụ cao cấp, vị trí thuận tiện, dịch vụ đa dạng
+ + Ưu đãi: Phòng suite, dịch vụ thư ký, khuyến mãi
+* **Persona 3: Gia đình**
+ + Chiến lược: Quảng cáo trên mạng xã hội (Facebook), trang web du lịch (TripAdvisor.com)
+ + Nội dung: Tiện ích và dịch vụ gia đình, vị trí thuận tiện, dịch vụ đa dạng
+ + Ưu đãi: Phòng gia đình, dịch vụ trông trẻ, khuyến mãi
 
 **C. CHIẾN DỊCH 30 NGÀY**
 
-* **Tuần 1: Tạo nhận thức về thương hiệu**
- + Ngày 1-3: Tạo nội dung trên TikTok, Instagram, Facebook
- + Ngày 4-7: Chạy quảng cáo trên Google Ads, Facebook
-* **Tuần 2: Tăng cường tương tác**
- + Ngày 8-14: Tổ chức cuộc thi trên TikTok, Instagram
- + Ngày 15-17: Tương tác với khách hàng trên Facebook, Email
+Dưới đây là chiến dịch 30 ngày cho Sontra Sea Hotel:
+
+* **Tuần 1: Tạo nhận thức**
+ + Ngày 1-3: Quảng cáo trên mạng xã hội (Facebook, Instagram)
+ + Ngày 4-7: Tạo nội dung trên trang web (blog, hình ảnh, video)
+* **Tuần 2: Tăng cường quảng cáo**
+ + Ngày 8-14: Quảng cáo trên trang web du lịch (Booking.com, Agoda.com)
+ + Ngày 15-17: Tạo nội dung trên mạng xã hội (Facebook, Instagram)
 * **Tuần 3: Ưu đãi và khuyến mãi**
- + Ngày 18-24: Giảm giá phòng, tặng kèm dịch vụ
- + Ngày 25-27: Gửi email về ưu đãi, khuyến mãi
-* **Tuần 4: Đánh giá và cải thiện**
- + Ngày 28-30: Đánh giá kết quả chiến dịch
- + Ngày 31: Cải thiện và điều chỉnh chiến dịch cho tương lai
+ + Ngày 18-24: Ưu đãi và khuyến mãi cho khách hàng (giảm giá phòng, phòng suite)
+ + Ngày 25-27: Tạo nội dung trên mạng xã hội (Facebook, Instagram)
+* **Tuần 4: Đánh giá và điều chỉnh**
+ + Ngày 28-30: Đánh giá kết quả chiến dịch, điều chỉnh chiến lược cho tương lai.

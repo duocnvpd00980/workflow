@@ -1,9 +1,12 @@
 from fastapi import APIRouter, HTTPException
 from .schemas import (
     StartRequest, ResumeRequest, WorkflowResponse, SessionResponse,
-    ChatEditRequest, ChatInlineRequest, ChatResponse, VersionHistoryResponse
+    ChatEditRequest, ChatInlineRequest, ChatResponse, VersionHistoryResponse,
+    SessionListResponse
 )
 from .service import WorkflowService
+from typing import Optional
+
 
 router = APIRouter(prefix="/marketing", tags=["marketing"])
 service = WorkflowService()
@@ -24,6 +27,16 @@ async def start(body: StartRequest):
         auto_mode=body.auto_mode
     )
     return WorkflowResponse(**result)
+
+@router.get("/sessions", response_model=SessionListResponse)
+async def list_sessions(
+    status: Optional[str] = None,
+    limit: int = 20,
+    offset: int = 0
+):
+    """Lấy danh sách tất cả bài viết trong kho."""
+    result = await service.list_sessions(status=status, limit=limit, offset=offset)
+    return SessionListResponse(**result)
 
 @router.get("/{session_id}", response_model=WorkflowResponse)
 async def get_status(session_id: str):
@@ -87,3 +100,5 @@ async def get_versions(session_id: str):
     if not result:
         raise HTTPException(status_code=404, detail="Session not found")
     return VersionHistoryResponse(**result)
+
+

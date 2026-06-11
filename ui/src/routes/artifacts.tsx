@@ -1,188 +1,235 @@
 "use client";
 
 import { createFileRoute } from '@tanstack/react-router';
-import { 
-  Search, Filter, FileText, Image as ImageIcon, FileSpreadsheet, Code, 
-  Download, Copy, Share2, Calendar, HardDrive, ChevronRight,
-  LayoutGrid, List, Pencil, Trash2, CalendarPlus, ArrowUpDown
+import {
+  Search, FileText, Image as ImageIcon, FileSpreadsheet, Code,
+  Copy, Calendar, CalendarPlus, LayoutGrid, List, Pencil, Trash2,
+  RefreshCw, AlertCircle, Inbox
 } from "lucide-react";
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// Định nghĩa kiểu dữ liệu đồng bộ với hệ thống Planner
-type Channel = "facebook" | "instagram" | "linkedin" | "tiktok";
-type ContentStatus = "draft" | "approved" | "scheduled" | "published";
+// ─── Config ──────────────────────────────────────────────────────────────────
+const API_BASE = "http://localhost:8000/api/v1";
 
-interface Artifact {
-  id: string;
-  name: string;
-  type: string;
-  extension: string;
-  size: string;
-  createdAt: string;
-  generatedBy: string;
-  jobRef: string;
-  channel: Channel;
-  status: ContentStatus;
-  previewContent?: string;
-  previewUrl?: string;
+// ─── Types từ API ─────────────────────────────────────────────────────────────
+interface DraftContent {
+  content: string;
+  metadata: {
+    platform: string;
+    type: string;
+  };
+  version: number;
+  versions: Array<{
+    version: number;
+    content: string;
+    metadata: { platform: string; type: string };
+    action: string;
+  }>;
 }
 
-const INITIAL_ARTIFACTS: Artifact[] = [
-  {
-    id: "ART-0092",
-    name: "Kịch_bản_Video_Tiktok_Tháng_6.md",
-    type: "document",
-    extension: "Markdown",
-    size: "14.2 KB",
-    createdAt: "2026-06-02T14:30:00Z",
-    generatedBy: "Writer Agent",
-    jobRef: "JOB-9921-A",
-    channel: "tiktok",
-    status: "approved",
-    previewContent: "# KỊCH BẢN VIDEO TIKTOK - XU HƯỚNG AI 2026\n\n## Hook (3 giây đầu):\n\"Bạn có biết 90% Marketer sẽ mất việc nếu không biết công cụ này?\"\n\n## Body:\n- Bước 1: Giới thiệu Agent Command Dashboard...\n- Bước 2: Hướng dẫn cấu hình Sub-Agent...",
-  },
-  {
-    id: "ART-0085",
-    name: "Banner_Quang_Cao_SaaS_Creative.png",
-    type: "image",
-    extension: "PNG Image",
-    size: "2.4 MB",
-    createdAt: "2026-06-02T11:15:00Z",
-    generatedBy: "Designer Agent",
-    jobRef: "JOB-9855-C",
-    channel: "facebook",
-    status: "draft",
-    previewUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=60",
-  },
-  {
-    id: "ART-0071",
-    name: "Bai_Viet_LinkedIn_Growth_Hack.md",
-    type: "document",
-    extension: "Markdown",
-    size: "4.5 KB",
-    createdAt: "2026-06-01T23:12:00Z",
-    generatedBy: "Writer Agent",
-    jobRef: "JOB-9701-F",
-    channel: "linkedin",
-    status: "scheduled",
-    previewContent: "Chia sẻ về tư duy tăng trưởng (Growth Hacking) trong kỷ nguyên AI tự động hóa...",
-  },
-  {
-    id: "ART-0060",
-    name: "Post_Instagram_Review_Product.png",
-    type: "image",
-    extension: "PNG Image",
-    size: "1.8 MB",
-    createdAt: "2026-05-31T10:05:00Z",
-    generatedBy: "Designer Agent",
-    jobRef: "JOB-9511-X",
-    channel: "instagram",
-    status: "published",
-    previewUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=500&auto=format&fit=crop&q=60",
-  }
-];
+interface SessionListItem {
+  session_id: string;
+  status: "running" | "paused" | "completed" | "error";
+  request: string | null;
+  draft: DraftContent | null;
+  publish_status: string | null;
+  approved: boolean;
+  usage: {
+    total_tokens: number;
+    total_cost: number;
+    calls: Array<{ node: string; tokens: number }>;
+  } | null;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
-const CHANNEL_META = {
-  facebook: { label: "Facebook", color: "text-blue-500", bg: "bg-blue-500/10" },
-  instagram: { label: "Instagram", color: "text-pink-500", bg: "bg-pink-500/10" },
-  linkedin: { label: "LinkedIn", color: "text-indigo-600", bg: "bg-indigo-600/10" },
-  tiktok: { label: "TikTok", color: "text-foreground", bg: "bg-foreground/10" },
+interface SessionListResponse {
+  items: SessionListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// ─── Map platform API → channel UI ───────────────────────────────────────────
+type Channel = "facebook" | "instagram" | "linkedin" | "tiktok" | "other";
+
+function toChannel(platform?: string): Channel {
+  const p = (platform ?? "").toLowerCase();
+  if (p.includes("facebook")) return "facebook";
+  if (p.includes("instagram")) return "instagram";
+  if (p.includes("linkedin")) return "linkedin";
+  if (p.includes("tiktok")) return "tiktok";
+  return "other";
+}
+
+// ─── Map publish_status / status API → ContentStatus UI ──────────────────────
+type ContentStatus = "draft" | "approved" | "scheduled" | "published" | "error";
+
+function toStatus(item: SessionListItem): ContentStatus {
+  if (item.status === "error") return "error";
+  if (item.publish_status === "published") return "published";
+  if (item.publish_status === "pending") return "scheduled";
+  if (item.approved) return "approved";
+  return "draft";
+}
+
+// ─── Meta maps ────────────────────────────────────────────────────────────────
+const CHANNEL_META: Record<Channel, { label: string; color: string; bg: string }> = {
+  facebook:  { label: "Facebook",  color: "text-blue-500",    bg: "bg-blue-500/10"    },
+  instagram: { label: "Instagram", color: "text-pink-500",    bg: "bg-pink-500/10"    },
+  linkedin:  { label: "LinkedIn",  color: "text-indigo-600",  bg: "bg-indigo-600/10"  },
+  tiktok:    { label: "TikTok",    color: "text-foreground",  bg: "bg-foreground/10"  },
+  other:     { label: "Khác",      color: "text-slate-500",   bg: "bg-slate-500/10"   },
 };
 
-const STATUS_META = {
-  draft: { label: "Bản nháp", class: "bg-slate-500/10 text-slate-600" },
-  approved: { label: "Đã duyệt", class: "bg-amber-500/10 text-amber-600" },
-  scheduled: { label: "Đã lên lịch", class: "bg-blue-500/10 text-blue-600" },
-  published: { label: "Đã đăng", class: "bg-emerald-500/10 text-emerald-600" },
+const STATUS_META: Record<ContentStatus, { label: string; class: string }> = {
+  draft:     { label: "Bản nháp",    class: "bg-slate-500/10 text-slate-600"   },
+  approved:  { label: "Đã duyệt",    class: "bg-amber-500/10 text-amber-600"   },
+  scheduled: { label: "Đã lên lịch", class: "bg-blue-500/10 text-blue-600"     },
+  published: { label: "Đã đăng",     class: "bg-emerald-500/10 text-emerald-600" },
+  error:     { label: "Lỗi",         class: "bg-red-500/10 text-red-600"       },
 };
 
+// ─── Route ────────────────────────────────────────────────────────────────────
 export const Route = createFileRoute('/artifacts')({
   component: ArtifactsPage,
 });
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function ArtifactsPage() {
-  const [artifacts, setArtifacts] = useState<Artifact[]>(INITIAL_ARTIFACTS);
   const [searchTerm, setSearchTerm] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [filters, setFilters] = useState({ channel: "all", status: "all", type: "all" });
+  const [filters, setFilters] = useState({ channel: "all", status: "all" });
   const [sortBy, setSortBy] = useState("newest");
 
-  // Bộ lọc nâng cao theo yêu cầu UX
-  const filteredArtifacts = useMemo(() => {
-    return artifacts.filter(art => {
-      const matchesSearch = art.name.toLowerCase().includes(searchTerm.toLowerCase()) || art.id.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesChannel = filters.channel === "all" || art.channel === filters.channel;
-      const matchesStatus = filters.status === "all" || art.status === filters.status;
-      const matchesType = filters.type === "all" || art.type === filters.type;
-      return matchesSearch && matchesChannel && matchesStatus && matchesType;
-    }).sort((a, b) => {
-      if (sortBy === "newest") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      if (sortBy === "name") return a.name.localeCompare(b.name);
-      return 0;
-    });
-  }, [artifacts, searchTerm, filters, sortBy]);
+  // ─── Query: Lấy danh sách bài viết từ API ─────────────────────────────────
+  const {
+    data: sessionList,
+    isLoading,
+    isError,
+    refetch,
+    isFetching,
+  } = useQuery<SessionListResponse>({
+    queryKey: ["marketing", "sessions", { limit: 100, offset: 0 }],
+    queryFn: async () => {
+      const params = new URLSearchParams({ limit: "100", offset: "0" });
+      const res = await fetch(`${API_BASE}/marketing/sessions?${params.toString()}`);
+      if (!res.ok) throw new Error("Không thể tải danh sách bài viết");
+      return await res.json();
+    },
+    staleTime: 30_000,
+  });
 
-  const renderFileIcon = (type: string) => {
-    switch (type) {
-      case "document": return <FileText size={16} className="text-blue-500" />;
-      case "image": return <ImageIcon size={16} className="text-purple-500" />;
-      case "spreadsheet": return <FileSpreadsheet size={16} className="text-emerald-500" />;
-      case "code": return <Code size={16} className="text-amber-500" />;
-      default: return <FileText size={16} className="text-muted-foreground" />;
+  // ─── Filter + sort client-side ────────────────────────────────────────────
+  const filteredItems = useMemo(() => {
+    const items = sessionList?.items ?? [];
+    return items
+      .filter((item) => {
+        const channel = toChannel(item.draft?.metadata?.platform);
+        const status = toStatus(item);
+        const search = searchTerm.toLowerCase();
+
+        const matchSearch =
+          !search ||
+          item.session_id.toLowerCase().includes(search) ||
+          (item.request ?? "").toLowerCase().includes(search) ||
+          (item.draft?.content ?? "").toLowerCase().includes(search);
+
+        const matchChannel = filters.channel === "all" || channel === filters.channel;
+        const matchStatus  = filters.status  === "all" || status  === filters.status;
+
+        return matchSearch && matchChannel && matchStatus;
+      })
+      .sort((a, b) => {
+        if (sortBy === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (sortBy === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        return 0;
+      });
+  }, [sessionList, searchTerm, filters, sortBy]);
+
+  const renderFileIcon = (platform?: string) => {
+    const ch = toChannel(platform);
+    switch (ch) {
+      case "instagram": return <ImageIcon size={16} className="text-purple-500 shrink-0" />;
+      case "tiktok":    return <Code       size={16} className="text-amber-500 shrink-0"  />;
+      default:          return <FileText   size={16} className="text-blue-500 shrink-0"   />;
     }
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  const handleQuickSchedule = (item: SessionListItem, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("Bạn có chắc chắn muốn xóa nội dung này khỏi kho?")) {
-      setArtifacts(prev => prev.filter(a => a.id !== id));
-      toast.success("Đã xóa nội dung thành công!");
-    }
+    const ch = toChannel(item.draft?.metadata?.platform);
+    toast.info(`Mở popup đặt lịch cho session ${item.session_id}. Kênh: ${CHANNEL_META[ch].label}`);
   };
 
-  const handleQuickSchedule = (art: Artifact, e: React.MouseEvent) => {
-    e.stopPropagation();
-    toast.info(`Mở popup đặt lịch cho: ${art.name}. Hệ thống sẽ pre-fill kênh ${art.channel}.`);
-  };
+  // ─── States: loading / error / empty ──────────────────────────────────────
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-muted-foreground">
+        <RefreshCw size={24} className="animate-spin" />
+        <p className="text-sm">Đang tải danh sách bài viết...</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3 text-destructive">
+        <AlertCircle size={24} />
+        <p className="text-sm font-medium">Không thể tải dữ liệu từ server</p>
+        <button
+          onClick={() => refetch()}
+          className="text-xs px-3 py-1.5 rounded-lg bg-destructive/10 hover:bg-destructive/20 transition-colors"
+        >
+          Thử lại
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 max-w-[1200px] mx-auto w-full p-4">
 
       {/* FILTER CONTROLS BAR */}
-      <div className="bg-background  flex flex-col gap-3 lg:flex-row items-center justify-between ">
+      <div className="bg-background flex flex-col gap-3 lg:flex-row items-center justify-between">
+        {/* View mode toggle */}
         <div className="flex items-center gap-2 border p-1 rounded-lg bg-background shadow-xs">
-          <button 
+          <button
             onClick={() => setViewMode("grid")}
             className={cn("p-1.5 rounded-md transition-colors", viewMode === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}
           >
             <LayoutGrid size={15} />
           </button>
-          <button 
+          <button
             onClick={() => setViewMode("list")}
             className={cn("p-1.5 rounded-md transition-colors", viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground")}
           >
             <List size={15} />
           </button>
         </div>
+
+        {/* Search */}
         <div className="relative w-full lg:w-72">
-          
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
-            placeholder="Tìm theo tên hoặc mã nội dung..."
+            placeholder="Tìm theo session ID hoặc nội dung..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-1.5 text-xs bg-muted/40 border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring transition-all"
           />
         </div>
 
+        {/* Filters */}
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
-          <select 
-            value={filters.channel} 
+          <select
+            value={filters.channel}
             onChange={(e) => setFilters(p => ({ ...p, channel: e.target.value }))}
             className="text-xs bg-muted/40 border rounded-lg p-1.5 outline-none font-semibold text-muted-foreground focus:text-foreground"
           >
@@ -193,8 +240,8 @@ export default function ArtifactsPage() {
             <option value="tiktok">TikTok</option>
           </select>
 
-          <select 
-            value={filters.status} 
+          <select
+            value={filters.status}
             onChange={(e) => setFilters(p => ({ ...p, status: e.target.value }))}
             className="text-xs bg-muted/40 border rounded-lg p-1.5 outline-none font-semibold text-muted-foreground focus:text-foreground"
           >
@@ -203,133 +250,176 @@ export default function ArtifactsPage() {
             <option value="approved">Đã duyệt</option>
             <option value="scheduled">Đã lên lịch</option>
             <option value="published">Đã đăng</option>
+            <option value="error">Lỗi</option>
           </select>
 
-          <select 
-            value={sortBy} 
+          <select
+            value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
             className="text-xs bg-muted/40 border rounded-lg p-1.5 outline-none font-semibold text-muted-foreground focus:text-foreground ml-auto lg:ml-0"
           >
             <option value="newest">Mới nhất</option>
-            <option value="name">Tên file A-Z</option>
+            <option value="oldest">Cũ nhất</option>
           </select>
+
+          {/* Refetch button */}
+          <button
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="p-1.5 rounded-lg border bg-muted/40 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
+            title="Làm mới"
+          >
+            <RefreshCw size={14} className={cn(isFetching && "animate-spin")} />
+          </button>
         </div>
       </div>
 
-      {/* RENDER DẠNG CARD GRID */}
-      {viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredArtifacts.map((art) => (
-            <Sheet key={art.id}>
-              <div className="bg-background border rounded-xl p-4 flex flex-col justify-between hover:shadow-md transition-all group relative">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", STATUS_META[art.status].class)}>
-                      {STATUS_META[art.status].label}
-                    </span>
-                    <Badge variant="outline" className={cn("text-[10px] font-semibold font-mono", CHANNEL_META[art.channel].bg, CHANNEL_META[art.channel].color)}>
-                      {CHANNEL_META[art.channel].label}
-                    </Badge>
-                  </div>
+      {/* Total count */}
+      <p className="text-xs text-muted-foreground font-mono">
+        Hiển thị <span className="font-bold text-foreground">{filteredItems.length}</span> / {sessionList?.total ?? 0} bài viết
+      </p>
 
-                  <SheetTrigger asChild>
-                    <div className="cursor-pointer space-y-2">
-                      <div className="flex items-start gap-2">
-                        {renderFileIcon(art.type)}
-                        <h3 className="font-bold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors pr-4">{art.name}</h3>
-                      </div>
-                      <p className="text-xs text-muted-foreground line-clamp-3 bg-muted/20 p-2 rounded-lg font-mono text-[11px]">
-                        {art.type === "image" ? "[Hình ảnh trực quan]" : art.previewContent}
-                      </p>
-                    </div>
-                  </SheetTrigger>
-                </div>
-
-                <div className="mt-4 pt-3 border-t flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span className="font-mono">{art.size} • {new Date(art.createdAt).toLocaleDateString("vi-VN")}</span>
-                  
-                  {/* Nhóm nút Hành động (Action Buttons) */}
-                  <div className="flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                    <SheetTrigger asChild>
-                      <button className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-md transition-colors" title="Sửa">
-                        <Pencil size={13} />
-                      </button>
-                    </SheetTrigger>
-                    <button 
-                      onClick={(e) => handleQuickSchedule(art, e)}
-                      className="p-1.5 hover:bg-primary/10 text-primary rounded-md transition-colors" 
-                      title="Lên lịch đăng bài"
-                    >
-                      <CalendarPlus size={13} />
-                    </button>
-                    <button 
-                      onClick={(e) => handleDelete(art.id, e)}
-                      className="p-1.5 hover:bg-destructive/10 text-destructive rounded-md transition-colors" 
-                      title="Xóa"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <RenderDetailDrawer art={art} renderFileIcon={renderFileIcon} />
-            </Sheet>
-          ))}
+      {/* EMPTY STATE */}
+      {filteredItems.length === 0 && (
+        <div className="flex flex-col items-center justify-center h-48 gap-3 text-muted-foreground border rounded-xl bg-muted/10">
+          <Inbox size={28} />
+          <p className="text-sm">Không có bài viết nào phù hợp</p>
         </div>
-      ) : (
-        /* RENDER DẠNG LIST VIEW */
+      )}
+
+      {/* GRID VIEW */}
+      {viewMode === "grid" && filteredItems.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredItems.map((item) => {
+            const channel = toChannel(item.draft?.metadata?.platform);
+            const status  = toStatus(item);
+            const content = item.draft?.content ?? item.request ?? "(Chưa có nội dung)";
+
+            return (
+              <Sheet key={item.session_id}>
+                <div className="bg-background border rounded-xl p-4 flex flex-col justify-between hover:shadow-md transition-all group relative">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", STATUS_META[status].class)}>
+                        {STATUS_META[status].label}
+                      </span>
+                      <Badge variant="outline" className={cn("text-[10px] font-semibold font-mono", CHANNEL_META[channel].bg, CHANNEL_META[channel].color)}>
+                        {CHANNEL_META[channel].label}
+                      </Badge>
+                    </div>
+
+                    <SheetTrigger asChild>
+                      <div className="cursor-pointer space-y-2">
+                        <div className="flex items-start gap-2">
+                          {renderFileIcon(item.draft?.metadata?.platform)}
+                          <h3 className="font-bold text-foreground text-sm line-clamp-1 group-hover:text-primary transition-colors pr-4">
+                            {item.request ?? `Session ${item.session_id}`}
+                          </h3>
+                        </div>
+                        <p className="text-xs text-muted-foreground line-clamp-3 bg-muted/20 p-2 rounded-lg font-mono text-[11px]">
+                          {content}
+                        </p>
+                      </div>
+                    </SheetTrigger>
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t flex items-center justify-between text-[11px] text-muted-foreground">
+                    <span className="font-mono">
+                      {item.usage?.total_tokens ?? 0} tokens • {new Date(item.created_at).toLocaleDateString("vi-VN")}
+                    </span>
+                    <div className="flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                      <SheetTrigger asChild>
+                        <button className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-md transition-colors" title="Xem chi tiết">
+                          <Pencil size={13} />
+                        </button>
+                      </SheetTrigger>
+                      <button
+                        onClick={(e) => handleQuickSchedule(item, e)}
+                        className="p-1.5 hover:bg-primary/10 text-primary rounded-md transition-colors"
+                        title="Lên lịch đăng bài"
+                      >
+                        <CalendarPlus size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <RenderDetailDrawer item={item} renderFileIcon={renderFileIcon} />
+              </Sheet>
+            );
+          })}
+        </div>
+      )}
+
+      {/* LIST VIEW */}
+      {viewMode === "list" && filteredItems.length > 0 && (
         <div className="border bg-background rounded-xl overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-xs">
               <thead>
                 <tr className="bg-muted/40 border-b text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  <th className="p-3 pl-4">Tên sản phẩm</th>
+                  <th className="p-3 pl-4">Yêu cầu / Nội dung</th>
                   <th className="p-3">Kênh</th>
                   <th className="p-3">Trạng thái</th>
-                  <th className="p-3 text-right">Kích thước</th>
-                  <th className="p-3 text-center w-24">Hành động</th>
+                  <th className="p-3 text-right">Tokens</th>
+                  <th className="p-3 text-right">Ngày tạo</th>
+                  <th className="p-3 text-center w-20">Hành động</th>
                 </tr>
               </thead>
               <tbody className="divide-y text-muted-foreground font-medium">
-                {filteredArtifacts.map((art) => (
-                  <Sheet key={art.id}>
-                    <tr className="hover:bg-muted/30 cursor-pointer transition-colors group">
-                      <td className="p-3 pl-4">
-                        <SheetTrigger asChild>
-                          <div className="flex items-center gap-3 min-w-0">
-                            {renderFileIcon(art.type)}
-                            <div className="min-w-0 truncate">
-                              <p className="font-semibold text-foreground group-hover:text-primary transition-colors truncate text-sm">{art.name}</p>
-                              <p className="text-[10px] text-muted-foreground font-mono">Mã: {art.id} • {art.extension}</p>
+                {filteredItems.map((item) => {
+                  const channel = toChannel(item.draft?.metadata?.platform);
+                  const status  = toStatus(item);
+
+                  return (
+                    <Sheet key={item.session_id}>
+                      <tr className="hover:bg-muted/30 cursor-pointer transition-colors group">
+                        <td className="p-3 pl-4">
+                          <SheetTrigger asChild>
+                            <div className="flex items-center gap-3 min-w-0">
+                              {renderFileIcon(item.draft?.metadata?.platform)}
+                              <div className="min-w-0 truncate">
+                                <p className="font-semibold text-foreground group-hover:text-primary transition-colors truncate text-sm">
+                                  {item.request ?? "(Không có yêu cầu)"}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground font-mono">
+                                  ID: {item.session_id} • {item.draft?.metadata?.type ?? "—"}
+                                </p>
+                              </div>
                             </div>
+                          </SheetTrigger>
+                        </td>
+                        <td className="p-3">
+                          <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold font-mono", CHANNEL_META[channel].bg, CHANNEL_META[channel].color)}>
+                            {CHANNEL_META[channel].label}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", STATUS_META[status].class)}>
+                            {STATUS_META[status].label}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right font-mono text-muted-foreground">
+                          {item.usage?.total_tokens ?? 0}
+                        </td>
+                        <td className="p-3 text-right font-mono text-muted-foreground">
+                          {new Date(item.created_at).toLocaleDateString("vi-VN")}
+                        </td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={(e) => handleQuickSchedule(item, e)}
+                              className="p-1 hover:bg-primary/10 text-primary rounded"
+                              title="Lên lịch"
+                            >
+                              <CalendarPlus size={13} />
+                            </button>
                           </div>
-                        </SheetTrigger>
-                      </td>
-                      <td className="p-3">
-                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold font-mono", CHANNEL_META[art.channel].bg, CHANNEL_META[art.channel].color)}>
-                          {CHANNEL_META[art.channel].label}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full", STATUS_META[art.status].class)}>
-                          {STATUS_META[art.status].label}
-                        </span>
-                      </td>
-                      <td className="p-3 text-right font-mono text-muted-foreground">{art.size}</td>
-                      <td className="p-3 text-center">
-                        <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          <button onClick={(e) => handleQuickSchedule(art, e)} className="p-1 hover:bg-primary/10 text-primary rounded" title="Lên lịch">
-                            <CalendarPlus size={13} />
-                          </button>
-                          <button onClick={(e) => handleDelete(art.id, e)} className="p-1 hover:bg-destructive/10 text-destructive rounded" title="Xóa">
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    <RenderDetailDrawer art={art} renderFileIcon={renderFileIcon} />
-                  </Sheet>
-                ))}
+                        </td>
+                      </tr>
+                      <RenderDetailDrawer item={item} renderFileIcon={renderFileIcon} />
+                    </Sheet>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -339,64 +429,105 @@ export default function ArtifactsPage() {
   );
 }
 
-// COMPONENT ĐUÔI DRAWER CHI TIẾT ĐỒNG BỘ SHADCN
-function RenderDetailDrawer({ art, renderFileIcon }: { art: Artifact, renderFileIcon: (t: string) => React.ReactNode }) {
+// ─── Detail Drawer ─────────────────────────────────────────────────────────────
+function RenderDetailDrawer({
+  item,
+  renderFileIcon,
+}: {
+  item: SessionListItem;
+  renderFileIcon: (platform?: string) => React.ReactNode;
+}) {
+  const channel = toChannel(item.draft?.metadata?.platform);
+  const status  = toStatus(item);
+  const content = item.draft?.content ?? item.request ?? "(Chưa có nội dung)";
+
   return (
     <SheetContent className="w-full sm:max-w-[420px] rounded-l-[20px] p-6 flex flex-col h-full gap-4">
       <SheetHeader className="border-b pb-3 shrink-0">
         <div className="flex items-center justify-between w-full pr-6">
-          <span className="text-[10px] font-mono font-bold text-muted-foreground bg-muted border px-1.5 py-0.5 rounded">{art.id}</span>
-          <span className="text-[11px] font-mono text-muted-foreground">{art.size}</span>
+          <span className="text-[10px] font-mono font-bold text-muted-foreground bg-muted border px-1.5 py-0.5 rounded">
+            {item.session_id}
+          </span>
+          <span className="text-[11px] font-mono text-muted-foreground">
+            v{item.draft?.version ?? 1}
+          </span>
         </div>
         <SheetTitle className="text-sm font-bold text-foreground tracking-tight line-clamp-2 text-left pt-1">
-          {art.name}
+          {item.request ?? `Session ${item.session_id}`}
         </SheetTitle>
       </SheetHeader>
 
       <div className="flex-1 overflow-y-auto space-y-4 min-h-0 flex flex-col">
+        {/* Meta grid */}
         <div className="grid grid-cols-2 gap-2 bg-muted/30 p-3 border rounded-xl text-[11px] text-muted-foreground font-medium">
           <div className="space-y-1">
             <p className="text-[9px] uppercase font-bold text-muted-foreground/70">Kênh đăng tải</p>
-            <p className={cn("font-bold font-mono", CHANNEL_META[art.channel].color)}>{CHANNEL_META[art.channel].label}</p>
+            <p className={cn("font-bold font-mono", CHANNEL_META[channel].color)}>
+              {CHANNEL_META[channel].label}
+            </p>
           </div>
           <div className="space-y-1">
-            <p className="text-[9px] uppercase font-bold text-muted-foreground/70">Trạng thái kho</p>
-            <p className="font-bold text-foreground">{STATUS_META[art.status].label}</p>
+            <p className="text-[9px] uppercase font-bold text-muted-foreground/70">Trạng thái</p>
+            <p className="font-bold text-foreground">{STATUS_META[status].label}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[9px] uppercase font-bold text-muted-foreground/70">Tokens dùng</p>
+            <p className="font-bold text-foreground font-mono">{item.usage?.total_tokens ?? 0}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[9px] uppercase font-bold text-muted-foreground/70">Phiên bản</p>
+            <p className="font-bold text-foreground font-mono">v{item.draft?.version ?? 1}</p>
           </div>
           <div className="space-y-1 col-span-2 pt-1 border-t flex items-center gap-1.5">
-            <Calendar size={11}/>
-            <span>Ngày tạo: {new Date(art.createdAt).toLocaleDateString("vi-VN")}</span>
+            <Calendar size={11} />
+            <span>Ngày tạo: {new Date(item.created_at).toLocaleDateString("vi-VN")}</span>
           </div>
-        </div>
-
-        <div className="flex-1 border bg-muted/10 rounded-xl overflow-hidden flex flex-col min-h-[240px] relative">
-          {art.type === "image" && art.previewUrl ? (
-            <div className="w-full h-full flex items-center justify-center p-2 bg-muted/30">
-              <img src={art.previewUrl} alt={art.name} className="max-w-full max-h-full object-contain rounded border bg-background" />
+          {item.error && (
+            <div className="col-span-2 pt-1 border-t text-red-500 flex items-center gap-1.5">
+              <span className="text-[9px] uppercase font-bold">Lỗi:</span>
+              <span className="font-mono">{item.error}</span>
             </div>
-          ) : (
-            <pre className="w-full h-full p-4 font-mono text-[10.5px] text-foreground bg-background whitespace-pre-wrap overflow-y-auto leading-relaxed shadow-inner">
-              {art.previewContent}
-            </pre>
           )}
         </div>
+
+        {/* Content preview */}
+        <div className="flex-1 border bg-muted/10 rounded-xl overflow-hidden flex flex-col min-h-[240px]">
+          <pre className="w-full h-full p-4 font-mono text-[10.5px] text-foreground bg-background whitespace-pre-wrap overflow-y-auto leading-relaxed shadow-inner">
+            {content}
+          </pre>
+        </div>
+
+        {/* Version history */}
+        {(item.draft?.versions?.length ?? 0) > 1 && (
+          <div className="border rounded-xl p-3 space-y-2">
+            <p className="text-[10px] uppercase font-bold text-muted-foreground/70">Lịch sử phiên bản</p>
+            {item.draft!.versions.map((v) => (
+              <div key={v.version} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="font-mono font-bold text-foreground">v{v.version}</span>
+                <span className="bg-muted px-1.5 py-0.5 rounded font-mono">{v.action}</span>
+                <span className="truncate">{v.content.slice(0, 60)}…</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
+      {/* Actions */}
       <div className="pt-3 border-t mt-auto grid grid-cols-3 gap-2 shrink-0">
-        <button 
+        <button
           onClick={() => {
-            navigator.clipboard.writeText(art.previewContent || art.name);
+            navigator.clipboard.writeText(content);
             toast.success("Đã sao chép vào bộ nhớ tạm!");
           }}
           className="h-8 text-[11px] bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors outline-none"
         >
-          <Copy size={13}/> Sao chép
+          <Copy size={13} /> Sao chép
         </button>
         <button className="h-8 text-[11px] bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors outline-none">
-          <Pencil size={13}/> Sửa bài
+          <Pencil size={13} /> Sửa bài
         </button>
         <button className="h-8 text-[11px] bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-lg flex items-center justify-center gap-1 transition-colors outline-none shadow-xs">
-          <CalendarPlus size={13}/> Lên lịch
+          <CalendarPlus size={13} /> Lên lịch
         </button>
       </div>
     </SheetContent>

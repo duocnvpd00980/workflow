@@ -1,34 +1,48 @@
-**Báo cáo phân tích dữ liệu đối thủ của Sontra Sea Hotel**
+**Báo cáo phân tích dữ liệu đối thủ**
 
 **1. PHÂN LOẠI ĐỐI THỦ (Direct/Indirect)**
 
-Dựa trên danh sách các khách sạn, resort, homestay ở khu vực Sơn Trà/Đà Nẵng, tôi phân loại đối thủ của Sontra Sea Hotel như sau:
+Các khách sạn, resort, homestay ở khu vực Sơn Trà/Đà Nẵng có thể được phân loại thành các đối thủ trực tiếp (Direct) và gián tiếp (Indirect) như sau:
 
-* Direct (đối thủ trực tiếp): Các khách sạn, resort có 등급 tương đương (3 sao) và nằm ở khu vực Sơn Trà/Đà Nẵng:
- + Anstay Homestay (homestay)
- + Golden Lotus Hotel (3 sao)
-* Indirect (đối thủ gián tiếp): Các khách sạn, resort có等級 cao hơn (4-5 sao) hoặc nằm ở khu vực khác:
- + InterContinental (không rõ等級, nhưng có thể là 5 sao)
+* Đối thủ trực tiếp (Direct):
+ + The BackPacker Hotel (hostel)
+ + Natalie Indochine Mountain Villa (Seahorse Hotel & Office by HAVI)
+ + Saha Casa Boutique Hotel
+ + The Hem Hotel
+* Đối thủ gián tiếp (Indirect):
+ + Danana Beach (không có thông tin cụ thể về khách sạn này)
 
 **2. ĐỐI THỦ CHÍNH: Điểm mạnh/yếu, giá ước tính, target khách hàng**
 
-* **Anstay Homestay**:
- + Điểm mạnh: Giá cả phải chăng, homestay cozy và gần sân bay.
- + Điểm yếu: Không có nhiều tiện ích, không phù hợp với khách hàng muốn trải nghiệm luxury.
- + Giá ước tính: 500.000 - 1.000.000 VND/phòng/đêm
- + Target khách hàng: Khách du lịch trẻ, cặp đôi, khách đi một mình
-* **Golden Lotus Hotel**:
- + Điểm mạnh: Vị trí tốt, gần biển, phòng sạch sẽ.
- + Điểm yếu: Không có nhiều tiện ích, giá cả không quá cạnh tranh.
- + Giá ước tính: 1.500.000 - 3.000.000 VND/phòng/đêm
- + Target khách hàng: Khách du lịch gia đình, cặp đôi, khách doanh nhân
+Dưới đây là thông tin về các đối thủ chính:
+
+* **The BackPacker Hotel**:
+ + Điểm mạnh: Giá cả phải chăng, vị trí thuận tiện
+ + Điểm yếu: Không có thông tin về tiện ích và dịch vụ
+ + Giá ước tính: khoảng 500.000 - 1.000.000 VND/phòng/đêm
+ + Target khách hàng: Du khách trẻ, khách du lịch bụi
+* **Natalie Indochine Mountain Villa (Seahorse Hotel & Office by HAVI)**:
+ + Điểm mạnh: Vị trí thuận tiện, dịch vụ đa dạng
+ + Điểm yếu: Giá cả cao hơn so với Sontra Sea Hotel
+ + Giá ước tính: khoảng 2.000.000 - 4.000.000 VND/phòng/đêm
+ + Target khách hàng: Khách du lịch cao cấp, doanh nhân
+* **Saha Casa Boutique Hotel**:
+ + Điểm mạnh: Tiện ích và dịch vụ cao cấp, vị trí thuận tiện
+ + Điểm yếu: Giá cả cao hơn so với Sontra Sea Hotel
+ + Giá ước tính: khoảng 2.500.000 - 5.000.000 VND/phòng/đêm
+ + Target khách hàng: Khách du lịch cao cấp, doanh nhân
+* **The Hem Hotel**:
+ + Điểm mạnh: Vị trí thuận tiện, tiện ích và dịch vụ đa dạng
+ + Điểm yếu: Không có thông tin về giá cả và target khách hàng
+ + Giá ước tính: khoảng 1.500.000 - 3.000.000 VND/phòng/đêm
+ + Target khách hàng: Khách du lịch, doanh nhân
 
 **3. CHIẾN LƯỢC ĐỀ XUẤT: 3-5 hành động cụ thể**
 
-Dựa trên phân tích trên, tôi đề xuất các chiến lược sau:
+Dựa trên phân tích dữ liệu đối thủ, dưới đây là một số chiến lược đề xuất cho Sontra Sea Hotel:
 
-1. **Tăng cường tiện ích và dịch vụ**: Sontra Sea Hotel cần đầu tư vào các tiện ích và dịch vụ để thu hút khách hàng, chẳng hạn như xây dựng hồ bơi, nhà hàng, quán bar, dịch vụ phòng...
-2. **Chiến dịch Marketing**: Thực hiện chiến dịch Marketing trên các kênh truyền thông xã hội, Google Ads để tăng cường nhận thức về thương hiệu và thu hút khách hàng.
-3. **Chương trình khuyến mãi**: Tổ chức chương trình khuyến mãi, giảm giá phòng cho khách hàng đặt phòng sớm, khách hàng thân thiết, hoặc khách hàng đi cùng với bạn bè, gia đình.
-4. **Cải thiện trải nghiệm khách hàng**: Sontra Sea Hotel cần tập trung vào việc cải thiện trải nghiệm khách hàng, bao gồm việc nâng cấp phòng, tăng cường dịch vụ phòng, và đào tạo nhân viên để cung cấp dịch vụ tốt hơn.
-5. **Tăng cường quan hệ đối tác**: Sontra Sea Hotel cần tăng cường quan hệ đối tác với các công ty du lịch, các trang web đặt phòng trực tuyến để tăng cường khả năng tiếp cận khách hàng.
+1. **Tăng cường quảng cáo và khuyến mãi**: Tăng cường quảng cáo trên các kênh truyền thông xã hội và trang web du lịch để thu hút khách hàng.
+2. **Cải thiện tiện ích và dịch vụ**: Cải thiện tiện ích và dịch vụ của khách sạn để cạnh tranh với các đối thủ cao cấp như Saha Casa Boutique Hotel.
+3. **Đa dạng hóa sản phẩm**: Đa dạng hóa sản phẩm và dịch vụ của khách sạn để thu hút khách hàng đa dạng, bao gồm cả khách du lịch bụi và khách du lịch cao cấp.
+4. **Tăng cường hợp tác với các đối tác du lịch**: Tăng cường hợp tác với các đối tác du lịch để tăng cường quảng cáo và khuyến mãi cho khách sạn.
+5. **Giảm giá và tăng cường giá trị**: Giảm giá và tăng cường giá trị cho khách hàng để cạnh tranh với các đối thủ trực tiếp như The BackPacker Hotel.

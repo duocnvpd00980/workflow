@@ -12,6 +12,7 @@ from app.marketing.router import router as marketing_router
 from app.brand.router import router as brand_router
 from app.research.router import router as research_router
 from app.rag.hotel_router import router as hotel_router
+from app.tasks.router import router as tasks_router
 
 from app.db import init_db
 
@@ -53,6 +54,7 @@ app.include_router(brand_router, prefix="/api/v1")
 app.include_router(research_router, prefix="/api/v1")
 app.include_router(image_router, prefix="/api/v1")
 app.include_router(hotel_router, prefix="/api/v1")
+app.include_router(tasks_router, prefix="/api/v1")
 
 @app.get("/metrics/system", tags=["Monitoring"])
 def system_metrics():

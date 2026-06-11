@@ -8,7 +8,6 @@ from sqlalchemy import select
 from app.db import AsyncSessionLocal
 from app.research.models import HotelResearchState, PipelineTask, PipelineEvent, ResearchResult
 from app.research.workflow import build_graph
-from app.tasks import create_task, finish_task, fail_task   # ← THÊM
 
 # ── RAM cache ───────────────────────────────────────────────────
 TASK_STORE: Dict[str, Dict[str, Any]] = {}
@@ -24,17 +23,15 @@ NODE_META = [
     ("cleanup",           "🧹 Dọn dẹp",                 95),
 ]
 
-# Số bước pipeline — dùng để điền steps_total
-STEPS_TOTAL = len(NODE_META)
 
-
-# ── Helpers DB (giữ nguyên) ──────────────────────────────────────
+# ── Helpers DB ───────────────────────────────────────────────────
 
 async def _db_create_task(task_id: str, business_name: str, address: str, industry: str) -> None:
+    """Tạo task mới trong DB. Nếu đã tồn tại thì bỏ qua (idempotent)."""
     async with AsyncSessionLocal() as session:
         existing = await session.get(PipelineTask, task_id)
         if existing:
-            return
+            return  # Đã tồn tại, không tạo lại
         session.add(PipelineTask(
             task_id=task_id,
             business_name=business_name,
@@ -62,6 +59,7 @@ async def _db_finish_task(task_id: str, status: str, result: dict | None = None,
 
 
 async def _db_save_result(task_id: str, data: dict) -> None:
+    """Lưu kết quả pipeline đầy đủ vào research_results."""
     async with AsyncSessionLocal() as session:
         session.add(ResearchResult(
             task_id=task_id,
@@ -95,7 +93,7 @@ async def load_task_from_db(task_id: str) -> bool:
         return True
 
 
-# ── State factory (giữ nguyên) ────────────────────────────────────
+# ── State factory ─────────────────────────────────────────────────
 
 def create_initial_state(hotel_dir: str, business_name: str, address: str, industry: str) -> HotelResearchState:
     return {
@@ -120,7 +118,7 @@ def _make_config(business_name: str) -> dict:
     return {"configurable": {"thread_id": f"hotel-research-{business_name}"}}
 
 
-# ── Đồng bộ (giữ nguyên) ─────────────────────────────────────────
+# ── Đồng bộ ──────────────────────────────────────────────────────
 
 async def run_pipeline(business_name: str, address: str, industry: str) -> HotelResearchState:
     hotel_dir = "hotels"
@@ -131,7 +129,7 @@ async def run_pipeline(business_name: str, address: str, industry: str) -> Hotel
     return await graph.ainvoke(state, config=config)
 
 
-# ── Stream generator (giữ nguyên) ────────────────────────────────
+# ── Stream generator ─────────────────────────────────────────────
 
 async def run_pipeline_stream(
     business_name: str,
@@ -206,41 +204,16 @@ async def run_pipeline_stream(
 # ── Background worker ────────────────────────────────────────────
 
 async def pipeline_worker_task(task_id: str, business_name: str, address: str, industry: str) -> None:
-    # Đảm bảo PipelineTask DB tồn tại (idempotent, router đã tạo trước)
+    # FIX: KHÔNG gọi _db_create_task ở đây — router đã tạo row rồi
+    # Chỉ cần đảm bảo row tồn tại (trường hợp server restart)
     await _db_create_task(task_id, business_name, address, industry)
 
-    # ── Tạo row trong background_tasks trung tâm ──────────────────
-    async with AsyncSessionLocal() as db:
-        bg_task = await create_task(
-            db,
-            source="research",
-            source_id=task_id,
-            title=f"Nghiên cứu: {business_name}",
-            triggered_by="user",
-            steps_total=STEPS_TOTAL,
-        )
-        bg_task_id = bg_task.id
-    # ─────────────────────────────────────────────────────────────
-
     seq = 0
-    steps_done = 0
-
     try:
         async for event_str in run_pipeline_stream(business_name, address, industry):
             TASK_STORE[task_id]["events"].append(event_str)
             asyncio.create_task(_db_append_event(task_id, seq, event_str))
             seq += 1
-
-            # Đếm bước hoàn thành để cập nhật tiến độ
-            try:
-                payload = json.loads(event_str.removeprefix("data: ").strip())
-                if payload.get("status") == "done":
-                    steps_done += 1
-                    async with AsyncSessionLocal() as db:
-                        from app.tasks import update_task
-                        await update_task(db, bg_task_id, steps_done=steps_done)
-            except Exception:
-                pass
 
             if '"node": "FINISHED"' in event_str:
                 TASK_STORE[task_id]["status"] = "completed"
@@ -250,11 +223,6 @@ async def pipeline_worker_task(task_id: str, business_name: str, address: str, i
                     result_data = {}
                 asyncio.create_task(_db_save_result(task_id, result_data))
                 asyncio.create_task(_db_finish_task(task_id, "completed", result=result_data))
-
-                # ── Đánh dấu hoàn thành trong background_tasks ───
-                async with AsyncSessionLocal() as db:
-                    await finish_task(db, bg_task_id, steps_done=STEPS_TOTAL)
-                # ─────────────────────────────────────────────────
 
     except Exception as e:
         TASK_STORE[task_id]["status"] = "failed"
@@ -270,8 +238,3 @@ async def pipeline_worker_task(task_id: str, business_name: str, address: str, i
         TASK_STORE[task_id]["events"].append(error_str)
         asyncio.create_task(_db_append_event(task_id, seq, error_str))
         asyncio.create_task(_db_finish_task(task_id, "failed", error=str(e)))
-
-        # ── Đánh dấu thất bại trong background_tasks ─────────────
-        async with AsyncSessionLocal() as db:
-            await fail_task(db, bg_task_id, error_message=str(e))
-        # ─────────────────────────────────────────────────────────

@@ -1,13 +1,24 @@
 Dưới đây là danh sách các khách sạn, resort, homestay ở khu vực Sơn Trà/Đà Nẵng:
-1. Anstay Homestay
-2. Bluesun Danang Beach Hotel
-3. Four Points by Sheraton
-4. InterContinental
-5. Lotus
-6. The Anam Danang
-(không có trong dữ liệu gốc, nếu có thêm tên khách sạn trong dữ liệu gốc thì sẽ được thêm vào)
-Sau khi xem xét dữ liệu gốc, tôi có thể thêm một số khách sạn khác:
-1. Anstay Homestay
-2. Bluesun Danang Beach Hotel
-3. Lotus
-Có 3 tên khách sạn trong dữ liệu gốc.
+1. BackPacker Hotel
+2. Natalie Indochine Mountain Villa
+3. Danana Beach
+4. The Hem Hotel
+5. Saha Casa Boutique Hotel
+6. TMS Hotel Da Nang Beach
+7. Paris Deli Danang Beach Hotel
+8. Khe Hotel & Spa
+9. THE GRACE An Thuong Hotel
+10. Hotel Del Luna
+11. Ocean Star Da Nang Bay Hotel
+12. Royal Family Hotel
+13. Flower Hotel
+14. BlueSun Danang Beach Hotel
+15. Sofia Suite Hotel & Spa
+16. Seaflow Staycation
+17. Lotus
+18. Four Points by Sheraton
+19. InterContinental
+20. Le House Boutique Hotel
+21. Marte Mountain
+22. Premier Resort
+23. Hotel And Spa Danang
