@@ -240,3 +240,21 @@ class HotelSearchOut(BaseModel):
     query: str
     total: int
     rooms: list[HotelRoomOut]
+
+
+
+class CrawlIn(BaseModel):
+    url: HttpUrl
+    title: str = ""
+    document_type: str = "web_page"
+
+
+
+class CrawlBusinessOut(BaseModel):
+    id: int
+    title: str
+    status: str
+    document_type: str
+    chunk_count: int
+    extracted_summary: Optional[dict] = None
+    message: str

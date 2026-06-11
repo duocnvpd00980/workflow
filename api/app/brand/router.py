@@ -1,11 +1,12 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from litellm import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.db import get_db
+from app.tasks.service import create_task  # ← ADDED
 from .service import BrandProfileService
 from .schemas import BrandProfileSchema, CreateBrandIn
 from .models import Brand
@@ -74,16 +75,33 @@ async def delete_brand(brand_id: str, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Lỗi trong quá trình xóa thương hiệu: {str(e)}")
-    
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+# 🔄 GENERATE PROFILE - WITH BACKGROUND TASK TRACKING
+# ════════════════════════════════════════════════════════════════════════════════
 @router.post(
     "/{brand_id}/generate",
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 async def generate_profile(
+    background_tasks: BackgroundTasks,  # ← ADDED
     brand_id: str,
     payload: GenerateBrandProfileIn,
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    ✅ Generate brand profile từ documents.
+    
+    Response: 202 Accepted (không chờ xong)
+    Task tracking: GET /tasks/{task_id} để check tiến độ
+    
+    Flow:
+    1. Tạo task record ngay
+    2. Queue background task
+    3. Return task_id cho client
+    4. Client polling /tasks/{task_id} để check status
+    """
     result = await db.execute(
         select(Brand)
         .filter(Brand.id == brand_id)
@@ -98,18 +116,35 @@ async def generate_profile(
         )
 
     try:
-        profile = (
-            await BrandProfileService.generate_from_documents(
-                db=db,
-                brand_id=brand_id,
-                document_ids=payload.document_ids,
-            )
+        # ════ STEP 1: Create task record ════
+        logger.info(f"Creating task for brand {brand_id}")
+        task = await create_task(
+            db,
+            source="brand",
+            source_id=brand_id,
+            title=f"Generate profile for {brand.name}",
+            triggered_by="user",
+            steps_total=3,  # 3 steps: fetch docs, call Groq, save
+            model="groq-mixtral"
         )
 
+        # ════ STEP 2: Queue background task ════
+        logger.info(f"Queuing background task {task.id} for brand {brand_id}")
+        background_tasks.add_task(
+            BrandProfileService.generate_from_documents_bg,
+            db=db,
+            brand_id=brand_id,
+            document_ids=payload.document_ids,
+            task_id=task.id,
+        )
+
+        # ════ STEP 3: Return immediately ════
         return {
-            "status": "generated",
+            "status": "processing",
+            "message": "Hồ sơ thương hiệu đang được xử lý",
             "brand_id": brand_id,
-            "profile": profile.model_dump(),
+            "task_id": task.id,
+            "task_status_url": f"/tasks/{task.id}",
         }
 
     except ValueError as e:
@@ -117,13 +152,14 @@ async def generate_profile(
             status_code=400,
             detail=str(e),
         )
-
     except Exception as e:
+        logger.error(f"Error generating profile: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=str(e),
         )
-    
+
+
 @router.put("/{brand_id}", status_code=status.HTTP_200_OK)
 async def save_profile(
     brand_id: str,

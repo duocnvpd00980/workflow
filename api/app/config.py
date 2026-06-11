@@ -7,7 +7,7 @@ class Settings(BaseSettings):
 
     # Chỉ định nghĩa 1 lần duy nhất cho mỗi biến
     # Các giá trị ở đây là "Default values" nếu không tìm thấy trong .env
-    GOOGLE_API_KEY: str = ""
+    GEMINI_API_KEY: str = "AIzaSyBrx7ay5v0GC08fq0qxS_zHyuuKqaI-Jg0"
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     is_dev: bool = True
     # Dùng chuẩn aiosqlite cho database

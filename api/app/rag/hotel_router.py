@@ -3,10 +3,11 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.tasks.service import create_task
 from app.db import get_db
 from app.rag.hotel_service import HotelService
 from app.rag.models import HotelRoom
@@ -46,23 +47,36 @@ def _to_out(room: HotelRoom) -> HotelRoomOut:
     )
 
 
-@router.post("/crawl/", response_model=HotelCrawlOut, status_code=201)
+@router.post("/crawl/", status_code=202)
 async def crawl_hotel(
+    background_tasks: BackgroundTasks,
     payload: HotelCrawlIn,
     db: AsyncSession = Depends(get_db),
     svc: HotelService = Depends(get_hotel_service),
 ):
-    try:
-        rooms = await svc.crawl(str(payload.url), db)
-    except Exception as e:
-        logger.error("[hotel_crawl] %s", e)
-        raise HTTPException(400, f"Lỗi crawl: {e}")
-
-    return HotelCrawlOut(
-        total=len(rooms),
-        rooms=[_to_out(r) for r in rooms],
-        message=f"Đã crawl và lưu {len(rooms)} phòng.",
+    task = await create_task(
+        db,
+        source="hotel",
+        source_id=str(payload.url),
+        title=f"Crawl hotel: {payload.url}",
+        triggered_by="user",
+        steps_total=3,   # fetch → extract → save
+        model="groq",
     )
+
+    background_tasks.add_task(
+        svc.crawl_bg,
+        url=str(payload.url),
+        db=db,
+        task_id=task.id,
+    )
+
+    return {
+        "status": "processing",
+        "message": "Đang crawl khách sạn trong nền",
+        "task_id": task.id,
+        "task_status_url": f"/tasks/{task.id}",
+    }
 
 
 @router.post("/search/", response_model=HotelSearchOut)

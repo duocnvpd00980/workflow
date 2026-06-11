@@ -1,0 +1,41 @@
+**Báo cáo phân tích dữ liệu đối thủ của Sontra Sea Hotel**
+
+**1. PHÂN LOẠI ĐỐI THỦ (Direct/Indirect)**
+
+Dựa trên danh sách các khách sạn, resort, homestay ở khu vực Sơn Trà/Đà Nẵng, chúng tôi phân loại đối thủ của Sontra Sea Hotel như sau:
+
+* Direct (đối thủ trực tiếp):
+ + Danang Beach Hotel
+ + Four Points by Sheraton
+ + Inter
+* Indirect (đối thủ gián tiếp):
+ + Lotus (không phải là khách sạn)
+ + Kary (Queen Palace Da Nang)
+ + Atel
+
+**2. ĐỐI THỦ CHÍNH: Điểm mạnh/yếu, giá ước tính, target khách hàng**
+
+* **Danang Beach Hotel**:
+ + Điểm mạnh: Giá cả hợp lý, vị trí gần biển
+ + Điểm yếu: Cơ sở vật chất chưa hiện đại
+ + Giá ước tính: 800.000 - 1.200.000 VND/phòng/đêm
+ + Target khách hàng: Khách du lịch trong nước và quốc tế có ngân sách hạn chế
+* **Four Points by Sheraton**:
+ + Điểm mạnh: Thương hiệu quốc tế, cơ sở vật chất hiện đại
+ + Điểm yếu: Giá cả cao
+ + Giá ước tính: 2.500.000 - 4.000.000 VND/phòng/đêm
+ + Target khách hàng: Khách du lịch quốc tế và doanh nhân
+* **Inter**:
+ + Thông tin chưa đầy đủ để phân tích
+
+**3. CHIẾN LƯỢC ĐỀ XUẤT: 3-5 hành động cụ thể**
+
+Dựa trên phân tích trên, chúng tôi đề xuất các hành động sau:
+
+1. **Tăng cường chất lượng dịch vụ**: Sontra Sea Hotel cần tập trung vào nâng cao chất lượng dịch vụ để thu hút khách hàng và tăng cường sự trung thành.
+2. **Điều chỉnh giá cả**: Sontra Sea Hotel cần xem xét điều chỉnh giá cả để cạnh tranh với Danang Beach Hotel và Four Points by Sheraton.
+3. **Tăng cường quảng cáo trên mạng xã hội**: Sontra Sea Hotel cần tăng cường quảng cáo trên mạng xã hội để tăng cường nhận thức về thương hiệu và thu hút khách hàng.
+4. **Phát triển các chương trình khuyến mãi**: Sontra Sea Hotel cần phát triển các chương trình khuyến mãi để thu hút khách hàng trong mùa thấp điểm.
+5. **Cải thiện cơ sở vật chất**: Sontra Sea Hotel cần cải thiện cơ sở vật chất để tăng cường sự hấp dẫn và cạnh tranh.
+
+Trên đây là báo cáo phân tích dữ liệu đối thủ của Sontra Sea Hotel. Chúng tôi hy vọng rằng báo cáo này sẽ giúp Sontra Sea Hotel có cái nhìn tổng quan về thị trường và đưa ra các quyết định chiến lược phù hợp.

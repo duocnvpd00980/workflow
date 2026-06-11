@@ -334,7 +334,7 @@ class Store:
 
             self._bm25 = BM25Okapi(self._bm25_corpus)
             self._hashes.add(h)
-            self._save()
+            await self._save()
             log.info(f"[add] {h} → {len(chunks)} chunk(s)")
             return "ok"
 
@@ -407,7 +407,8 @@ class Store:
     def stats(self) -> dict:
         return {"chunks": len(self._texts), "hashes": len(self._hashes), "faiss_vectors": self._idx.ntotal}
 
-    def _save(self):
+    def _save_sync(self):
+        """Đồng bộ — chạy trong thread pool."""
         data = {"texts": self._texts, "metas": self._metas, "corpus": self._bm25_corpus, "hashes": list(self._hashes)}
         json_path = PERSIST_DIR / "data.json"
         tmp = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=PERSIST_DIR, delete=False, suffix=".tmp")
@@ -427,6 +428,11 @@ class Store:
         except Exception:
             os.path.exists(tmp_idx.name) and os.unlink(tmp_idx.name)
             raise
+
+    async def _save(self):
+        """Bất đồng bộ — offload sang thread pool để không block event loop."""
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._save_sync)
 
     def _load(self):
         dp, fp = PERSIST_DIR / "data.json", PERSIST_DIR / "faiss.index"
@@ -604,7 +610,7 @@ class ImageStore:
             self._ids.append(image_id)
             self._metas.append({"image_id": image_id, **meta})
             self._hashes.add(h)
-            self._save()
+            await self._save()
             log.info(f"[image_add] {image_id}")
             return "ok"
 
@@ -637,7 +643,7 @@ class ImageStore:
     def stats(self) -> dict:
         return {"images": len(self._ids), "faiss_vectors": self._idx.ntotal}
 
-    def _save(self):
+    def _save_sync(self):
         data = {"ids": self._ids, "metas": self._metas, "hashes": list(self._hashes)}
         tmp = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=IMAGE_PERSIST_DIR, delete=False, suffix=".tmp")
         try:
@@ -655,6 +661,10 @@ class ImageStore:
         except Exception:
             os.path.exists(tmp_idx.name) and os.unlink(tmp_idx.name)
             raise
+
+    async def _save(self):
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, self._save_sync)
 
     def _load(self):
         dp = IMAGE_PERSIST_DIR / "data.json"

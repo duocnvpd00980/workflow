@@ -1,13 +1,13 @@
 import uuid
-from sqlalchemy import select
+from sqlalchemy import select, func
+from sqlalchemy.orm.attributes import flag_modified  # ← THÊM ĐỂ FIX LỖI UPDATE JSON
 from langgraph.types import Command
 
 from app.marketing.nodes import call_groq
 from app.db import AsyncSessionLocal
 from .models import WorkflowSession
 from .workflow import graph
-from sqlalchemy import func
-from app.tasks import create_task, finish_task, fail_task, update_task  # ← THÊM
+from app.tasks import create_task, finish_task, fail_task, update_task
 
 
 class WorkflowService:
@@ -31,10 +31,10 @@ class WorkflowService:
             "approved": False,
             "publish_status": None,
             "usage": {},
-            "error": None
+            "error": None,
+            "memory_history": []  # Khởi tạo mảng rỗng ban đầu
         }
 
-        # Lưu WorkflowSession DB
         async with AsyncSessionLocal() as db:
             session = WorkflowSession(
                 id=session_id,
@@ -42,7 +42,7 @@ class WorkflowService:
                 request=request,
                 status="running",
                 draft=None,
-                usage={},
+                usage={"total_tokens": 0, "total_cost": 0.0},
                 publish_status=None,
                 approved=0,
                 error=None
@@ -50,7 +50,6 @@ class WorkflowService:
             db.add(session)
             await db.commit()
 
-        # ── Tạo row background_tasks trung tâm ───────────────────
         async with AsyncSessionLocal() as db:
             bg_task = await create_task(
                 db,
@@ -58,10 +57,9 @@ class WorkflowService:
                 source_id=session_id,
                 title=request[:200],
                 triggered_by="user",
-                steps_total=2,   # bước 1: generate, bước 2: approve/publish
+                steps_total=2,
             )
             bg_task_id = bg_task.id
-        # ─────────────────────────────────────────────────────────
 
         try:
             async for event in graph.astream(initial_state, config=config):
@@ -95,13 +93,10 @@ class WorkflowService:
                     s.error = error_msg
                     await db.commit()
 
-            # ── Đánh dấu thất bại ────────────────────────────────
             async with AsyncSessionLocal() as db:
                 await fail_task(db, bg_task_id, error_message=error_msg)
-            # ─────────────────────────────────────────────────────
             raise
 
-        # Update WorkflowSession sau khi chạy xong
         async with AsyncSessionLocal() as db:
             stmt = select(WorkflowSession).filter_by(id=session_id)
             result = await db.execute(stmt)
@@ -109,19 +104,19 @@ class WorkflowService:
             if s:
                 s.status = status
                 s.draft = draft
-                s.usage = usage
+                # Đảm bảo giữ cấu trúc usage thống nhất
+                if s.usage:
+                    s.usage.update(usage or {})
+                else:
+                    s.usage = usage
+                flag_modified(s, "usage")
                 await db.commit()
 
-        # ── Cập nhật background_tasks theo status hiện tại ───────
         async with AsyncSessionLocal() as db:
             if status == "paused":
-                # Đang chờ user duyệt — vẫn "running", cập nhật steps_done=1
                 await update_task(db, bg_task_id, steps_done=1)
             elif status == "completed":
                 await finish_task(db, bg_task_id, steps_done=2)
-            elif status == "error":
-                pass  # Đã xử lý trong except ở trên
-        # ─────────────────────────────────────────────────────────
 
         return {"session_id": session_id, "status": status, "draft": draft, "usage": usage}
 
@@ -130,10 +125,8 @@ class WorkflowService:
             stmt = select(WorkflowSession).filter_by(id=session_id)
             result = await db.execute(stmt)
             s = result.scalars().first()
-
             if not s:
                 return None
-
             return {
                 "session_id": session_id,
                 "status": s.status,
@@ -153,20 +146,31 @@ class WorkflowService:
                 return None
 
             config = {"configurable": {"thread_id": s.thread_id}}
+
+            # 🌟 ĐIỂM SỬA CHẾT NGƯỜI: Đồng bộ ngược Draft từ DB vào LangGraph trước khi chạy tiếp
+            # Mục đích: Đảm bảo bài viết đã sửa qua Chat-API được nạp thẳng làm ngữ cảnh cho luồng duyệt/xuất bản
+            if s.draft:
+                await graph.update_state(
+                    config,
+                    {
+                        "draft": s.draft,
+                        "memory_history": s.draft.get("memory_history", [])
+                    }
+                )
+
             resume_cmd = {"action": action}
             if action == "edit" and content:
                 resume_cmd["content"] = content
 
             result_graph = await graph.ainvoke(Command(resume=resume_cmd), config=config)
 
-            # Lưu version history
-            current_draft = result_graph.get("draft")
+            current_draft = result_graph.get("draft") or s.draft
             if current_draft:
-                versions = s.draft.get("versions", []) if s.draft else []
+                versions = current_draft.get("versions", [])
                 versions.append({
                     "version": len(versions) + 1,
-                    "content": current_draft["content"],
-                    "metadata": current_draft["metadata"],
+                    "content": current_draft.get("content", ""),
+                    "metadata": current_draft.get("metadata", {}),
                     "action": action
                 })
                 current_draft["versions"] = versions
@@ -175,12 +179,19 @@ class WorkflowService:
             s.approved = 1 if result_graph.get("approved") else 0
             s.publish_status = result_graph.get("publish_status")
             s.draft = current_draft
-            s.usage = result_graph.get("usage")
+            
+            # Cập nhật usage an toàn
+            graph_usage = result_graph.get("usage") or {}
+            total_usage = s.usage or {}
+            total_usage["total_tokens"] = total_usage.get("total_tokens", 0) + graph_usage.get("total_tokens", 0)
+            s.usage = total_usage
+            
             s.error = result_graph.get("error")
-
+            
+            flag_modified(s, "draft")
+            flag_modified(s, "usage")
             await db.commit()
 
-        # ── Đánh dấu hoàn thành khi user resume xong ─────────────
         async with AsyncSessionLocal() as db:
             from sqlalchemy import select as sa_select
             from app.tasks.models import BackgroundTask
@@ -193,7 +204,6 @@ class WorkflowService:
             bg_task = row.scalars().first()
             if bg_task:
                 await finish_task(db, bg_task.id, steps_done=2)
-        # ─────────────────────────────────────────────────────────
 
         return {
             "session_id": session_id,
@@ -206,26 +216,91 @@ class WorkflowService:
         }
 
     # ══════════════════════════════════════════════════════════════
-    # CHAT API
+    # CHAT API — ĐÃ TỐI ƯU HÓA HIỆU NĂNG & THỐNG NHẤT BỘ NHỚ
     # ══════════════════════════════════════════════════════════════
 
-    async def chat_edit(self, draft: str, instruction: str) -> dict:
-        new_draft = call_groq(
-            f"Original draft:\n{draft}\n\n"
+    async def chat_edit(self, session_id: str, instruction: str) -> dict:
+        """Sửa toàn bộ bản phác thảo dựa trên yêu cầu và nạp vào lịch sử memory."""
+        # Bước 1: Mở DB thật nhanh lấy dữ liệu cũ rồi đóng lại ngay để giải phóng connection
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorkflowSession).filter_by(id=session_id)
+            result = await db.execute(stmt)
+            s = result.scalars().first()
+            if not s or not s.draft:
+                raise ValueError("Không tìm thấy session hoặc bản draft để sửa.")
+            
+            old_draft = s.draft
+            old_content = old_draft.get("content", "")
+
+        # Bước 2: Gọi AI bên ngoài transaction DB (Tránh block connection pool)
+        new_content = call_groq(
+            f"Original draft:\n{old_content}\n\n"
             f"Instruction: {instruction}\n\n"
             f"Rewrite entire draft following instruction. Keep tone, style, brand voice. "
             f"Return only the new draft, no explanation.",
             max_tokens=800
         )
-        tokens = len(new_draft.split()) * 2
-        return {
-            "draft": new_draft,
-            "usage": {"tokens": tokens, "type": "chat_edit", "cost": tokens * 0.00001}
-        }
+        tokens = len(new_content.split()) * 2
+        usage_data = {"tokens": tokens, "type": "chat_edit", "cost": tokens * 0.00001}
 
-    async def chat_inline(self, paragraph: str, instruction: str, context: str) -> dict:
+        # Bước 3: Mở lại DB để ghi nhận kết quả và đồng bộ bộ nhớ
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorkflowSession).filter_by(id=session_id)
+            result = await db.execute(stmt)
+            s = result.scalars().first()
+
+            versions = old_draft.get("versions", [])
+            versions.append({
+                "version": len(versions) + 1,
+                "content": old_content,
+                "metadata": old_draft.get("metadata", {}),
+                "action": "chat_edit",
+                "instruction": instruction
+            })
+
+            memory_history = old_draft.get("memory_history", [])
+            memory_history.append({
+                "role": "user",
+                "feedback": instruction,
+                "previous_content": old_content,
+                "improved_content": new_content
+            })
+
+            updated_draft = {
+                "content": new_content,
+                "metadata": old_draft.get("metadata", {}),
+                "versions": versions,
+                "memory_history": memory_history
+            }
+
+            s.draft = updated_draft
+            
+            total_usage = s.usage or {}
+            total_usage["total_tokens"] = total_usage.get("total_tokens", 0) + tokens
+            s.usage = total_usage
+
+            flag_modified(s, "draft")
+            flag_modified(s, "usage")
+            await db.commit()
+
+        return {"session_id": session_id, "draft": updated_draft, "usage": usage_data}
+
+    async def chat_inline(self, session_id: str, paragraph: str, instruction: str) -> dict:
+        """Sửa một đoạn văn đơn lẻ, thay thế trong bài viết tổng và nạp bộ nhớ."""
+        # Bước 1: Lấy context bài viết
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorkflowSession).filter_by(id=session_id)
+            result = await db.execute(stmt)
+            s = result.scalars().first()
+            if not s or not s.draft:
+                raise ValueError("Không tìm thấy dữ liệu bài viết để sửa đoạn văn.")
+            
+            old_draft = s.draft
+            full_context = old_draft.get("content", "")
+
+        # Bước 2: Gọi AI chỉnh sửa đoạn biệt lập bên ngoài transaction
         new_paragraph = call_groq(
-            f"Full article context:\n{context}\n\n"
+            f"Full article context:\n{full_context}\n\n"
             f"Paragraph to rewrite:\n{paragraph}\n\n"
             f"Instruction: {instruction}\n\n"
             f"Rewrite ONLY this paragraph. Match tone with full article. "
@@ -233,16 +308,57 @@ class WorkflowService:
             max_tokens=200
         )
         tokens = len(new_paragraph.split()) * 2
-        changes = [{
-            "type": "replace",
-            "old": paragraph,
-            "new": new_paragraph,
-            "position": "inline"
-        }]
+        usage_data = {"tokens": tokens, "type": "chat_inline", "cost": tokens * 0.00001}
+
+        if paragraph in full_context:
+            new_full_content = full_context.replace(paragraph, new_paragraph, 1)
+        else:
+            new_full_content = full_context + f"\n\n[Edited]: {new_paragraph}"
+
+        # Bước 3: Lưu lại dữ liệu chỉnh sửa vào DB
+        async with AsyncSessionLocal() as db:
+            stmt = select(WorkflowSession).filter_by(id=session_id)
+            result = await db.execute(stmt)
+            s = result.scalars().first()
+
+            versions = old_draft.get("versions", [])
+            versions.append({
+                "version": len(versions) + 1,
+                "content": full_context,
+                "metadata": old_draft.get("metadata", {}),
+                "action": "chat_inline",
+                "instruction": f"Sửa đoạn: '{paragraph[:30]}...' thành '{instruction}'"
+            })
+
+            memory_history = old_draft.get("memory_history", [])
+            memory_history.append({
+                "role": "user",
+                "feedback": f"Tại đoạn văn: '{paragraph[:40]}', hãy sửa lại: {instruction}",
+                "previous_content": paragraph,
+                "improved_content": new_paragraph
+            })
+
+            updated_draft = {
+                "content": new_full_content,
+                "metadata": old_draft.get("metadata", {}),
+                "versions": versions,
+                "memory_history": memory_history
+            }
+            s.draft = updated_draft
+            
+            total_usage = s.usage or {}
+            total_usage["total_tokens"] = total_usage.get("total_tokens", 0) + tokens
+            s.usage = total_usage
+
+            flag_modified(s, "draft")
+            flag_modified(s, "usage")
+            await db.commit()
+
         return {
-            "draft": new_paragraph,
-            "usage": {"tokens": tokens, "type": "chat_inline", "cost": tokens * 0.00001},
-            "changes": changes
+            "session_id": session_id,
+            "draft": updated_draft,
+            "usage": usage_data,
+            "changes": [{"type": "replace", "old": paragraph, "new": new_paragraph, "position": "inline"}]
         }
 
     async def get_versions(self, session_id: str) -> dict:
@@ -250,13 +366,10 @@ class WorkflowService:
             stmt = select(WorkflowSession).filter_by(id=session_id)
             result = await db.execute(stmt)
             s = result.scalars().first()
-
             if not s or not s.draft:
                 return None
-
             versions = s.draft.get("versions", [])
             current = s.draft.get("version", 1)
-
             return {
                 "session_id": session_id,
                 "versions": versions,
@@ -268,19 +381,13 @@ class WorkflowService:
             stmt = select(WorkflowSession).filter_by(id=session_id)
             result = await db.execute(stmt)
             s = result.scalars().first()
-
             if s:
                 await db.delete(s)
                 await db.commit()
                 return True
             return False
 
-    async def list_sessions(
-        self,
-        status: str = None,
-        limit: int = 20,
-        offset: int = 0
-    ) -> dict:
+    async def list_sessions(self, status: str = None, limit: int = 20, offset: int = 0) -> dict:
         async with AsyncSessionLocal() as db:
             count_stmt = select(func.count()).select_from(WorkflowSession)
             if status:

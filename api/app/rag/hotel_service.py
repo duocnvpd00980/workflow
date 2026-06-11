@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.rag.models import HotelRoom
 from app.rag.service import Embedder
 from app.config import get_settings
+from app.tasks.service import update_task, finish_task, fail_task
 
 _s = get_settings()
 
@@ -371,7 +372,70 @@ class HotelService:
         s = re.sub(r"[^\w\s-]", "", s)
         s = re.sub(r"\s+", "-", s)
         return s[:200]
+    
+    async def crawl_bg(
+        self,
+        url: str,
+        db: AsyncSession,
+        task_id: int,
+    ) -> None:
+        """Background version của crawl với task tracking."""
+        
+        try:
+            # Step 1: Fetch page
+            content = await _fetch_page(url)
+            if not content:
+                await fail_task(db, task_id, error_message="Không crawl được nội dung từ URL.")
+                return
+            await update_task(db, task_id, steps_done=1)
 
+            # Step 2: Extract rooms via Groq
+            rooms_data = await self._extractor.extract(content)
+            if not rooms_data:
+                await fail_task(db, task_id, error_message="Không tìm thấy phòng nào từ trang web.")
+                return
+            await update_task(db, task_id, steps_done=2)
+
+            # Step 3: Save to DB + embed
+            self._lazy_init()
+            saved = []
+            for data in rooms_data:
+                name = data.get("name", "").strip()
+                if not name:
+                    continue
+                slug = self._slug(name)
+                existing = await db.execute(select(HotelRoom).where(HotelRoom.slug == slug))
+                if existing.scalar_one_or_none():
+                    continue
+                aliases = await self._extractor.generate_aliases(data)
+                room = HotelRoom(
+                    name=name, slug=slug, source_url=url,
+                    room_type=data.get("room_type"),
+                    bed_type=data.get("bed_type"),
+                    capacity=data.get("capacity"),
+                    area_sqm=data.get("area_sqm"),
+                    price_per_night=data.get("price_per_night"),
+                    currency=data.get("currency", "VND"),
+                    description=data.get("description"),
+                    amenities=data.get("amenities", []),
+                    image_urls=data.get("image_urls", []),
+                    aliases=aliases,
+                    status="active",
+                )
+                db.add(room)
+                await db.flush()
+                await self._vec.add(room.id, room.embed_text())
+                saved.append(room)
+
+            await db.commit()
+            await finish_task(db, task_id, steps_done=3)
+            log.info("[hotel_crawl_bg] task %d done, saved %d rooms", task_id, len(saved))
+
+        except Exception as e:
+            log.error("[hotel_crawl_bg] task %d failed: %s", task_id, e)
+            await fail_task(db, task_id, error_message=str(e))
+            
+                
     async def crawl(self, url: str, db: AsyncSession) -> list[HotelRoom]:
         self._lazy_init()
 

@@ -7,9 +7,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
 from sqlalchemy import ForeignKey
 from sqlalchemy.types import JSON
-
-class Base(DeclarativeBase):
-    pass
+from app.db import Base
 
 class DocumentSource(Base):
     __tablename__ = "knowledge_document_source"

@@ -1,7 +1,6 @@
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
-from typing import TypedDict, Optional, Literal
-from typing import Annotated
+from typing import List, Annotated, TypedDict, Optional, Literal
 import operator
 
 from .nodes import (
@@ -16,6 +15,10 @@ class WorkflowState(TypedDict):
     request: str
     brand_id: str
     template: Optional[Literal["social", "blog", "image", "research"]]
+    brand_profile: dict          # Thành phần 1: Định hình thương hiệu (Tone, Audience, Rules)
+    knowledge_rag: List[dict]    # Thành phần 2: Tri thức thực tế bốc từ Vector DB phục vụ bài viết
+    research_data: dict          # Thành phần 3: Báo cáo nghiên cứu thị trường / phân tích đối thủ
+    memory_history: List[dict]   # Thành phần 4: Trí nhớ chat loop (Lịch sử feedback sửa bài của User)
     context: dict
     draft: Optional[dict]
     approved: bool

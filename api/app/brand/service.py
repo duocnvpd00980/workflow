@@ -16,6 +16,7 @@ from .models import Brand, BrandProfile, BrandVoiceRule, BrandMessaging, BrandCo
 from .schemas import (
     BrandProfileSchema, WriterScope, DesignerScope, AdsScope, LandingPageScope
 )
+from app.tasks.service import create_task, update_task, finish_task, fail_task
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -28,6 +29,45 @@ class BrandProfileService:
     _cache: Dict[str, Any] = {}
     CACHE_TTL = 3600  # 1 hour
 
+    @classmethod
+    async def generate_from_documents_bg(
+        cls,
+        db: AsyncSession,
+        brand_id: str,
+        document_ids: list[int],
+        task_id: int,
+    ) -> None:
+        """Background version với task tracking — không return, chỉ update DB"""
+        try:
+            # ── Step 1: Fetch documents ──
+            result = await db.execute(
+                select(DocumentPage)
+                .where(DocumentPage.document_id.in_(document_ids))
+            )
+            pages = result.scalars().all()
+
+            if not pages:
+                await fail_task(db, task_id, error_message="Không tìm thấy dữ liệu knowledge page.")
+                return
+
+            await update_task(db, task_id, steps_done=1)
+
+            # ── Step 2: Call Groq ──
+            context = "\n\n".join(page.content for page in pages if page.content)
+            profile_data = await cls.extract_brand_profile(context=context)
+
+            await update_task(db, task_id, steps_done=2)
+
+            # ── Step 3: Save to DB ──
+            await cls.save_profile(db=db, brand_id=brand_id, data=profile_data)
+
+            await finish_task(db, task_id, steps_done=3)
+            logger.info(f"Task {task_id} completed for brand {brand_id}")
+
+        except Exception as e:
+            logger.error(f"Background task {task_id} failed: {str(e)}")
+            await fail_task(db, task_id, error_message=str(e))
+            
     @staticmethod
     async def call_groq_json(prompt: str) -> dict:
         """Calls Groq forcing a clean native JSON object return (Refactored to Async)"""

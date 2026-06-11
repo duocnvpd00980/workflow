@@ -47,6 +47,7 @@ dependencies = [
     "sentencepiece>=0.2.1",
     "alembic>=1.18.4",
     "pandas>=3.0.3",
+    "google-genai>=2.7.0",
 ]
 
 [dependency-groups]

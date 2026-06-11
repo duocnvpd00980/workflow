@@ -1,9 +1,7 @@
 from sqlalchemy import String, JSON, DateTime, Integer
 from datetime import datetime
 from sqlalchemy.orm import DeclarativeBase, mapped_column
-
-class Base(DeclarativeBase):
-    pass
+from app.db import Base
 
 class WorkflowSession(Base):
     __tablename__ = "workflow_sessions"

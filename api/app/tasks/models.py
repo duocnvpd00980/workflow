@@ -4,12 +4,9 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import DateTime, Index, Integer, String, Text
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import  Mapped, mapped_column
 from sqlalchemy.sql import func
-
-
-class Base(DeclarativeBase):
-    pass
+from app.db import Base
 
 
 class BackgroundTask(Base):

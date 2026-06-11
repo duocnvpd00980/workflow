@@ -1,8 +1,6 @@
 from sqlalchemy import Column, Index, String, Integer, DateTime, func, Text, JSON, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, relationship
-
-class Base(DeclarativeBase):
-    pass
+from sqlalchemy.orm import relationship
+from app.db import Base
 
 class Brand(Base):
     __tablename__ = "brands"

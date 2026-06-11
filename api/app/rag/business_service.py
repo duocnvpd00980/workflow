@@ -747,11 +747,11 @@ _RETRY_MAX = 3
 
 
 class BusinessCrawler:
-    def __init__(self, rag: RAG, loader: DocumentLoader, db: AsyncSession) -> None:
+    def __init__(self, rag: RAG, loader: DocumentLoader, db_factory) -> None:
         self._rag = rag
         self._loader = loader
-        self._db = db
-
+        self._db_factory = db_factory
+        
     async def crawl_business(self, url: str, document_type: str, document_id: int) -> int:
         log.info("[BusinessCrawlerV5] Bắt đầu crawl: %s", url)
 
@@ -864,7 +864,7 @@ class BusinessCrawler:
         if not full_rag_text.strip():
             full_rag_text = f"Tên thương hiệu: {identity.brand_name or url}\nURL nguồn: {url}"
 
-        # Save to Vector DB
+        # Save to Vector DB (không cần DB session)
         for chunk_name, chunk_text in rag_chunks.items():
             if chunk_text.strip():
                 metadata = {
@@ -899,17 +899,17 @@ class BusinessCrawler:
             f"[{p['url']}]\n{p['raw']}" for p in pages_for_db
         )
 
-        page = DocumentPage(
-            document_id=document_id,
-            url=url,
-            title=identity.brand_name or url,
-            content=combined_content,
-            extracted=extracted_data.model_dump(mode="json"),
-        )
-
-        self._db.add(page)
-        await self._db.commit()
-        await self._db.refresh(page)
+        async with self._db_factory() as db:
+            page = DocumentPage(
+                document_id=document_id,
+                url=url,
+                title=identity.brand_name or url,
+                content=combined_content,
+                extracted=extracted_data.model_dump(mode="json"),
+            )
+            db.add(page)
+            await db.commit()
+            await db.refresh(page)
 
         log.info(
             "[BusinessCrawlerV5] HOÀN THÀNH — page_id=%s brand=%r quality=%s",

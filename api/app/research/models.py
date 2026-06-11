@@ -3,12 +3,8 @@ from datetime import datetime
 import operator
 
 from sqlalchemy import String, JSON, DateTime, Integer, Text, ForeignKey
-from sqlalchemy.orm import DeclarativeBase, mapped_column, relationship
-
-
-# ── SQLAlchemy Base ──────────────────────────────────────────────
-class Base(DeclarativeBase):
-    pass
+from sqlalchemy.orm import mapped_column, relationship
+from app.db import Base
 
 
 class PipelineTask(Base):
