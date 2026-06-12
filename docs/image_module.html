@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image AI - Marketing AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .sidebar-item { transition: all 0.2s; }
+        .sidebar-item:hover { background: #f3f4f6; }
+        .sidebar-item.active { background: #e5e7eb; border-left: 3px solid #111827; }
+        .ratio-btn { transition: all 0.15s; }
+        .ratio-btn:hover { background: #f3f4f6; }
+        .ratio-btn.selected { background: #111827; color: white; border-color: #111827; }
+        .style-card { transition: all 0.15s; cursor: pointer; }
+        .style-card:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .style-card.selected { border-color: #111827; }
+        .image-card { transition: all 0.15s; cursor: pointer; position: relative; overflow: hidden; }
+        .image-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .image-card:hover .image-overlay { opacity: 1; }
+        .image-overlay { opacity: 0; transition: all 0.2s; position: absolute; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .fade-in { animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<div class="flex h-screen">
+    <!-- SIDEBAR -->
+    <aside class="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+        <div class="p-4 flex items-center gap-2">
+            <div class="w-8 h-8 bg-black rounded-lg flex items-center justify-center"><i class="fas fa-bolt text-white text-sm"></i></div>
+            <span class="font-semibold text-sm">Agent</span>
+        </div>
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Chính</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-bolt w-4 text-center"></i><span>Tạo</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-brain w-4 text-center"></i><span>Tri thức</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-palette w-4 text-center"></i><span>Brand</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-bolt w-4 text-center"></i><span>Kế hoạch</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-search w-4 text-center"></i><span>Tra cứu</span></a>
+            </nav>
+        </div>
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Media</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item active flex items-center gap-3 px-2 py-2 rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-image w-4 text-center"></i><span>Image</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-video w-4 text-center"></i><span>Video</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-music w-4 text-center"></i><span>Audio</span></a>
+            </nav>
+        </div>
+        <div class="flex-1"></div>
+        <div class="p-3">
+            <div class="flex items-center gap-2 px-2 py-1.5 bg-gray-900 rounded-lg text-white text-xs"><i class="fas fa-route text-green-400"></i><span>TanStack Router</span></div>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900">Image AI</h1>
+                    <p class="text-sm text-gray-500 mt-0.5">Tạo hình ảnh từ mô tả — AI tự điều chỉnh theo Brand Voice</p>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6">
+            <div class="max-w-4xl mx-auto">
+
+                <!-- STEP 1: PROMPT INPUT -->
+                <div id="step-1" class="fade-in">
+                    <div class="bg-white rounded-xl border border-gray-200 p-6 mb-5">
+                        <!-- Brand Voice Badge -->
+                        <div class="flex items-center gap-2 mb-4">
+                            <span class="text-xs text-gray-500">Brand Voice:</span>
+                            <span class="px-2 py-0.5 bg-gray-900 text-white text-xs rounded-md font-medium flex items-center gap-1.5"><i class="fas fa-building text-[10px]"></i> Acme Corp</span>
+                            <span class="text-xs text-gray-400">— Professional, trustworthy</span>
+                        </div>
+
+                        <!-- Prompt -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Mô tả hình ảnh <span class="text-xs text-gray-400 font-normal">(càng chi tiết càng tốt)</span></label>
+                            <textarea id="image-prompt" rows="3" placeholder="Một doanh nghiệp SME đang sử dụng laptop để quản lý dòng tiền trên dashboard hiện đại, phong cách tối giản, màu xanh dương chủ đạo, ánh sáng tự nhiên..." class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"></textarea>
+                        </div>
+
+                        <!-- Negative Prompt -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Loại trừ <span class="text-xs text-gray-400 font-normal">(không muốn xuất hiện)</span></label>
+                            <input type="text" placeholder="cartoon, low quality, blurry, text, watermark..." class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+                        </div>
+
+                        <!-- Settings Row -->
+                        <div class="grid grid-cols-3 gap-4 mb-5">
+                            <!-- Ratio -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Tỷ lệ</label>
+                                <div class="flex gap-2">
+                                    <button class="ratio-btn selected flex-1 py-2 border border-gray-200 rounded-lg text-xs font-medium">1:1</button>
+                                    <button class="ratio-btn flex-1 py-2 border border-gray-200 rounded-lg text-xs font-medium text-gray-600">16:9</button>
+                                    <button class="ratio-btn flex-1 py-2 border border-gray-200 rounded-lg text-xs font-medium text-gray-600">9:16</button>
+                                    <button class="ratio-btn flex-1 py-2 border border-gray-200 rounded-lg text-xs font-medium text-gray-600">4:3</button>
+                                </div>
+                            </div>
+                            <!-- Style -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Phong cách</label>
+                                <select class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+                                    <option>Photorealistic</option>
+                                    <option>Minimalist</option>
+                                    <option>Corporate</option>
+                                    <option>3D Render</option>
+                                    <option>Illustration</option>
+                                </select>
+                            </div>
+                            <!-- Model -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Model</label>
+                                <select class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+                                    <option>DALL-E 3</option>
+                                    <option>Midjourney v6</option>
+                                    <option>Stable Diffusion XL</option>
+                                    <option>Flux Pro</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <button onclick="generateImage()" class="w-full py-3 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 flex items-center justify-center gap-2">
+                            <i class="fas fa-magic"></i> Tạo hình ảnh — 4 variations
+                        </button>
+                        <p class="text-xs text-gray-400 text-center mt-2">~15 giây • 4 credits</p>
+                    </div>
+
+                    <!-- Recent Generations -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-semibold text-gray-900">Gần đây</h3>
+                            <span class="text-xs text-gray-400">12 hình ảnh</span>
+                        </div>
+                        <div class="grid grid-cols-4 gap-3">
+                            <div class="image-card aspect-square rounded-xl bg-gray-100 relative">
+                                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=300&h=300&fit=crop" class="w-full h-full object-cover rounded-xl" alt="">
+                                <div class="image-overlay rounded-xl">
+                                    <button class="w-8 h-8 bg-white rounded-lg flex items-center justify-center"><i class="fas fa-download text-gray-700 text-xs"></i></button>
+                                    <button class="w-8 h-8 bg-white rounded-lg flex items-center justify-center"><i class="fas fa-expand text-gray-700 text-xs"></i></button>
+                                </div>
+                            </div>
+                            <div class="image-card aspect-square rounded-xl bg-gray-100 relative">
+                                <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=300&h=300&fit=crop" class="w-full h-full object-cover rounded-xl" alt="">
+                                <div class="image-overlay rounded-xl">
+                                    <button class="w-8 h-8 bg-white rounded-lg flex items-center justify-center"><i class="fas fa-download text-gray-700 text-xs"></i></button>
+                                    <button class="w-8 h-8 bg-white rounded-lg flex items-center justify-center"><i class="fas fa-expand text-gray-700 text-xs"></i></button>
+                                </div>
+                            </div>
+                            <div class="image-card aspect-square rounded-xl bg-gray-100 relative">
+                                <img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=300&h=300&fit=crop" class="w-full h-full object-cover rounded-xl" alt="">
+                                <div class="image-overlay rounded-xl">
+                                    <button class="w-8 h-8 bg-white rounded-lg flex items-center justify-center"><i class="fas fa-download text-gray-700 text-xs"></i></button>
+                                    <button class="w-8 h-8 bg-white rounded-lg flex items-center justify-center"><i class="fas fa-expand text-gray-700 text-xs"></i></button>
+                                </div>
+                            </div>
+                            <div class="image-card aspect-square rounded-xl bg-gray-100 relative">
+                                <img src="https://images.unsplash.com/photo-1553877522-43269d4ea984?w=300&h=300&fit=crop" class="w-full h-full object-cover rounded-xl" alt="">
+                                <div class="image-overlay rounded-xl">
+                                    <button class="w-8 h-8 bg-white rounded-lg flex items-center justify-center"><i class="fas fa-download text-gray-700 text-xs"></i></button>
+                                    <button class="w-8 h-8 bg-white rounded-lg flex items-center justify-center"><i class="fas fa-expand text-gray-700 text-xs"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: GENERATING -->
+                <div id="step-2" class="hidden text-center pt-16 fade-in">
+                    <div class="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-magic text-white text-xl"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-gray-900 mb-1">AI đang tạo hình ảnh...</h2>
+                    <p class="text-sm text-gray-500 mb-8">Đang generate 4 variations theo Brand Voice Acme Corp</p>
+                    <div class="max-w-xs mx-auto">
+                        <div class="w-full bg-gray-100 rounded-full h-1.5"><div id="img-bar" class="bg-gray-900 h-1.5 rounded-full transition-all duration-700" style="width: 20%"></div></div>
+                        <p class="text-xs text-gray-400 mt-2">~10 giây còn lại</p>
+                    </div>
+                </div>
+
+                <!-- STEP 3: RESULTS -->
+                <div id="step-3" class="hidden fade-in">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center"><i class="fas fa-check text-green-600"></i></div>
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-900">Hoàn thành</h2>
+                                <p class="text-sm text-gray-500">4 variations • Brand Voice: Acme Corp</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="showStep(1)" class="px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg border border-gray-200"><i class="fas fa-redo mr-1.5"></i>Tạo lại</button>
+                            <button class="px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800"><i class="fas fa-download mr-1.5"></i>Tải tất cả</button>
+                        </div>
+                    </div>
+
+                    <!-- Image Grid -->
+                    <div class="grid grid-cols-2 gap-4 mb-5">
+                        <div class="image-card aspect-[4/3] rounded-xl bg-gray-100 relative group">
+                            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=450&fit=crop" class="w-full h-full object-cover rounded-xl" alt="">
+                            <div class="image-overlay rounded-xl">
+                                <button class="px-4 py-2 bg-white rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-download mr-1.5"></i>Tải xuống</button>
+                                <button class="px-4 py-2 bg-white rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-plus mr-1.5"></i>Thêm vào Kho</button>
+                            </div>
+                            <div class="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] rounded-md font-medium">#1</div>
+                        </div>
+                        <div class="image-card aspect-[4/3] rounded-xl bg-gray-100 relative group">
+                            <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=450&fit=crop" class="w-full h-full object-cover rounded-xl" alt="">
+                            <div class="image-overlay rounded-xl">
+                                <button class="px-4 py-2 bg-white rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-download mr-1.5"></i>Tải xuống</button>
+                                <button class="px-4 py-2 bg-white rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-plus mr-1.5"></i>Thêm vào Kho</button>
+                            </div>
+                            <div class="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] rounded-md font-medium">#2</div>
+                        </div>
+                        <div class="image-card aspect-[4/3] rounded-xl bg-gray-100 relative group">
+                            <img src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?w=600&h=450&fit=crop" class="w-full h-full object-cover rounded-xl" alt="">
+                            <div class="image-overlay rounded-xl">
+                                <button class="px-4 py-2 bg-white rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-download mr-1.5"></i>Tải xuống</button>
+                                <button class="px-4 py-2 bg-white rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-plus mr-1.5"></i>Thêm vào Kho</button>
+                            </div>
+                            <div class="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] rounded-md font-medium">#3</div>
+                        </div>
+                        <div class="image-card aspect-[4/3] rounded-xl bg-gray-100 relative group">
+                            <img src="https://images.unsplash.com/photo-1553877522-43269d4ea984?w=600&h=450&fit=crop" class="w-full h-full object-cover rounded-xl" alt="">
+                            <div class="image-overlay rounded-xl">
+                                <button class="px-4 py-2 bg-white rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-download mr-1.5"></i>Tải xuống</button>
+                                <button class="px-4 py-2 bg-white rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-plus mr-1.5"></i>Thêm vào Kho</button>
+                            </div>
+                            <div class="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-[10px] rounded-md font-medium">#4</div>
+                        </div>
+                    </div>
+
+                    <!-- Meta -->
+                    <div class="grid grid-cols-4 gap-3">
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Kích thước</div>
+                            <div class="text-sm font-semibold text-gray-900">1024 x 1024</div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Model</div>
+                            <div class="text-sm font-semibold text-gray-900">DALL-E 3</div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Thời gian</div>
+                            <div class="text-sm font-semibold text-gray-900">12 giây</div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Credits</div>
+                            <div class="text-sm font-semibold text-gray-900">4 used</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+function showStep(n) {
+    for (let i = 1; i <= 3; i++) document.getElementById('step-' + i).classList.add('hidden');
+    document.getElementById('step-' + n).classList.remove('hidden');
+}
+
+function generateImage() {
+    const prompt = document.getElementById('image-prompt').value.trim();
+    if (!prompt) { document.getElementById('image-prompt').focus(); return; }
+    showStep(2);
+    setTimeout(() => document.getElementById('img-bar').style.width = '50%', 500);
+    setTimeout(() => document.getElementById('img-bar').style.width = '85%', 2500);
+    setTimeout(() => { document.getElementById('img-bar').style.width = '100%'; setTimeout(() => showStep(3), 300); }, 4500);
+}
+
+// Ratio buttons
+document.querySelectorAll('.ratio-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.ratio-btn').forEach(b => { b.classList.remove('selected'); b.classList.add('text-gray-600'); });
+        this.classList.add('selected');
+        this.classList.remove('text-gray-600');
+    });
+});
+</script>
+
+</body>
+</html>

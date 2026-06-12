@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo Content - Marketing AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .sidebar-item { transition: all 0.2s; }
+        .sidebar-item:hover { background: #f3f4f6; }
+        .sidebar-item.active { background: #e5e7eb; border-left: 3px solid #111827; }
+        .template-card { transition: all 0.15s; cursor: pointer; }
+        .template-card:hover { transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .template-card.selected { border-color: #111827; background: #f3f4f6; }
+        .fade-in { animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<div class="flex h-screen">
+    <!-- SIDEBAR -->
+    <aside class="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+        <div class="p-4 flex items-center gap-2">
+            <div class="w-8 h-8 bg-black rounded-lg flex items-center justify-center"><i class="fas fa-bolt text-white text-sm"></i></div>
+            <span class="font-semibold text-sm">Agent</span>
+        </div>
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Chính</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item active flex items-center gap-3 px-2 py-2 rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-bolt w-4 text-center"></i><span>Tạo</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-brain w-4 text-center"></i><span>Tri thức</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-palette w-4 text-center"></i><span>Brand</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-bolt w-4 text-center"></i><span>Kế hoạch</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-search w-4 text-center"></i><span>Tra cứu</span></a>
+            </nav>
+        </div>
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Quản lý</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-cube w-4 text-center"></i><span>Kho</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-clock w-4 text-center"></i><span>Lịch sử</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-chart-bar w-4 text-center"></i><span>Thống kê</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-plug w-4 text-center"></i><span>Tích hợp</span></a>
+            </nav>
+        </div>
+        <div class="flex-1"></div>
+        <div class="p-3">
+            <div class="flex items-center gap-2 px-2 py-1.5 bg-gray-900 rounded-lg text-white text-xs"><i class="fas fa-route text-green-400"></i><span>TanStack Router</span></div>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <h1 class="text-xl font-bold text-gray-900">Tạo Content</h1>
+            <p class="text-sm text-gray-500 mt-0.5">Chọn template — AI viết theo Brand Voice đã thiết lập</p>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6">
+
+            <!-- STEP 1: CHOOSE TEMPLATE -->
+            <div id="step-1" class="max-w-4xl mx-auto fade-in">
+                <!-- Brand Voice Badge -->
+                <div class="flex items-center gap-2 mb-5 px-1">
+                    <span class="text-xs text-gray-500">Brand Voice đang dùng:</span>
+                    <span class="px-2 py-0.5 bg-gray-900 text-white text-xs rounded-md font-medium flex items-center gap-1.5"><i class="fas fa-building text-[10px]"></i> Acme Corp</span>
+                    <button class="text-xs text-gray-400 hover:text-gray-600"><i class="fas fa-pen text-[10px]"></i> Đổi</button>
+                </div>
+
+                <!-- Template Grid -->
+                <div class="grid grid-cols-4 gap-3 mb-6">
+                    <div class="template-card bg-white rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'email')">
+                        <div class="w-11 h-11 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-2.5"><i class="fas fa-envelope text-green-600"></i></div>
+                        <div class="text-sm font-semibold text-gray-900">Email</div>
+                        <div class="text-xs text-gray-500 mt-0.5">Marketing, sales, newsletter</div>
+                    </div>
+                    <div class="template-card bg-white rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'social')">
+                        <div class="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2.5"><i class="fas fa-share-alt text-blue-600"></i></div>
+                        <div class="text-sm font-semibold text-gray-900">Social</div>
+                        <div class="text-xs text-gray-500 mt-0.5">Facebook, LinkedIn, TikTok</div>
+                    </div>
+                    <div class="template-card bg-white rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'blog')">
+                        <div class="w-11 h-11 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-2.5"><i class="fas fa-file-alt text-purple-600"></i></div>
+                        <div class="text-sm font-semibold text-gray-900">Blog</div>
+                        <div class="text-xs text-gray-500 mt-0.5">SEO article, long-form</div>
+                    </div>
+                    <div class="template-card bg-white rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'ads')">
+                        <div class="w-11 h-11 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-2.5"><i class="fas fa-bullseye text-orange-600"></i></div>
+                        <div class="text-sm font-semibold text-gray-900">Ads</div>
+                        <div class="text-xs text-gray-500 mt-0.5">Google, Facebook, native</div>
+                    </div>
+                    <div class="template-card bg-white rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'landing')">
+                        <div class="w-11 h-11 bg-pink-100 rounded-xl flex items-center justify-center mx-auto mb-2.5"><i class="fas fa-desktop text-pink-600"></i></div>
+                        <div class="text-sm font-semibold text-gray-900">Landing Page</div>
+                        <div class="text-xs text-gray-500 mt-0.5">Headline, CTA, body</div>
+                    </div>
+                    <div class="template-card bg-white rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'pr')">
+                        <div class="w-11 h-11 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-2.5"><i class="fas fa-newspaper text-gray-600"></i></div>
+                        <div class="text-sm font-semibold text-gray-900">PR / Press</div>
+                        <div class="text-xs text-gray-500 mt-0.5">Thông cáo báo chí</div>
+                    </div>
+                    <div class="template-card bg-white rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'script')">
+                        <div class="w-11 h-11 bg-yellow-100 rounded-xl flex items-center justify-center mx-auto mb-2.5"><i class="fas fa-video text-yellow-600"></i></div>
+                        <div class="text-sm font-semibold text-gray-900">Video Script</div>
+                        <div class="text-xs text-gray-500 mt-0.5">TikTok, YouTube, Reels</div>
+                    </div>
+                    <div class="template-card bg-white rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'sms')">
+                        <div class="w-11 h-11 bg-teal-100 rounded-xl flex items-center justify-center mx-auto mb-2.5"><i class="fas fa-comment text-teal-600"></i></div>
+                        <div class="text-sm font-semibold text-gray-900">SMS / Chat</div>
+                        <div class="text-xs text-gray-500 mt-0.5">Zalo, Messenger, SMS</div>
+                    </div>
+                </div>
+
+                <!-- Prompt Input (hidden until template selected) -->
+                <div id="prompt-area" class="hidden">
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <div class="flex items-center gap-2 mb-3">
+                            <span id="selected-template-label" class="text-sm font-medium text-gray-900">Email</span>
+                            <span class="text-xs text-gray-400">— Nhập chủ đề hoặc yêu cầu</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="text" id="content-prompt" placeholder="VD: Viết email giới thiệu tính năng quản lý dòng tiền mới cho khách hàng SME..." class="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+                            <button onclick="generate()" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 flex items-center gap-2 whitespace-nowrap">
+                                <i class="fas fa-magic"></i> AI Viết
+                            </button>
+                        </div>
+                        <div class="flex items-center gap-3 mt-3">
+                            <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer"><input type="checkbox" checked class="w-3.5 h-3.5 rounded border-gray-300"><span>Áp dụng Brand Voice</span></label>
+                            <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer"><input type="checkbox" checked class="w-3.5 h-3.5 rounded border-gray-300"><span>Kéo từ Tri thức</span></label>
+                            <label class="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer"><input type="checkbox" class="w-3.5 h-3.5 rounded border-gray-300"><span>Tối ưu SEO</span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: GENERATING -->
+            <div id="step-2" class="hidden max-w-2xl mx-auto text-center pt-16 fade-in">
+                <div class="w-14 h-14 bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-magic text-white text-lg"></i>
+                </div>
+                <h2 class="text-lg font-bold text-gray-900 mb-1">AI đang viết...</h2>
+                <p class="text-sm text-gray-500">Áp dụng Brand Voice Acme Corp • Kéo context từ Tri thức</p>
+                <div class="mt-6 max-w-xs mx-auto">
+                    <div class="w-full bg-gray-100 rounded-full h-1.5"><div id="gen-bar" class="bg-gray-900 h-1.5 rounded-full transition-all duration-700" style="width: 20%"></div></div>
+                </div>
+            </div>
+
+            <!-- STEP 3: RESULT -->
+            <div id="step-3" class="hidden max-w-3xl mx-auto fade-in">
+                <!-- Result Header -->
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center"><i class="fas fa-check text-green-600"></i></div>
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-900">Hoàn thành</h2>
+                            <p class="text-sm text-gray-500">Email Marketing • Brand Voice: Acme Corp</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="showStep(1)" class="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg border border-gray-200"><i class="fas fa-redo mr-1.5"></i>Viết lại</button>
+                        <button class="px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg border border-gray-200"><i class="fas fa-copy mr-1.5"></i>Copy</button>
+                        <button class="px-3 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800"><i class="fas fa-file-export mr-1.5"></i>Export</button>
+                    </div>
+                </div>
+
+                <!-- Content Output -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 mb-4">
+                    <div class="prose max-w-none">
+                        <p class="text-sm text-gray-800 leading-relaxed font-medium">Kính gửi Anh/Chị,</p>
+                        <p class="text-sm text-gray-700 leading-relaxed mt-3">Acme Corp trân trọng giới thiệu <strong>tính năng quản lý dòng tiền thông minh</strong> — giải pháp giúp doanh nghiệp SME tiết kiệm <strong>30% thời gian</strong> xử lý tài chính hàng ngày.</p>
+                        <p class="text-sm text-gray-700 leading-relaxed mt-3">Với công nghệ bảo mật hàng đầu và giao diện trực quan, đội ngũ của Anh/Chị có thể:</p>
+                        <ul class="text-sm text-gray-700 leading-relaxed mt-2 ml-4 space-y-1">
+                            <li>• Theo dõi dòng tiền real-time qua dashboard tập trung</li>
+                            <li>• Tự động hóa báo cáo tài chính hàng tuần/tháng</li>
+                            <li>• Giảm <strong>15% phí chuyển đổi ngoại tệ</strong> so với ngân hàng truyền thống</li>
+                        </ul>
+                        <p class="text-sm text-gray-700 leading-relaxed mt-3">Hơn <strong>2.000 doanh nghiệp SME</strong> đã tin dùng Acme Corp để quản lý tài chính hiệu quả hơn.</p>
+                        <p class="text-sm text-gray-700 leading-relaxed mt-4 font-medium">👉 <a href="#" class="text-blue-600 hover:underline">Đăng ký dùng thử miễn phí 30 ngày</a></p>
+                        <p class="text-sm text-gray-700 leading-relaxed mt-4">Trân trọng,<br>Đội ngũ Acme Corp</p>
+                    </div>
+                </div>
+
+                <!-- Meta Info -->
+                <div class="grid grid-cols-3 gap-3 mb-4">
+                    <div class="bg-white rounded-xl border border-gray-200 p-4">
+                        <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Độ dài</div>
+                        <div class="text-sm font-semibold text-gray-900">186 từ</div>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-200 p-4">
+                        <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Tone match</div>
+                        <div class="text-sm font-semibold text-green-600">94% — Chính xác</div>
+                    </div>
+                    <div class="bg-white rounded-xl border border-gray-200 p-4">
+                        <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Thời gian</div>
+                        <div class="text-sm font-semibold text-gray-900">3.2 giây</div>
+                    </div>
+                </div>
+
+                <!-- Variations -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-semibold text-gray-900">Phiên bản khác</h3>
+                        <span class="text-xs text-gray-400">Click để chọn</span>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="p-3 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors">
+                            <p class="text-sm text-gray-700 line-clamp-2">"Anh/Chị thân mến, Acme Corp vui mừng thông báo ra mắt tính năng quản lý dòng tiền thông minh..."</p>
+                            <span class="text-xs text-gray-400 mt-1 block">Tone: Thân thiện hơn</span>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors">
+                            <p class="text-sm text-gray-700 line-clamp-2">"Kính gửi Quý khách hàng, nhằm hỗ trợ doanh nghiệp SME tối ưu quy trình tài chính, Acme Corp trân trọng giới thiệu..."</p>
+                            <span class="text-xs text-gray-400 mt-1 block">Tone: Trang trọng hơn</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+let selectedTemplate = null;
+
+function selectTemplate(el, type) {
+    document.querySelectorAll('.template-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedTemplate = type;
+    document.getElementById('prompt-area').classList.remove('hidden');
+    const labels = { email: 'Email', social: 'Social', blog: 'Blog', ads: 'Ads', landing: 'Landing Page', pr: 'PR / Press', script: 'Video Script', sms: 'SMS / Chat' };
+    document.getElementById('selected-template-label').textContent = labels[type] || type;
+    document.getElementById('content-prompt').focus();
+}
+
+function showStep(n) {
+    for (let i = 1; i <= 3; i++) document.getElementById('step-' + i).classList.add('hidden');
+    document.getElementById('step-' + n).classList.remove('hidden');
+}
+
+function generate() {
+    const prompt = document.getElementById('content-prompt').value.trim();
+    if (!prompt) { document.getElementById('content-prompt').focus(); return; }
+    showStep(2);
+    setTimeout(() => document.getElementById('gen-bar').style.width = '60%', 300);
+    setTimeout(() => document.getElementById('gen-bar').style.width = '100%', 1200);
+    setTimeout(() => showStep(3), 1800);
+}
+</script>
+
+</body>
+</html>

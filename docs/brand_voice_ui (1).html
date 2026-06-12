@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brand Voice - Marketing AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .sidebar-item { transition: all 0.2s; }
+        .sidebar-item:hover { background: #f3f4f6; }
+        .sidebar-item.active { background: #e5e7eb; border-left: 3px solid #111827; }
+        .brand-item { transition: all 0.15s; cursor: pointer; }
+        .brand-item:hover { background: #f9fafb; }
+        .brand-item.selected { background: #eff6ff; border-left: 3px solid #3b82f6; }
+        .status-badge { font-size: 11px; padding: 2px 8px; border-radius: 9999px; font-weight: 500; }
+        .status-approved { background: #dcfce7; color: #166534; }
+        .status-pending { background: #fef9c3; color: #854d0e; }
+        .template-card { transition: all 0.15s; cursor: pointer; }
+        .template-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .template-card.selected { border-color: #3b82f6; background: #eff6ff; }
+        .test-result { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<!-- APP CONTAINER -->
+<div class="flex h-screen">
+
+    <!-- SIDEBAR (Giữ nguyên như hình của bạn) -->
+    <aside class="w-56 bg-white border-r border-gray-200 flex flex-col">
+        <div class="p-4 flex items-center gap-2">
+            <div class="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+                <i class="fas fa-bolt text-white text-sm"></i>
+            </div>
+            <span class="font-semibold text-sm">Agent</span>
+        </div>
+
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Chính</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-bolt w-4 text-center"></i>
+                    <span>Tạo</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-brain w-4 text-center"></i>
+                    <span>Tri thức</span>
+                </a>
+                <a href="#" class="sidebar-item active flex items-center gap-3 px-2 py-2 rounded-lg text-sm font-medium text-gray-900">
+                    <i class="fas fa-palette w-4 text-center"></i>
+                    <span>Brand</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-bolt w-4 text-center"></i>
+                    <span>Kế hoạch</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-bolt w-4 text-center"></i>
+                    <span>Tra cứu</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Quản lý</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-cube w-4 text-center"></i>
+                    <span>Kho</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-clock w-4 text-center"></i>
+                    <span>Lịch sử</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-chart-bar w-4 text-center"></i>
+                    <span>Thống kê</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-plug w-4 text-center"></i>
+                    <span>Tích hợp</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="flex-1"></div>
+        <div class="p-3">
+            <div class="flex items-center gap-2 px-2 py-1.5 bg-gray-900 rounded-lg text-white text-xs">
+                <i class="fas fa-route text-green-400"></i>
+                <span>TanStack Router</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- HEADER -->
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Brand Voice</h1>
+                    <p class="text-sm text-gray-500 mt-0.5">AI viết content đúng tone thương hiệu</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="runNewResearch()" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <i class="fas fa-sync-alt mr-2"></i>Research mới
+                    </button>
+                    <button class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800">
+                        <i class="fas fa-plus mr-2"></i>Tạo Brand Voice
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- TOOLBAR -->
+        <div class="bg-white border-b border-gray-200 px-6 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <input type="text" placeholder="Tìm brand voice..." class="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                        <button class="px-3 py-1.5 rounded-md text-sm font-medium bg-white text-gray-900 shadow-sm">Tất cả</button>
+                        <button class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900">Đã duyệt</button>
+                        <button class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900">Chờ duyệt</button>
+                    </div>
+                </div>
+                <div class="text-sm text-gray-500">3 brand voices</div>
+            </div>
+        </div>
+
+        <!-- SPLIT VIEW: LIST + PREVIEW -->
+        <div class="flex-1 flex overflow-hidden">
+
+            <!-- LEFT: BRAND LIST -->
+            <div class="w-80 bg-white border-r border-gray-200 overflow-y-auto">
+                <div class="p-3">
+                    <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2 px-2">Thương hiệu</div>
+
+                    <!-- Brand 1: Acme Corp -->
+                    <div class="brand-item selected rounded-lg p-3 mb-1" onclick="selectBrand('acme')">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-building text-blue-600"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-sm text-gray-900">Acme Corp</span>
+                                    <span class="status-badge status-approved">Đã duyệt</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-0.5 truncate">Professional, trustworthy</p>
+                                <div class="flex items-center gap-2 mt-1.5">
+                                    <span class="text-xs text-gray-400"><i class="fas fa-robot mr-1"></i>2h trước</span>
+                                    <span class="text-xs text-gray-400">• 3 chiến dịch</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Brand 2: ShopX -->
+                    <div class="brand-item rounded-lg p-3 mb-1" onclick="selectBrand('shopx')">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-pink-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-shopping-bag text-pink-600"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-sm text-gray-900">ShopX</span>
+                                    <span class="status-badge status-pending">Chờ duyệt</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-0.5 truncate">Friendly, playful</p>
+                                <div class="flex items-center gap-2 mt-1.5">
+                                    <span class="text-xs text-gray-400"><i class="fas fa-robot mr-1"></i>5p trước</span>
+                                    <span class="text-xs text-gray-400">• 1 chiến dịch</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Brand 3: TechFlow -->
+                    <div class="brand-item rounded-lg p-3 mb-1" onclick="selectBrand('techflow')">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-microchip text-purple-600"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-sm text-gray-900">TechFlow</span>
+                                    <span class="status-badge status-pending">Chờ duyệt</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-0.5 truncate">Technical, authoritative</p>
+                                <div class="flex items-center gap-2 mt-1.5">
+                                    <span class="text-xs text-gray-400"><i class="fas fa-robot mr-1"></i>1 ngày trước</span>
+                                    <span class="text-xs text-gray-400">• 0 chiến dịch</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: PREVIEW PANEL -->
+            <div class="flex-1 bg-gray-50 overflow-y-auto" id="preview-panel">
+
+                <!-- Brand Header -->
+                <div class="bg-white border-b border-gray-200 px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-building text-blue-600 text-lg"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-900">Acme Corp</h2>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <span class="status-badge status-approved">Đã duyệt</span>
+                                    <span class="text-xs text-gray-400">• AI phân tích từ Research #123</span>
+                                    <span class="text-xs text-gray-400">• 2h trước</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="showEdit()" class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                <i class="fas fa-edit mr-2"></i>Chỉnh sửa
+                            </button>
+                            <button class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                <i class="fas fa-file-export mr-2"></i>Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview Content -->
+                <div class="p-6 space-y-6">
+
+                    <!-- Tone Radar + Summary -->
+                    <div class="grid grid-cols-2 gap-6">
+                        <!-- Radar Chart -->
+                        <div class="bg-white rounded-xl border border-gray-200 p-5">
+                            <h3 class="text-sm font-semibold text-gray-900 mb-4">Tone Analysis</h3>
+                            <div class="flex justify-center">
+                                <canvas id="toneRadar" width="220" height="220"></canvas>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 mt-4">
+                                <div class="text-center">
+                                    <div class="text-lg font-bold text-gray-900">90%</div>
+                                    <div class="text-xs text-gray-500">Professional</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-lg font-bold text-gray-900">85%</div>
+                                    <div class="text-xs text-gray-500">Trustworthy</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-lg font-bold text-gray-900">80%</div>
+                                    <div class="text-xs text-gray-500">Clear</div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-lg font-bold text-gray-900">75%</div>
+                                    <div class="text-xs text-gray-500">Formal</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Summary -->
+                        <div class="bg-white rounded-xl border border-gray-200 p-5">
+                            <h3 class="text-sm font-semibold text-gray-900 mb-4">Brand Summary</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <div class="text-xs font-medium text-gray-400 uppercase mb-1">Vị trí</div>
+                                    <p class="text-sm text-gray-700">Ngân hàng số cho doanh nghiệp SME</p>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-medium text-gray-400 uppercase mb-1">Đối tượng</div>
+                                    <p class="text-sm text-gray-700">Doanh nghiệp nhỏ 25-50 nhân viên</p>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-medium text-gray-400 uppercase mb-1">Điểm khác biệt</div>
+                                    <p class="text-sm text-gray-700">Tiết kiệm 30% thời gian quản lý tài chính</p>
+                                </div>
+                                <div>
+                                    <div class="text-xs font-medium text-gray-400 uppercase mb-1">Voice</div>
+                                    <p class="text-sm text-gray-700 italic">"Chuyên nghiệp, đáng tin cậy, dùng ngôn ngữ rõ ràng"</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TEMPLATES: AI viết content -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-semibold text-gray-900">AI Viết Content</h3>
+                            <span class="text-xs text-gray-400">Chọn loại content — AI tự điều chỉnh tone</span>
+                        </div>
+
+                        <div class="grid grid-cols-5 gap-3">
+                            <!-- Email -->
+                            <div class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'email')">
+                                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-envelope text-green-600 text-lg"></i>
+                                </div>
+                                <div class="font-semibold text-sm text-gray-900">Email</div>
+                                <div class="text-xs text-gray-500 mt-1">Professional + Warm</div>
+                            </div>
+
+                            <!-- Social -->
+                            <div class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'social')">
+                                <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-share-alt text-blue-600 text-lg"></i>
+                                </div>
+                                <div class="font-semibold text-sm text-gray-900">Social</div>
+                                <div class="text-xs text-gray-500 mt-1">Professional + Playful</div>
+                            </div>
+
+                            <!-- Blog -->
+                            <div class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'blog')">
+                                <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-file-alt text-purple-600 text-lg"></i>
+                                </div>
+                                <div class="font-semibold text-sm text-gray-900">Blog</div>
+                                <div class="text-xs text-gray-500 mt-1">Professional + Educational</div>
+                            </div>
+
+                            <!-- Ads -->
+                            <div class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'ads')">
+                                <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-bullseye text-orange-600 text-lg"></i>
+                                </div>
+                                <div class="font-semibold text-sm text-gray-900">Ads</div>
+                                <div class="text-xs text-gray-500 mt-1">Professional + Persuasive</div>
+                            </div>
+
+                            <!-- PR -->
+                            <div class="template-card rounded-xl border-2 border-gray-200 p-4 text-center" onclick="selectTemplate(this, 'pr')">
+                                <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                                    <i class="fas fa-newspaper text-gray-600 text-lg"></i>
+                                </div>
+                                <div class="font-semibold text-sm text-gray-900">PR</div>
+                                <div class="text-xs text-gray-500 mt-1">Professional + Formal</div>
+                            </div>
+                        </div>
+
+                        <!-- Selected template action -->
+                        <div id="template-action" class="hidden mt-4 pt-4 border-t border-gray-100">
+                            <div class="flex items-center gap-3">
+                                <div class="flex-1">
+                                    <input type="text" id="content-prompt" placeholder="Nhập chủ đề content..." class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <button onclick="generateContent()" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800">
+                                    <i class="fas fa-magic mr-2"></i>AI Viết
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Test Panel -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-sm font-semibold text-gray-900">AI Test Panel</h3>
+                            <span class="text-xs text-gray-400">Verify tone trước khi dùng</span>
+                        </div>
+                        <div class="flex gap-2 mb-4">
+                            <input type="text" id="test-prompt" placeholder="Viết email giới thiệu sản phẩm mới..." class="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button onclick="runTest()" class="px-5 py-2.5 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800">
+                                <i class="fas fa-sync-alt mr-2"></i>Test
+                            </button>
+                        </div>
+
+                        <div id="test-result" class="hidden test-result bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-robot text-white text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-700 leading-relaxed">"Kính gửi Anh/Chị,<br><br>Acme Corp trân trọng giới thiệu tính năng quản lý dòng tiền thông minh — giải pháp giúp doanh nghiệp SME tiết kiệm 30% thời gian xử lý tài chính hàng ngày. Với công nghệ bảo mật hàng đầu và giao diện trực quan, đội ngũ của Anh/Chị có thể tập trung vào việc kinh doanh cốt lõi.<br><br>Trân trọng,<br>Đội ngũ Acme Corp"</p>
+                                    <div class="flex items-center gap-3 mt-3 pt-3 border-t border-gray-200">
+                                        <button class="text-xs font-medium text-green-600 hover:text-green-700"><i class="fas fa-check mr-1"></i>Đúng tone</button>
+                                        <button class="text-xs font-medium text-red-600 hover:text-red-700"><i class="fas fa-times mr-1"></i>Sai tone</button>
+                                        <button class="text-xs font-medium text-gray-500 hover:text-gray-700"><i class="fas fa-redo mr-1"></i>Generate lại</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Usage History -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <h3 class="text-sm font-semibold text-gray-900 mb-3">Lịch sử sử dụng</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-envelope text-green-600 text-xs"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">Email Marketing tháng 6</div>
+                                        <div class="text-xs text-gray-400">12/06/2026</div>
+                                    </div>
+                                </div>
+                                <span class="text-xs text-green-600 font-medium">Đã gửi</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2 border-b border-gray-100">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-share-alt text-blue-600 text-xs"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">Social Media Q2</div>
+                                        <div class="text-xs text-gray-400">10/06/2026</div>
+                                    </div>
+                                </div>
+                                <span class="text-xs text-blue-600 font-medium">Đang chạy</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                                        <i class="fas fa-file-alt text-purple-600 text-xs"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">Landing Page Product</div>
+                                        <div class="text-xs text-gray-400">08/06/2026</div>
+                                    </div>
+                                </div>
+                                <span class="text-xs text-green-600 font-medium">Đã publish</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="edit-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl w-[600px] max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-gray-900">Chỉnh sửa: Acme Corp</h2>
+                <p class="text-xs text-gray-400 mt-0.5">AI phân tích từ Research #123 • Chỉnh sửa nếu không chính xác</p>
+            </div>
+            <button onclick="closeEdit()" class="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+                <i class="fas fa-times text-gray-500"></i>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6">
+            <div class="space-y-5">
+                <!-- Tone Sliders -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Tone Sliders <span class="text-xs text-gray-400 font-normal">(kéo nếu AI phân tích sai)</span></label>
+                    <div class="space-y-4 bg-gray-50 rounded-lg p-4">
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-500 mb-1"><span>Funny</span><span>Serious</span></div>
+                            <input type="range" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" min="0" max="100" value="85">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-500 mb-1"><span>Formal</span><span>Casual</span></div>
+                            <input type="range" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" min="0" max="100" value="75">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-500 mb-1"><span>Respectful</span><span>Irreverent</span></div>
+                            <input type="range" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" min="0" max="100" value="80">
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs text-gray-500 mb-1"><span>Enthusiastic</span><span>Matter-of-fact</span></div>
+                            <input type="range" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer" min="0" max="100" value="60">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Voice Description -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Voice Description <span class="text-xs text-gray-400 font-normal">(AI generated)</span></label>
+                    <textarea class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3">"Giọng điệu chuyên nghiệp, đáng tin cậy, dùng ngôn ngữ rõ ràng và có cấu trúc. Thích hợp cho B2B tài chính, đối tượng doanh nghiệp SME cần sự chắc chắn."</textarea>
+                </div>
+
+                <!-- Writing Rules -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Writing Rules</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div class="text-xs font-medium text-green-700 mb-2">DO'S</div>
+                            <div class="space-y-1.5">
+                                <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fas fa-check text-green-500 text-xs"></i>Dùng số liệu cụ thể</div>
+                                <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fas fa-check text-green-500 text-xs"></i>Giải thích lợi ích rõ ràng</div>
+                                <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fas fa-check text-green-500 text-xs"></i>Giọng điệu ổn định</div>
+                            </div>
+                        </div>
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+                            <div class="text-xs font-medium text-red-700 mb-2">DON'TS</div>
+                            <div class="space-y-1.5">
+                                <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fas fa-times text-red-500 text-xs"></i>Không dùng slang</div>
+                                <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fas fa-times text-red-500 text-xs"></i>Không hứa hẹn vô căn cứ</div>
+                                <div class="flex items-center gap-2 text-sm text-gray-700"><i class="fas fa-times text-red-500 text-xs"></i>Không so sánh đối thủ</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+            <div class="text-xs text-gray-400">Nguồn: Research #123 • AI phân tích 15/06 14:30</div>
+            <div class="flex items-center gap-2">
+                <button onclick="closeEdit()" class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg">Hủy</button>
+                <button onclick="saveEdit()" class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800">Lưu thay đổi</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize Tone Radar Chart
+const ctx = document.getElementById('toneRadar').getContext('2d');
+const toneRadar = new Chart(ctx, {
+    type: 'radar',
+    data: {
+        labels: ['Professional', 'Trustworthy', 'Clear', 'Formal', 'Simple'],
+        datasets: [{
+            label: 'Acme Corp',
+            data: [90, 85, 80, 75, 60],
+            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+            borderColor: 'rgba(59, 130, 246, 1)',
+            borderWidth: 2,
+            pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+            pointBorderColor: '#fff',
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: 'rgba(59, 130, 246, 1)'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            r: {
+                beginAtZero: true,
+                max: 100,
+                ticks: { display: false },
+                grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                pointLabels: {
+                    font: { size: 11, family: 'Inter' },
+                    color: '#6b7280'
+                }
+            }
+        },
+        plugins: {
+            legend: { display: false }
+        }
+    }
+});
+
+// Brand selection
+function selectBrand(brand) {
+    document.querySelectorAll('.brand-item').forEach(el => el.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+}
+
+// Template selection
+function selectTemplate(el, type) {
+    document.querySelectorAll('.template-card').forEach(card => card.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('template-action').classList.remove('hidden');
+}
+
+// Generate content
+function generateContent() {
+    const prompt = document.getElementById('content-prompt').value;
+    if (!prompt) {
+        document.getElementById('content-prompt').focus();
+        return;
+    }
+    alert('AI đang viết content với tone Acme Corp...\n\nOutput sẽ hiển thị trong mục Kế hoạch');
+}
+
+// Test AI
+function runTest() {
+    const result = document.getElementById('test-result');
+    const prompt = document.getElementById('test-prompt').value;
+    if (!prompt) {
+        document.getElementById('test-prompt').focus();
+        return;
+    }
+    result.classList.remove('hidden');
+    result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Edit modal
+function showEdit() {
+    document.getElementById('edit-modal').classList.remove('hidden');
+}
+
+function closeEdit() {
+    document.getElementById('edit-modal').classList.add('hidden');
+}
+
+function saveEdit() {
+    closeEdit();
+    alert('Đã lưu thay đổi!');
+}
+
+// Run new research
+function runNewResearch() {
+    alert('Chuyển sang module Research để phân tích brand mới...');
+}
+</script>
+
+</body>
+</html>

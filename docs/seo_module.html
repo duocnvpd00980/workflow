@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SEO - Marketing AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .sidebar-item { transition: all 0.2s; }
+        .sidebar-item:hover { background: #f3f4f6; }
+        .sidebar-item.active { background: #e5e7eb; border-left: 3px solid #111827; }
+        .score-ring { transition: all 0.3s ease; }
+        .keyword-row { transition: all 0.1s; }
+        .keyword-row:hover { background: #f9fafb; }
+        .fade-in { animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<div class="flex h-screen">
+    <!-- SIDEBAR -->
+    <aside class="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+        <div class="p-4 flex items-center gap-2">
+            <div class="w-8 h-8 bg-black rounded-lg flex items-center justify-center"><i class="fas fa-bolt text-white text-sm"></i></div>
+            <span class="font-semibold text-sm">Agent</span>
+        </div>
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Chính</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-bolt w-4 text-center"></i><span>Tạo</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-brain w-4 text-center"></i><span>Tri thức</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-palette w-4 text-center"></i><span>Brand</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-bolt w-4 text-center"></i><span>Kế hoạch</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-search w-4 text-center"></i><span>Tra cứu</span></a>
+            </nav>
+        </div>
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Quản lý</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-cube w-4 text-center"></i><span>Kho</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-clock w-4 text-center"></i><span>Lịch sử</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-chart-bar w-4 text-center"></i><span>Thống kê</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-plug w-4 text-center"></i><span>Tích hợp</span></a>
+            </nav>
+        </div>
+        <div class="flex-1"></div>
+        <div class="p-3">
+            <div class="flex items-center gap-2 px-2 py-1.5 bg-gray-900 rounded-lg text-white text-xs"><i class="fas fa-route text-green-400"></i><span>TanStack Router</span></div>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900">SEO</h1>
+                    <p class="text-sm text-gray-500 mt-0.5">Tối ưu content cho search engines</p>
+                </div>
+                <button class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 flex items-center gap-2">
+                    <i class="fas fa-magic"></i> Phân tích content
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6">
+            <div class="max-w-4xl mx-auto space-y-5">
+
+                <!-- Score Card -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6">
+                    <div class="flex items-center gap-6">
+                        <div class="relative w-20 h-20 flex items-center justify-center">
+                            <svg class="w-20 h-20 transform -rotate-90">
+                                <circle cx="40" cy="40" r="34" stroke="#f3f4f6" stroke-width="6" fill="none"/>
+                                <circle cx="40" cy="40" r="34" stroke="#22c55e" stroke-width="6" fill="none" stroke-dasharray="213" stroke-dashoffset="32" stroke-linecap="round"/>
+                            </svg>
+                            <div class="absolute text-center">
+                                <div class="text-xl font-bold text-gray-900">85</div>
+                                <div class="text-[10px] text-gray-400">/100</div>
+                            </div>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="text-base font-bold text-gray-900">Blog: 5 cách quản lý dòng tiền hiệu quả</h2>
+                            <p class="text-sm text-gray-500 mt-0.5">Keyword chính: <span class="font-medium text-gray-700">quản lý dòng tiền</span></p>
+                            <div class="flex items-center gap-4 mt-2">
+                                <span class="text-xs text-green-600 font-medium"><i class="fas fa-check mr-1"></i>Tối ưu tốt</span>
+                                <span class="text-xs text-gray-400">1,245 từ • Đọc 6 phút</span>
+                                <span class="text-xs text-gray-400">Cập nhật: 12/06/2026</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Keyword Analysis -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-semibold text-gray-900">Phân tích từ khóa</h3>
+                        <span class="text-xs text-gray-400">12 từ khóa được phát hiện</span>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="keyword-row flex items-center justify-between p-2.5 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-medium text-gray-400 w-5">1</span>
+                                <span class="text-sm font-medium text-gray-900">quản lý dòng tiền</span>
+                                <span class="text-[10px] px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded font-medium">chính</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">Volume</div>
+                                    <div class="text-sm font-semibold text-gray-900">14.8K</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">KD</div>
+                                    <div class="text-sm font-semibold text-green-600">32%</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">Trong bài</div>
+                                    <div class="text-sm font-semibold text-gray-900">8 lần</div>
+                                </div>
+                                <div class="w-16">
+                                    <div class="w-full bg-gray-100 rounded-full h-1.5"><div class="bg-green-500 h-1.5 rounded-full" style="width: 85%"></div></div>
+                                    <div class="text-[10px] text-gray-400 mt-0.5 text-right">Tốt</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="keyword-row flex items-center justify-between p-2.5 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-medium text-gray-400 w-5">2</span>
+                                <span class="text-sm font-medium text-gray-900">ngân hàng số SME</span>
+                                <span class="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded font-medium">secondary</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">Volume</div>
+                                    <div class="text-sm font-semibold text-gray-900">3.2K</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">KD</div>
+                                    <div class="text-sm font-semibold text-yellow-600">48%</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">Trong bài</div>
+                                    <div class="text-sm font-semibold text-gray-900">5 lần</div>
+                                </div>
+                                <div class="w-16">
+                                    <div class="w-full bg-gray-100 rounded-full h-1.5"><div class="bg-green-500 h-1.5 rounded-full" style="width: 75%"></div></div>
+                                    <div class="text-[10px] text-gray-400 mt-0.5 text-right">Tốt</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="keyword-row flex items-center justify-between p-2.5 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-medium text-gray-400 w-5">3</span>
+                                <span class="text-sm font-medium text-gray-900">phần mềm kế toán</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">Volume</div>
+                                    <div class="text-sm font-semibold text-gray-900">8.5K</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">KD</div>
+                                    <div class="text-sm font-semibold text-yellow-600">55%</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">Trong bài</div>
+                                    <div class="text-sm font-semibold text-gray-900">2 lần</div>
+                                </div>
+                                <div class="w-16">
+                                    <div class="w-full bg-gray-100 rounded-full h-1.5"><div class="bg-yellow-500 h-1.5 rounded-full" style="width: 45%"></div></div>
+                                    <div class="text-[10px] text-gray-400 mt-0.5 text-right">Thêm</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="keyword-row flex items-center justify-between p-2.5 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-medium text-gray-400 w-5">4</span>
+                                <span class="text-sm font-medium text-gray-900">thanh toán quốc tế</span>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">Volume</div>
+                                    <div class="text-sm font-semibold text-gray-900">5.1K</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">KD</div>
+                                    <div class="text-sm font-semibold text-red-600">68%</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-gray-500">Trong bài</div>
+                                    <div class="text-sm font-semibold text-gray-900">1 lần</div>
+                                </div>
+                                <div class="w-16">
+                                    <div class="w-full bg-gray-100 rounded-full h-1.5"><div class="bg-red-500 h-1.5 rounded-full" style="width: 25%"></div></div>
+                                    <div class="text-[10px] text-gray-400 mt-0.5 text-right">Thiếu</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-4">Đề xuất cải thiện</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                            <div class="w-7 h-7 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fas fa-exclamation text-yellow-600 text-xs"></i></div>
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-gray-900">Thêm từ khóa "thanh toán quốc tế"</div>
+                                <p class="text-xs text-gray-600 mt-0.5">Chỉ xuất hiện 1 lần. Đề xuất thêm 2-3 lần trong body và 1 lần trong heading.</p>
+                            </div>
+                            <button class="px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg hover:bg-gray-800">Tự động sửa</button>
+                        </div>
+                        <div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
+                            <div class="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fas fa-check text-green-600 text-xs"></i></div>
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-gray-900">Meta description đã tối ưu</div>
+                                <p class="text-xs text-gray-600 mt-0.5">158 ký tự, chứa keyword chính, có CTA rõ ràng.</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 p-3 bg-yellow-50 rounded-lg border border-yellow-100">
+                            <div class="w-7 h-7 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fas fa-image text-yellow-600 text-xs"></i></div>
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-gray-900">Thêm alt text cho hình ảnh</div>
+                                <p class="text-xs text-gray-600 mt-0.5">3 hình chưa có alt text. Đề xuất thêm keyword vào alt text.</p>
+                            </div>
+                            <button class="px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg hover:bg-gray-800">Tự động sửa</button>
+                        </div>
+                        <div class="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-100">
+                            <div class="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"><i class="fas fa-link text-green-600 text-xs"></i></div>
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-gray-900">Internal linking tốt</div>
+                                <p class="text-xs text-gray-600 mt-0.5">5 internal links, 2 external links. Cân bằng tốt.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Competitor SERP -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-4">Top 5 kết quả SERP</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div class="text-xs font-bold text-gray-400 w-5 mt-0.5">1</div>
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer">Cách quản lý dòng tiền hiệu quả cho doanh nghiệp SME 2026</div>
+                                <div class="text-xs text-gray-500 mt-0.5">cafef.vn • 2.4k từ • DA 78</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-400">Keywords</div>
+                                <div class="text-sm font-semibold text-gray-900">15</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div class="text-xs font-bold text-gray-400 w-5 mt-0.5">2</div>
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer">5 phương pháp quản lý dòng tiền tối ưu</div>
+                                <div class="text-xs text-gray-500 mt-0.5">vnexpress.net • 1.8k từ • DA 85</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-400">Keywords</div>
+                                <div class="text-sm font-semibold text-gray-900">12</div>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div class="text-xs font-bold text-gray-400 w-5 mt-0.5">3</div>
+                            <div class="flex-1">
+                                <div class="text-sm font-medium text-gray-900 hover:text-blue-600 cursor-pointer">Phần mềm quản lý dòng tiền cho doanh nghiệp nhỏ</div>
+                                <div class="text-xs text-gray-500 mt-0.5">techinasia.com • 3.1k từ • DA 72</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-400">Keywords</div>
+                                <div class="text-sm font-semibold text-gray-900">18</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+</div>
+
+</body>
+</html>

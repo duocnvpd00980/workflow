@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import DateTime, Index, Integer, String, Text
-from sqlalchemy.orm import  Mapped, mapped_column
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 from app.db import Base
 
@@ -21,13 +21,19 @@ class BackgroundTask(Base):
         Index("ix_bg_task_status", "status"),
         Index("ix_bg_task_source", "source"),
         Index("ix_bg_task_created_at", "created_at"),
+        Index("ix_bg_task_business_id", "business_id"),  # ← filter theo business
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
 
+    # ── Link về Business ─────────────────────────────────────────
+    business_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True
+    )
+
     # Định danh nguồn gốc — để UI link về đúng trang
-    source: Mapped[str] = mapped_column(String(32))          # "marketing" | "research" | "rag"
-    source_id: Mapped[str] = mapped_column(String(64))       # id gốc của từng module
+    source: Mapped[str] = mapped_column(String(32))       # "marketing" | "research" | "rag"
+    source_id: Mapped[str] = mapped_column(String(64))    # id gốc của từng module
 
     # Thông tin hiển thị
     title: Mapped[str] = mapped_column(String(512))
@@ -51,6 +57,9 @@ class BackgroundTask(Base):
         DateTime, server_default=func.now(), onupdate=func.now()
     )
     finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Relationship
+    business = relationship("Business", back_populates="background_tasks")
 
     def __repr__(self) -> str:
         return (

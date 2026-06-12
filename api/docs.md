@@ -9,3 +9,7 @@ https://github.com/crewAIInc/crewAI-examples
 
 
 https://github.com/AICMO/AiCMO-Marketing-Prompt-Collection
+
+
+
+https://gen.pollinations.ai/docs#tag/%EF%B8%8F-image

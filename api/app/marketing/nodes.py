@@ -3,11 +3,9 @@ from google import genai
 from google.genai import types
 import uuid
 import logging
-from app.brand.service import BrandProfileService
 from app.db import AsyncSessionLocal
 from app.config import get_settings
 from groq import Groq
-import re
 import os
 from pathlib import Path
 import re
@@ -15,18 +13,26 @@ import uuid
 from pathlib import Path
 import requests
 
+# ── LangGraph Nodes Xử Lý ───────────────────────────────────────────────────────
+from sqlalchemy import select, desc
+from sqlalchemy.orm import joinedload
+
+from app.brand.models import Brand, BrandProfile, BrandVoiceRule, BrandMessaging
+from app.research.models import ResearchResult
+from app.rag.models import DocumentSource, DocumentPage, HotelRoom
+
+import requests
 
 
 logger = logging.getLogger(__name__)
 _s = get_settings()
 
 gemini_client = genai.Client(api_key=_s.GEMINI_API_KEY)
-MODEL = "gemini-2.5-flash"
-LLM_TIMEOUT = 30
-
+GEMINI_MODEL = _s.GEMINI_MODEL
 
 groq_client = Groq(api_key=_s.GROQ_API_KEY)
-MODEL = _s.GROQ_MODEL
+GROQ_MODEL = _s.GROQ_MODEL
+
 LLM_TIMEOUT = 30
 
 MEDIA_ROOT = Path("app/media")
@@ -35,7 +41,7 @@ MEDIA_ROOT = Path("app/media")
 def call_groq(prompt: str, max_tokens: int = 500) -> str:
     try:
         msg = groq_client.chat.completions.create(
-            model=MODEL,
+            model=GROQ_MODEL,
             messages=[{"role": "user", "content": prompt}],
             max_completion_tokens=max_tokens,
             temperature=0.7,
@@ -56,7 +62,7 @@ def call_gemini(prompt: str, max_tokens: int = 1000) -> str:
     """Helper: Gọi trực tiếp mô hình Gemini 2.5 Flash xử lý văn bản"""
     try:
         response = gemini_client.models.generate_content(
-            model=MODEL,
+            model=GEMINI_MODEL,
             contents=prompt,
             config=types.GenerateContentConfig(
                 max_output_tokens=max_tokens,
@@ -75,8 +81,6 @@ def call_gemini(prompt: str, max_tokens: int = 1000) -> str:
         return "[ERROR:fatal]"
 
 
-
-import requests
 
 def call_gemini_imagen(prompt_desc: str) -> bytes:
     """Gọi Pollinations API bằng cách xác thực qua Header"""
@@ -104,6 +108,62 @@ def call_gemini_imagen(prompt_desc: str) -> bytes:
         # Trả về placeholder nếu lỗi
         return requests.get("https://via.placeholder.com/1024x576?text=Image+Unavailable").content
     
+def filter_knowledge_with_groq(user_request: str, raw_knowledge: list) -> str:
+    """
+    Filters raw RAG context using advanced System Prompt Engineering (XML tagging, 
+    Role anchoring, and strict context extraction instructions) via Groq.
+    """
+    if not raw_knowledge:
+        return "No relevant context found."
+    if not user_request:
+        return str(raw_knowledge)
+
+    raw_context = str(raw_knowledge)
+
+    # SYSTEM PROMPT: Thiết lập vai trò chuyên gia, luật và cấu trúc dữ liệu (Kiểu Jasper/Copy.ai)
+    system_prompt = (
+        "You are an Elite Context Optimization Engine. Your sole purpose is to analyze a user's content creation request "
+        "and surgically extract ONLY the highly relevant facts, data points, or room/service specifications from the "
+        "provided raw database dump.\n\n"
+        "STRICT OPERATIONAL RULES:\n"
+        "1. Strip out all irrelevant, duplicated, or off-topic data items.\n"
+        "2. Do NOT summarize or lose the core parameters (e.g., prices, specific amenities, dimensions).\n"
+        "3. Output ONLY the refined factual context. No conversational filler, no 'Here is the filtered data', no markdown commentary.\n"
+        "4. Maintain a clear, dense, professional structure optimized for downstream Copywriting LLMs."
+    )
+
+    # USER PROMPT: Truyền dữ liệu qua các thẻ XML bọc cô lập để tránh Prompt Injection
+    user_prompt = f"""
+    <user_intent>
+    {user_request}
+    </user_intent>
+
+    <raw_context_data>
+    {raw_context}
+    </raw_context_data>
+
+    Instruction: Review the <user_intent> and filter the <raw_context_data>. Output the final optimized context block now.
+    """
+
+    try:
+        response = groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.0,  # Tuyệt đối không cho sáng tạo ở bước lọc dữ liệu
+            timeout=LLM_TIMEOUT
+        )
+        
+        filtered_text = response.choices[0].message.content.strip()
+        return filtered_text
+
+    except Exception as e:
+        logger.error(f"⚠️ Groq Context Filtering Error: {str(e)}. Falling back to raw data.")
+        return raw_context
+    
+
 
 def _merge_usage(current: dict, tokens: int, node: str) -> dict:
     current = current or {"total_tokens": 0, "total_cost": 0.0, "calls": []}
@@ -144,135 +204,191 @@ def _build_memory_block(memory_history: list) -> str:
     return block
 
 
-# ── LangGraph Nodes Xử Lý ───────────────────────────────────────────────────────
-from sqlalchemy import select, desc
-from sqlalchemy.orm import joinedload
-
-from app.brand.models import Brand, BrandProfile, BrandVoiceRule, BrandMessaging
-from app.research.models import ResearchResult
-from app.rag.models import DocumentSource, DocumentPage, HotelRoom
 
 async def prepare(state: dict) -> dict:
+    import json, time
+
+    started = time.time()
     r = state.get("request", "").lower()
-    brand_id = state.get("brand_id", "default")
-    business_name = state.get("business_name", brand_id)
-    
+    business_id = state.get("business_id")
+    brand_id    = state.get("brand_id")
+
     template = (
-        "social"   if any(w in r for w in ["tweet", "caption", "post", "social", "instagram", "fb"]) else
-        "blog"     if any(w in r for w in ["article", "blog", "write", "bài viết"]) else
-        "image"    if any(w in r for w in ["image", "visual", "design", "ảnh", "hình"]) else
-        "research" if any(w in r for w in ["research", "report", "analyze", "nghiên cứu"]) else
+        "social"   if any(x in r for x in ["tweet","caption","post","social","instagram","fb"]) else
+        "blog"     if any(x in r for x in ["article","blog","write","bài viết"]) else
+        "image"    if any(x in r for x in ["image","visual","design","ảnh","hình"]) else
+        "research" if any(x in r for x in ["research","report","analyze","nghiên cứu"]) else
         "social"
     )
 
-    brand_profile = {}
-    research_data = {}
-    knowledge_rag = []  
+    brand_profile, research_data, knowledge_rag = {}, {}, []
 
     try:
         async with AsyncSessionLocal() as db:
-            # 1. BỐC DATA THƯ MỤC BRAND
-            brand_stmt = (
-                select(Brand)
-                .where(Brand.id == brand_id)
-                .options(
-                    joinedload(Brand.profile),
-                    joinedload(Brand.voice_rules),
-                    joinedload(Brand.messaging)
+
+            # ── 1. Brand theo brand_id (thuộc business đã chọn) ─────────────
+            if brand_id:
+                brand = (await db.execute(
+                    select(Brand)
+                    .where(Brand.id == brand_id, Brand.business_id == business_id)
+                    .options(
+                        joinedload(Brand.profile),
+                        joinedload(Brand.voice_rules),
+                        joinedload(Brand.messaging),
+                    )
+                )).scalars().one_or_none()
+
+                if brand:
+                    p    = brand.profile
+                    rules = lambda t: [x.value for x in brand.voice_rules if x.rule_type == t]
+                    msgs  = lambda t: [x.value for x in brand.messaging   if x.message_type == t]
+
+                    brand_profile = {
+                        "brand_name":      brand.name,
+                        "positioning":     p.positioning     if p else "Chuyên nghiệp",
+                        "target_audience": p.audience        if p else "Đại chúng",
+                        "visual_identity": p.visual_identity if p else {},
+                        "tone_patterns":   rules("tone_pattern")  or ["Thân thiện"],
+                        "forbidden_words": rules("forbidden_word"),
+                        "cta_samples":     rules("cta_pattern")   or ["Khám phá ngay"],
+                        "pain_points":     msgs("pain_point"),
+                        "proof_points":    msgs("proof_point"),
+                        "objections": [
+                            {"objection": x.objection, "counter": x.counter}
+                            for x in brand.messaging if x.message_type == "objection"
+                        ],
+                    }
+
+            # ── 2. ResearchResult mới nhất theo business_id ──────────────────
+            if business_id:
+                rs = (await db.execute(
+                    select(ResearchResult)
+                    .where(ResearchResult.business_id == business_id)
+                    .order_by(desc(ResearchResult.created_at))
+                    .limit(1)
+                )).scalars().one_or_none()
+
+                research_data = (
+                    {
+                        "has_research":       True,
+                        "competitor_analysis": rs.competitor_analysis,
+                        "competitors_scraped": rs.competitors_scraped or [],
+                        "tiktok_comments":     rs.tiktok_comments     or [],
+                        "researched_at":       rs.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    }
+                    if rs else
+                    {"has_research": False, "competitor_analysis": "Chưa có dữ liệu"}
                 )
-            )
-            brand_result = await db.execute(brand_stmt)
-            brand_record = brand_result.scalars().one_or_none()  # ← Đổi thành .one_or_none()
 
-            if brand_record:
-                profile_data = brand_record.profile
-                forbidden_words = [r.value for r in brand_record.voice_rules if r.rule_type == "forbidden_word"]
-                tone_patterns   = [r.value for r in brand_record.voice_rules if r.rule_type == "tone_pattern"]
-                cta_patterns    = [r.value for r in brand_record.voice_rules if r.rule_type == "cta_pattern"]
-                pain_points = [m.value for m in brand_record.messaging if m.message_type == "pain_point"]
-                proof_points = [m.value for m in brand_record.messaging if m.message_type == "proof_point"]
-                objections = [{"objection": m.objection, "counter": m.counter} for m in brand_record.messaging if m.message_type == "objection"]
+                # ── 3. DocumentPage theo business_id (qua DocumentSource) ────
+                pages = (await db.execute(
+                    select(DocumentPage)
+                    .join(DocumentPage.source)
+                    .where(DocumentSource.business_id == business_id)
+                    .order_by(desc(DocumentPage.created_at))
+                    .limit(5)
+                )).scalars().all()
 
-                brand_profile = {
-                    "brand_name":      brand_record.name,
-                    "positioning":    profile_data.positioning if profile_data else "Chuyên nghiệp, tinh tế",
-                    "target_audience": profile_data.audience if profile_data else "Khách hàng đại chúng",
-                    "visual_identity": profile_data.visual_identity if profile_data else {},
-                    "tone_patterns":   tone_patterns or ["Thân thiện, tin cậy"],
-                    "forbidden_words": forbidden_words,
-                    "cta_samples":     cta_patterns or ["Khám phá ngay"],
-                    "pain_points":     pain_points,
-                    "proof_points":    proof_points,
-                    "objections":      objections
-                }
+                # ── 4. HotelRoom theo business_id ────────────────────────────
+                rooms = (await db.execute(
+                    select(HotelRoom)
+                    .where(
+                        HotelRoom.business_id == business_id,
+                        HotelRoom.status == "active",
+                    )
+                )).scalars().all()
 
-            # 2. BỐC DATA THƯ MỤC RESEARCH
-            research_stmt = (
-                select(ResearchResult)
-                .where(ResearchResult.business_name == business_name)
-                .order_by(desc(ResearchResult.created_at))
-                .limit(1)
-            )
-            research_result = await db.execute(research_stmt)
-            research_record = research_result.scalars().one_or_none()  # ← Đổi thành .one_or_none()
-
-            if research_record:
-                research_data = {
-                    "has_research":        True,
-                    "competitor_analysis": research_record.competitor_analysis,
-                    "competitors_scraped": research_record.competitors_scraped or [],
-                    "tiktok_comments":     research_record.tiktok_comments or [],
-                    "researched_at":       research_record.created_at.strftime("%Y-%m-%d %H:%M:%S")
-                }
-            else:
-                research_data = {"has_research": False, "competitor_analysis": "Chưa có dữ liệu phân tích đối thủ."}
-
-            # 3. BỐC DATA THƯ MỤC RAG
-            page_stmt = select(DocumentPage).order_by(desc(DocumentPage.created_at)).limit(5)
-            page_result = await db.execute(page_stmt)
-            for page in page_result.scalars().all():
-                knowledge_rag.append({
-                    "rag_type": "document_page",
-                    "title": page.title,
-                    "source_url": page.url,
-                    "text_content": page.content
-                })
-
-            room_stmt = select(HotelRoom).where(HotelRoom.status == "active")
-            room_result = await db.execute(room_stmt)
-            for room in room_result.scalars().all():
-                knowledge_rag.append({
-                    "rag_type": "hotel_room",
-                    "room_name": room.name,
-                    "room_type": room.room_type,
-                    "price": f"{room.price_per_night:,.0f} {room.currency}" if room.price_per_night else "Liên hệ",
-                    "amenities": room.amenities or [],
-                    "image_urls": room.image_urls or [],
-                    "embedded_snapshot": room.embed_text() 
-                })
+                knowledge_rag += (
+                    [
+                        {
+                            "rag_type":    "document_page",
+                            "title":       x.title,
+                            "source_url":  x.url,
+                            "text_content": x.content,
+                        }
+                        for x in pages
+                    ] + [
+                        {
+                            "rag_type":          "hotel_room",
+                            "room_name":         x.name,
+                            "room_type":         x.room_type,
+                            "price":             f"{x.price_per_night:,.0f} {x.currency}" if x.price_per_night else "Liên hệ",
+                            "amenities":         x.amenities  or [],
+                            "image_urls":        x.image_urls or [],
+                            "embedded_snapshot": x.embed_text(),
+                        }
+                        for x in rooms
+                    ]
+                )
 
     except Exception as e:
-        logger.error(f"Lỗi hệ thống khi dồn dịch CSDL từ 3 nguồn Brand-Research-RAG: {str(e)}")
+        logger.exception(f"[PREPARE] {e}")
 
-    if not brand_profile:
-        brand_profile = {"brand_name": "Default", "positioning": "Chuyên nghiệp", "tone_patterns": ["Thân thiện"], "forbidden_words": []}
-    if not knowledge_rag:
-        knowledge_rag = [{
-            "rag_type": "hotel_room", 
-            "room_name": "Phòng Tiêu Chuẩn View Biển", 
-            "embedded_snapshot": "Phòng Deluxe King View Biển | diện tích 35m2 | Tiện nghi: Wifi, Điều hòa | Giá: 1,500,000 VND/đêm"
-        }]
+    # ── Fallback ─────────────────────────────────────────────────────────────
+    brand_profile = brand_profile or {
+        "brand_name":      "Default",
+        "positioning":     "Chuyên nghiệp",
+        "tone_patterns":   ["Thân thiện"],
+        "forbidden_words": [],
+    }
+
+    knowledge_rag = knowledge_rag or [{
+        "rag_type":          "hotel_room",
+        "room_name":         "Default",
+        "embedded_snapshot": "Phòng tiêu chuẩn",
+    }]
+
+    # ── Filter context bằng Groq ─────────────────────────────────────────────
+    try:
+        full_context = {
+            "brand_profile": brand_profile,
+            "research_data": research_data,
+            "knowledge_rag": knowledge_rag,
+        }
+
+        raw = json.dumps(full_context, ensure_ascii=False)
+        logger.info(
+            f"[CTX BEFORE] all={len(raw)} "
+            f"brand={len(json.dumps(brand_profile, ensure_ascii=False))} "
+            f"research={len(json.dumps(research_data, ensure_ascii=False))} "
+            f"rag={len(json.dumps(knowledge_rag, ensure_ascii=False))}"
+        )
+
+        filtered = filter_knowledge_with_groq(
+            user_request=state.get("request", ""),
+            raw_knowledge=full_context,
+        )
+
+        if filtered:
+            try:
+                ctx          = json.loads(filtered)
+                brand_profile = ctx.get("brand_profile", brand_profile)
+                research_data = ctx.get("research_data", research_data)
+                knowledge_rag = ctx.get("knowledge_rag", knowledge_rag)
+            except Exception:
+                logger.warning("[FILTER INVALID JSON]")
+
+        final = json.dumps(
+            {"brand_profile": brand_profile, "research_data": research_data, "knowledge_rag": knowledge_rag},
+            ensure_ascii=False,
+        )
+        logger.info(f"[CTX AFTER] all={len(final)} saved={len(raw)-len(final)}")
+
+    except Exception as e:
+        logger.exception(f"[CTX FILTER] {e}")
+
+    logger.info(f"[PREPARE DONE] {round(time.time()-started, 2)}s")
 
     return {
         **state,
-        "template":       template,
-        "brand_profile":  brand_profile,  
-        "research_data":  research_data,  
-        "knowledge_rag":  knowledge_rag,  
+        "template":      template,
+        "brand_profile": brand_profile,
+        "research_data": research_data,
+        "knowledge_rag": knowledge_rag,
         "memory_history": state.get("memory_history", []),
-        "usage":          {"total_tokens": 0, "total_cost": 0.0, "calls": []},
-        "approved":       False,
-        "error":          None,
+        "usage":   {"total_tokens": 0, "total_cost": 0.0, "calls": []},
+        "approved": False,
+        "error":    None,
     }
 
 def visual_intent_analyzer(state: dict) -> dict:

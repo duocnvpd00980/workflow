@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tri thức - Marketing AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .sidebar-item { transition: all 0.2s; }
+        .sidebar-item:hover { background: #f3f4f6; }
+        .sidebar-item.active { background: #e5e7eb; border-left: 3px solid #111827; }
+        .asset-card { transition: all 0.15s; cursor: pointer; }
+        .asset-card:hover { background: #f9fafb; }
+        .asset-card.selected { background: #eff6ff; border-left: 3px solid #3b82f6; }
+        .tag { transition: all 0.15s; }
+        .tag:hover { background: #e5e7eb; }
+        .fade-in { animation: fadeIn 0.25s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<div class="flex h-screen">
+    <!-- SIDEBAR -->
+    <aside class="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+        <div class="p-4 flex items-center gap-2">
+            <div class="w-8 h-8 bg-black rounded-lg flex items-center justify-center"><i class="fas fa-bolt text-white text-sm"></i></div>
+            <span class="font-semibold text-sm">Agent</span>
+        </div>
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Chính</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-bolt w-4 text-center"></i><span>Tạo</span></a>
+                <a href="#" class="sidebar-item active flex items-center gap-3 px-2 py-2 rounded-lg text-sm font-medium text-gray-900"><i class="fas fa-brain w-4 text-center"></i><span>Tri thức</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-palette w-4 text-center"></i><span>Brand</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-bolt w-4 text-center"></i><span>Kế hoạch</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-search w-4 text-center"></i><span>Tra cứu</span></a>
+            </nav>
+        </div>
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Quản lý</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-cube w-4 text-center"></i><span>Kho</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-clock w-4 text-center"></i><span>Lịch sử</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-chart-bar w-4 text-center"></i><span>Thống kê</span></a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600"><i class="fas fa-plug w-4 text-center"></i><span>Tích hợp</span></a>
+            </nav>
+        </div>
+        <div class="flex-1"></div>
+        <div class="p-3">
+            <div class="flex items-center gap-2 px-2 py-1.5 bg-gray-900 rounded-lg text-white text-xs"><i class="fas fa-route text-green-400"></i><span>TanStack Router</span></div>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900">Tri thức</h1>
+                    <p class="text-sm text-gray-500 mt-0.5">Kho thông tin brand — AI kéo context khi viết content</p>
+                </div>
+                <button onclick="showAddModal()" class="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800 flex items-center gap-2">
+                    <i class="fas fa-plus"></i> Thêm tri thức
+                </button>
+            </div>
+        </header>
+
+        <!-- TOOLBAR -->
+        <div class="bg-white border-b border-gray-200 px-6 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+                        <input type="text" placeholder="Tìm tri thức..." class="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm w-56 focus:outline-none focus:ring-2 focus:ring-gray-900">
+                    </div>
+                    <div class="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                        <button class="px-3 py-1.5 rounded-md text-sm font-medium bg-white text-gray-900 shadow-sm">Tất cả</button>
+                        <button class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900">Văn bản</button>
+                        <button class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900">File</button>
+                        <button class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-600 hover:text-gray-900">URL</button>
+                    </div>
+                </div>
+                <div class="text-sm text-gray-500">8 tri thức • 3.2 MB</div>
+            </div>
+        </div>
+
+        <!-- SPLIT VIEW -->
+        <div class="flex-1 flex overflow-hidden">
+
+            <!-- LEFT: ASSET LIST -->
+            <div class="w-80 bg-white border-r border-gray-200 overflow-y-auto">
+                <div class="p-3">
+                    <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-2 px-2">Tri thức</div>
+
+                    <!-- Asset 1 -->
+                    <div class="asset-card selected rounded-lg p-3 mb-1" onclick="selectAsset('product')">
+                        <div class="flex items-start gap-3">
+                            <div class="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-file-alt text-blue-600 text-xs"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-sm text-gray-900 truncate">Thông tin sản phẩm</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-0.5">Văn bản • 1.2k từ</p>
+                                <div class="flex items-center gap-1 mt-1.5 flex-wrap">
+                                    <span class="tag px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600">product</span>
+                                    <span class="tag px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600">specs</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Asset 2 -->
+                    <div class="asset-card rounded-lg p-3 mb-1" onclick="selectAsset('pricing')">
+                        <div class="flex items-start gap-3">
+                            <div class="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-file-pdf text-green-600 text-xs"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-sm text-gray-900 truncate">Bảng giá Q2 2026</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-0.5">PDF • 245 KB</p>
+                                <div class="flex items-center gap-1 mt-1.5 flex-wrap">
+                                    <span class="tag px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600">pricing</span>
+                                    <span class="tag px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600">internal</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Asset 3 -->
+                    <div class="asset-card rounded-lg p-3 mb-1" onclick="selectAsset('audience')">
+                        <div class="flex items-start gap-3">
+                            <div class="w-9 h-9 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-users text-purple-600 text-xs"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-sm text-gray-900 truncate">Persona khách hàng</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-0.5">Văn bản • 800 từ</p>
+                                <div class="flex items-center gap-1 mt-1.5 flex-wrap">
+                                    <span class="tag px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600">audience</span>
+                                    <span class="tag px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600">persona</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Asset 4 -->
+                    <div class="asset-card rounded-lg p-3 mb-1" onclick="selectAsset('website')">
+                        <div class="flex items-start gap-3">
+                            <div class="w-9 h-9 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-link text-orange-600 text-xs"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-sm text-gray-900 truncate">Website chính thức</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-0.5">URL • acme-corp.com</p>
+                                <div class="flex items-center gap-1 mt-1.5 flex-wrap">
+                                    <span class="tag px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600">website</span>
+                                    <span class="tag px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600">auto-sync</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Asset 5 -->
+                    <div class="asset-card rounded-lg p-3 mb-1" onclick="selectAsset('competitor')">
+                        <div class="flex items-start gap-3">
+                            <div class="w-9 h-9 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-chess text-red-600 text-xs"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-sm text-gray-900 truncate">Phân tích đối thủ</span>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-0.5">Văn bản • 1.5k từ</p>
+                                <div class="flex items-center gap-1 mt-1.5 flex-wrap">
+                                    <span class="tag px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600">competitor</span>
+                                    <span class="tag px-1.5 py-0.5 bg-gray-100 rounded text-[10px] text-gray-600">research</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: DETAIL PANEL -->
+            <div class="flex-1 bg-gray-50 overflow-y-auto" id="detail-panel">
+
+                <!-- Detail Header -->
+                <div class="bg-white border-b border-gray-200 px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <i class="fas fa-file-alt text-blue-600"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-gray-900">Thông tin sản phẩm</h2>
+                                <div class="flex items-center gap-2 mt-0.5">
+                                    <span class="text-xs text-gray-400">Văn bản • 1.2k từ</span>
+                                    <span class="text-xs text-gray-400">• Cập nhật 2 ngày trước</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                <i class="fas fa-pen mr-1.5"></i>Sửa
+                            </button>
+                            <button class="px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                <i class="fas fa-trash mr-1.5"></i>Xóa
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detail Content -->
+                <div class="p-6 space-y-5">
+
+                    <!-- Tags -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2 py-1 bg-gray-100 rounded-md text-xs text-gray-700">product</span>
+                        <span class="px-2 py-1 bg-gray-100 rounded-md text-xs text-gray-700">specs</span>
+                        <span class="px-2 py-1 bg-gray-100 rounded-md text-xs text-gray-700">features</span>
+                        <button class="px-2 py-1 border border-dashed border-gray-300 rounded-md text-xs text-gray-400 hover:text-gray-600 hover:border-gray-400"><i class="fas fa-plus text-[10px]"></i> Thêm tag</button>
+                    </div>
+
+                    <!-- Content Preview -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-gray-900">Nội dung</h3>
+                            <span class="text-xs text-gray-400">AI sẽ kéo context từ đây khi viết</span>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                            <p class="text-sm text-gray-700 leading-relaxed">Acme Corp cung cấp nền tảng ngân hàng số toàn diện cho doanh nghiệp SME tại Việt Nam.</p>
+                            <p class="text-sm text-gray-700 leading-relaxed mt-2"><strong>Sản phẩm chính:</strong></p>
+                            <ul class="text-sm text-gray-700 mt-1 ml-4 space-y-1">
+                                <li>• Quản lý dòng tiền thông minh — theo dõi real-time, báo cáo tự động</li>
+                                <li>• Thanh toán quốc tế — phí chuyển đổi thấp hơn 15% so với ngân hàng truyền thống</li>
+                                <li>• Tích hợp kế toán — kết nối MISA, Fast, Bravo</li>
+                                <li>• Bảo mật đa lớp — chứng nhận PCI DSS, ISO 27001</li>
+                            </ul>
+                            <p class="text-sm text-gray-700 leading-relaxed mt-2"><strong>Giá:</strong> Gói Starter 299k/tháng, Growth 799k/tháng, Enterprise theo yêu cầu.</p>
+                            <p class="text-sm text-gray-700 leading-relaxed mt-2"><strong>Đối tượng:</strong> Doanh nghiệp SME 25-200 nhân viên, doanh thu 5-50 tỷ/năm.</p>
+                        </div>
+                    </div>
+
+                    <!-- Usage Stats -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Lần dùng gần nhất</div>
+                            <div class="text-sm font-semibold text-gray-900">2 giờ trước</div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Số lần được kéo</div>
+                            <div class="text-sm font-semibold text-gray-900">47 lần</div>
+                        </div>
+                        <div class="bg-white rounded-xl border border-gray-200 p-4">
+                            <div class="text-xs text-gray-400 uppercase tracking-wider mb-1">Content đã tạo</div>
+                            <div class="text-sm font-semibold text-gray-900">12 bài</div>
+                        </div>
+                    </div>
+
+                    <!-- Connected Content -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <h3 class="text-sm font-semibold text-gray-900 mb-3">Content đã dùng tri thức này</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between py-2 border-b border-gray-50">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-envelope text-green-500 text-xs"></i>
+                                    <span class="text-sm text-gray-700">Email giới thiệu sản phẩm tháng 6</span>
+                                </div>
+                                <span class="text-xs text-gray-400">12/06</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2 border-b border-gray-50">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-file-alt text-purple-500 text-xs"></i>
+                                    <span class="text-sm text-gray-700">Landing Page tính năng mới</span>
+                                </div>
+                                <span class="text-xs text-gray-400">10/06</span>
+                            </div>
+                            <div class="flex items-center justify-between py-2">
+                                <div class="flex items-center gap-2">
+                                    <i class="fas fa-bullseye text-orange-500 text-xs"></i>
+                                    <span class="text-sm text-gray-700">Ads Facebook Q2</span>
+                                </div>
+                                <span class="text-xs text-gray-400">08/06</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ADD KNOWLEDGE MODAL -->
+<div id="add-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-2xl w-[480px] max-h-[90vh] overflow-hidden flex flex-col">
+        <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 class="text-base font-bold text-gray-900">Thêm tri thức mới</h2>
+            <button onclick="closeAddModal()" class="w-7 h-7 rounded-lg hover:bg-gray-100 flex items-center justify-center"><i class="fas fa-times text-gray-500 text-sm"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-5">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Tên tri thức <span class="text-red-500">*</span></label>
+                    <input type="text" placeholder="VD: Thông tin sản phẩm" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Loại</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <label class="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-gray-900 has-[:checked]:bg-gray-50">
+                            <input type="radio" name="type" checked class="hidden">
+                            <i class="fas fa-file-alt text-gray-600"></i>
+                            <span class="text-sm text-gray-700">Văn bản</span>
+                        </label>
+                        <label class="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-gray-900 has-[:checked]:bg-gray-50">
+                            <input type="radio" name="type" class="hidden">
+                            <i class="fas fa-file text-gray-600"></i>
+                            <span class="text-sm text-gray-700">File</span>
+                        </label>
+                        <label class="flex items-center justify-center gap-2 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 has-[:checked]:border-gray-900 has-[:checked]:bg-gray-50">
+                            <input type="radio" name="type" class="hidden">
+                            <i class="fas fa-link text-gray-600"></i>
+                            <span class="text-sm text-gray-700">URL</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Nội dung</label>
+                    <textarea rows="5" placeholder="Nhập thông tin bạn muốn AI nhớ..." class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Tags <span class="text-xs text-gray-400 font-normal">(phân cách bằng dấu phẩy)</span></label>
+                    <input type="text" placeholder="product, specs, pricing..." class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+                </div>
+            </div>
+        </div>
+        <div class="px-5 py-4 border-t border-gray-200 flex items-center justify-end gap-2">
+            <button onclick="closeAddModal()" class="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg">Hủy</button>
+            <button onclick="saveKnowledge()" class="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800">Thêm</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectAsset(id) {
+    document.querySelectorAll('.asset-card').forEach(el => el.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+}
+function showAddModal() {
+    document.getElementById('add-modal').classList.remove('hidden');
+}
+function closeAddModal() {
+    document.getElementById('add-modal').classList.add('hidden');
+}
+function saveKnowledge() {
+    closeAddModal();
+    alert('Đã thêm tri thức mới!');
+}
+</script>
+
+</body>
+</html>

@@ -5,6 +5,7 @@ class PipelineRequest(BaseModel):
     business_name: str = "Sontras Sea Hotel"
     address: str = "41 Hoàng Sa Road, Son Tra District, Da Nang, Vietnam"
     industry: str = "Hotel / Beachfront Resort / Hospitality"
+    owner_id: str = "default"   # ← user/tenant id, dùng để group businesses theo chủ sở hữu
 
 class PipelineResponse(BaseModel):
     success: bool
@@ -16,7 +17,7 @@ class PipelineResponse(BaseModel):
 
 class ProgressEvent(BaseModel):
     node: str
-    status: str       
+    status: str
     message: str
-    progress: int      
+    progress: int
     data: dict = {}

@@ -2,10 +2,9 @@ import uuid
 import asyncio
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select, desc, func
+from sqlalchemy import select, desc
 from app.db import AsyncSessionLocal
-from app.research.models import ResearchResult, PipelineTask  # <-- IMPORT PipelineTask
-
+from app.research.models import ResearchResult, PipelineTask
 from app.research.schemas import PipelineRequest, PipelineResponse
 from app.research.service import (
     run_pipeline,
@@ -14,11 +13,48 @@ from app.research.service import (
     TASK_STORE,
     _db_create_task,
 )
+from app.business.models import Business
+from app.business.schemas import BusinessCreate
+from app.business import service as business_service
 
 router = APIRouter(
     prefix="/hotel-research",
     tags=["Hotel Research"],
 )
+
+
+async def _get_or_create_business(
+    business_name: str,
+    owner_id: str,
+    industry: str | None,
+    address: str | None,
+) -> Business:
+    """
+    Tìm Business theo name + owner_id.
+    Nếu chưa có → tạo mới.
+    Đảm bảo research nhiều lần cùng 1 tên → dùng chung 1 business_id.
+    """
+    async with AsyncSessionLocal() as db:
+        existing = (await db.execute(
+            select(Business).where(
+                Business.name == business_name,
+                Business.owner_id == owner_id,
+                Business.deleted_at.is_(None),
+            )
+        )).scalars().one_or_none()
+
+        if existing:
+            return existing
+
+        return await business_service.create_business(
+            db,
+            BusinessCreate(
+                name=business_name,
+                owner_id=owner_id,
+                industry=industry,
+                address=address,
+            ),
+        )
 
 
 @router.post("/run/stream")
@@ -27,14 +63,21 @@ async def run_stream(request: PipelineRequest, background_tasks: BackgroundTasks
     Tiếp nhận yêu cầu, lưu DB ngay, đẩy vào Background Task chạy ngầm,
     trả về task_id ngay lập tức.
     """
-    task_id = str(uuid.uuid4())
+    # ── 1. Get or create Business ────────────────────────────────
+    business = await _get_or_create_business(
+        business_name=request.business_name,
+        owner_id=request.owner_id,
+        industry=request.industry,
+        address=request.address,
+    )
 
-    # Khởi tạo RAM
+    # ── 2. Khởi tạo task ─────────────────────────────────────────
+    task_id = str(uuid.uuid4())
     TASK_STORE[task_id] = {"status": "running", "events": []}
 
-    # FIX: Lưu PipelineTask DB ngay lập tức để /results có thể query được task đang chạy
     await _db_create_task(
         task_id=task_id,
+        business_id=business.id,        # ← anchor trung tâm
         business_name=request.business_name,
         address=request.address,
         industry=request.industry,
@@ -43,12 +86,17 @@ async def run_stream(request: PipelineRequest, background_tasks: BackgroundTasks
     background_tasks.add_task(
         pipeline_worker_task,
         task_id=task_id,
+        business_id=business.id,        # ← truyền xuống worker
         business_name=request.business_name,
         address=request.address,
         industry=request.industry,
     )
 
-    return {"task_id": task_id, "status": "queued"}
+    return {
+        "task_id":     task_id,
+        "business_id": business.id,     # ← trả về để frontend lưu
+        "status":      "queued",
+    }
 
 
 @router.get("/stream/{task_id}")
@@ -61,18 +109,15 @@ async def get_realtime_stream(task_id: str):
 
     async def event_generator():
         sent_index = 0
-
         while True:
             task = TASK_STORE.get(task_id)
             if not task:
                 break
 
-            # Gửi hết events chưa gửi
             while sent_index < len(task["events"]):
                 yield task["events"][sent_index]
                 sent_index += 1
 
-            # Nếu pipeline xong: flush nốt rồi đóng
             if task["status"] in ["completed", "failed"]:
                 await asyncio.sleep(0.2)
                 while sent_index < len(task["events"]):
@@ -87,7 +132,7 @@ async def get_realtime_stream(task_id: str):
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
+            "Connection":    "keep-alive",
             "X-Accel-Buffering": "no",
         },
     )
@@ -103,49 +148,49 @@ async def get_task_status(task_id: str):
 
     task = TASK_STORE[task_id]
     return {
-        "task_id": task_id,
-        "status": task["status"],
+        "task_id":      task_id,
+        "status":       task["status"],
         "total_events": len(task["events"]),
     }
 
 
 @router.get("/results")
-async def list_results(limit: int = 10, offset: int = 0):
-    """Danh sách tất cả tasks (cả đang chạy và đã hoàn thành), mới nhất trước."""
+async def list_results(
+    business_id: str | None = None,   # ← filter theo business
+    limit: int = 10,
+    offset: int = 0,
+):
+    """Danh sách tất cả tasks, mới nhất trước. Filter theo business_id nếu có."""
     async with AsyncSessionLocal() as session:
-        # Query PipelineTask để lấy tất cả tasks kể cả đang chạy
-        result = await session.execute(
-            select(PipelineTask)
-            .order_by(desc(PipelineTask.created_at))
-            .limit(limit)
-            .offset(offset)
-        )
-        tasks = result.scalars().all()
+        q = select(PipelineTask).order_by(desc(PipelineTask.created_at))
+        if business_id:
+            q = q.where(PipelineTask.business_id == business_id)
 
-        # Query ResearchResult để lấy thông tin kết quả (nếu có)
+        tasks = (await session.execute(q.limit(limit).offset(offset))).scalars().all()
+
         task_ids = [t.task_id for t in tasks]
         results_map = {}
         if task_ids:
-            result_rows = await session.execute(
+            for r in (await session.execute(
                 select(ResearchResult).where(ResearchResult.task_id.in_(task_ids))
-            )
-            for r in result_rows.scalars().all():
+            )).scalars().all():
                 results_map[r.task_id] = r
 
     return {
-        "total": len(tasks),
-        "limit": limit,
+        "total":  len(tasks),
+        "limit":  limit,
         "offset": offset,
         "items": [
             {
-                "id": t.task_id,
-                "task_id": t.task_id,
-                "business_name": t.business_name,
-                "status": t.status,  # <-- THÊM status
-                "created_at": t.created_at,
-                "competitors_count": len(getattr(results_map.get(t.task_id), 'competitors_clean', None) or []),
-                "has_analysis": bool(getattr(results_map.get(t.task_id), 'competitor_analysis', None)),
-                "has_report": bool(getattr(results_map.get(t.task_id), 'final_report', None)),
+                "id":                t.task_id,
+                "task_id":           t.task_id,
+                "business_id":       t.business_id,
+                "business_name":     t.business_name,
+                "status":            t.status,
+                "created_at":        t.created_at,
+                "competitors_count": len(getattr(results_map.get(t.task_id), "competitors_clean", None) or []),
+                "has_analysis":      bool(getattr(results_map.get(t.task_id), "competitor_analysis", None)),
+                "has_report":        bool(getattr(results_map.get(t.task_id), "final_report", None)),
             }
             for t in tasks
         ],
@@ -164,10 +209,9 @@ async def get_result(task_id: str):
     if task["status"] != "completed":
         raise HTTPException(
             status_code=400,
-            detail=f"Task chưa hoàn thành (status: {task['status']})"
+            detail=f"Task chưa hoàn thành (status: {task['status']})",
         )
 
-    # Parse kết quả từ event FINISHED trong RAM
     for event_str in reversed(task["events"]):
         if '"node": "FINISHED"' in event_str:
             import json

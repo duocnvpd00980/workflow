@@ -8,11 +8,16 @@ class Brand(Base):
     id = Column(String, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
     owner_id = Column(String, nullable=False, index=True)
+
+    # ── Link về Business ─────────────────────────────────────────
+    business_id = Column(String, ForeignKey("businesses.id", ondelete="CASCADE"), nullable=True, index=True)
+
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     deleted_at = Column(DateTime, nullable=True)
     
     # Relationships
+    business = relationship("Business", back_populates="brands")
     profile = relationship("BrandProfile", back_populates="brand", uselist=False, cascade="all, delete-orphan")
     voice_rules = relationship("BrandVoiceRule", back_populates="brand", cascade="all, delete-orphan")
     messaging = relationship("BrandMessaging", back_populates="brand", cascade="all, delete-orphan")
@@ -29,7 +34,6 @@ class BrandProfile(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     mined_at = Column(DateTime, nullable=True)
     
-    # Relationship
     brand = relationship("Brand", back_populates="profile")
 
 class BrandVoiceRule(Base):
@@ -40,7 +44,6 @@ class BrandVoiceRule(Base):
     rule_type = Column(String, nullable=False)  # forbidden_word, tone_pattern, cta_pattern
     value = Column(String, nullable=False)
     
-    # Composite index
     __table_args__ = (
         Index("idx_brand_rule_type", "brand_id", "rule_type"),
     )
@@ -53,10 +56,10 @@ class BrandMessaging(Base):
     id = Column(String, primary_key=True)
     brand_id = Column(String, ForeignKey("brands.id"), nullable=False, index=True)
     message_type = Column(String, nullable=False)  # pain_point, objection, proof_point
-    value = Column(String, nullable=True)  # For pain_point, proof_point
-    parent_id = Column(String, ForeignKey("brand_messaging.id"), nullable=True)  # For objection nesting
-    objection = Column(String, nullable=True)  # For objection type
-    counter = Column(String, nullable=True)  # For objection counter
+    value = Column(String, nullable=True)
+    parent_id = Column(String, ForeignKey("brand_messaging.id"), nullable=True)
+    objection = Column(String, nullable=True)
+    counter = Column(String, nullable=True)
     
     __table_args__ = (
         Index("idx_brand_message_type", "brand_id", "message_type"),
@@ -69,7 +72,7 @@ class BrandContentExample(Base):
     
     id = Column(String, primary_key=True)
     brand_id = Column(String, ForeignKey("brands.id"), nullable=False, index=True)
-    example_type = Column(String, nullable=False)  # blog_post, social_post, ad_copy, landing_page
+    example_type = Column(String, nullable=False)
     title = Column(String, nullable=True)
     content = Column(Text, nullable=False)
     url = Column(String, nullable=True)

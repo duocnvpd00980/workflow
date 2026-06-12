@@ -1,771 +1,291 @@
-/**
- * ScreenBrandVoice — Kiến trúc tích hợp luồng Brand & Brand Profile RAG
- * • Quản lý linh hoạt: Đăng ký Owner -> Chọn/Tạo Brand -> Tự động hóa kết xuất RAG Profile.
- * • Hỗ trợ xóa thực thể thương hiệu an toàn qua Sidebar hoặc Header.
- * • Tự động đồng bộ hóa dữ liệu trạng thái qua TanStack Query & Router.
- */
+// app/(dashboard)/content/page.tsx
+"use client"
 
-import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import {
-  ChevronDown,
-  ChevronRight,
-  X,
-  Loader2,
-  FileText,
-  Sparkles,
-  Plus,
-  FolderHeart,
-  Building2,
-  RefreshCw,
-  Trash2
-} from "lucide-react";
+import { useNavigate } from "@tanstack/react-router"
+import { useQuery } from "@tanstack/react-query"
+import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
+import { 
+  Mail, Smartphone, Target, FileText, Inbox, MoreHorizontal, 
+  ChevronLeft, ChevronRight, RefreshCw, Trash2, Archive, Edit3, ArrowLeft
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { createFileRoute } from "@tanstack/react-router"
 
-// ─── Thành Phần UI Shadcn ──────────────────────────────────────────────────
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { API_BASE } from "@/config";
-
-// ─── Khai Báo Khung Định Dạng Dữ Liệu ──────────────────────────────────────
-export interface Brand {
-  id: string;
-  name: string;
-  created_at: string;
+// ─── TYPES ───
+type ContentItem = {
+  id: string
+  icon: "email" | "social" | "ads" | "blog"
+  title: string
+  type: string
+  status: "draft" | "published" | "scheduled"
+  preview: string
+  time: string
+  content?: string
 }
 
-export interface BrandListResponse {
-  brands: Brand[];
-  total: number;
+const fetchContentData = async (): Promise<ContentItem[]> => {
+  return [
+    { id: "1", icon: "email", title: "Email marketing Q3", type: "Email", status: "draft", preview: "Dear valued customer, we are excited to announce our Q3 product lineup...", time: "2m ago", content: "<h1>Email marketing Q3</h1><p>Dear valued customer,</p><p>We are excited to announce our Q3 product lineup featuring advanced AI workflows and cinematic engine integration...</p>" },
+    { id: "2", icon: "social", title: "Social July campaign", type: "Social", status: "published", preview: "Summer sale is here! 🌞 Giảm giá lên đến 50%...", time: "1d ago", content: "<p>Summer sale is here! 🌞 Giảm giá lên đến 50% cho tất cả dịch vụ trong tháng 7 này. Đăng ký ngay hôm nay!</p>" },
+    { id: "3", icon: "ads", title: "Google Ads Tết 2026", type: "Ads", status: "scheduled", preview: "Giảm giá Tết lên đến 50% cho doanh nghiệp SME...", time: "Tomorrow", content: "<p><strong>Headline:</strong> Giải Pháp AI Cho Doanh Nghiệp SME<br/><strong>Description:</strong> Giảm giá Tết lên đến 50% cho doanh nghiệp SME khi đăng ký sớm hệ thống tự động hóa marketing.</p>" },
+    { id: "4", icon: "blog", title: "Blog: AI cho SME", type: "Blog", status: "draft", preview: "Trí tuệ nhân tạo đang thay đổi cách doanh nghiệp...", time: "3h ago", content: "<p>Trí tuệ nhân tạo đang thay đổi cách doanh nghiệp vận hành. Trong bài viết này, chúng ta sẽ tìm hiểu sâu về Creative Campaign Engine...</p>" },
+  ]
 }
 
-export interface BrandVoiceRules {
-  forbidden_words: string[];
-  tone_patterns: string[];
-  cta_patterns: string[];
+// ─── SUB-COMPONENTS ───
+function StatusBadge({ status }: { status: ContentItem["status"] }) {
+  const variants = {
+    draft: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900",
+    published: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900",
+    scheduled: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900",
+  }
+  const labels = { draft: "Draft", published: "Published", scheduled: "Scheduled" }
+  return (
+    <Badge variant="outline" className={cn("text-[10px] font-medium px-1.5 py-0 rounded-[4px]", variants[status])}>
+      {labels[status]}
+    </Badge>
+  )
 }
 
-export interface BrandMessaging {
-  pain_points: string[];
-  objections: { objection: string; counter: string }[];
-  proof_points: string[];
+function TypeIcon({ type }: { type: ContentItem["icon"] }) {
+  const icons = { email: Mail, social: Smartphone, ads: Target, blog: FileText }
+  const Icon = icons[type]
+  return <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
 }
 
-export interface ContentExamples {
-  blog_post: string | null;
-  social_post: string | null;
-  ad_copy: string | null;
-  landing_page: string | null;
-}
-
-export interface VisualIdentity {
-  style_description: string;
-  color_palette: string[];
-  mood: string;
-}
-
-export interface BrandProfileSchema {
-  positioning: string;
-  audience: string;
-  brand_voice_rules: BrandVoiceRules;
-  messaging: BrandMessaging;
-  content_examples: ContentExamples;
-  visual_identity: VisualIdentity;
-}
-
-export interface RagDocument {
-  id: number;
-  title: string;
-  document_type: string;
-  status: "completed" | "pending" | "failed";
-  chunk_count: number;
-}
-
-// Giả định mã Owner đại diện cho User hiện tại đang đăng nhập hệ thống
-const CURRENT_OWNER_ID = "string";
-
-// ─── Định Nghĩa Tuyến Đường (Tanstack Router) ─────────────────────────────
-export const Route = createFileRoute("/brand")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    syncOpen: (search.syncOpen as boolean) || undefined,
-    selectedBrandId: (search.selectedBrandId as string) || undefined,
-  }),
-  component: ScreenBrandVoice,
-});
-
-export function ScreenBrandVoice() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate({ from: Route.fullPath });
-  const { syncOpen, selectedBrandId } = Route.useSearch();
-
-  // Khởi tạo trạng thái quản lý đóng/mở giao diện
-  const [isNewBrandOpen, setIsNewBrandOpen] = useState(false);
-  const [newBrandName, setNewBrandName] = useState("");
-  const [isPatching, setIsPatching] = useState<string | null>(null);
-  const [brandToDelete, setBrandToDelete] = useState<Brand | null>(null);
-
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({
-    1: true,
-    2: false,
-    3: false,
-    4: false,
-    5: false,
-  });
-
-  const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
-
-  // ─── Query 1: Lấy danh sách Thương hiệu thuộc quyền sở hữu của Owner ───────
-  const { data: brandListMeta, isLoading: isLoadingBrands } = useQuery<BrandListResponse>({
-    queryKey: ["brands", "list", CURRENT_OWNER_ID],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/brand-profile?owner_id=${CURRENT_OWNER_ID}&limit=50&offset=0`);
-      if (!res.ok) throw new Error("Không thể tải danh sách thương hiệu");
-      return await res.json();
-    },
-  });
-
-  const activeBrandId = selectedBrandId || brandListMeta?.brands[0]?.id;
-  const activeBrandDetails = brandListMeta?.brands.find(b => b.id === activeBrandId);
-
-  // ─── Query 2: Lấy chi tiết Hồ sơ AI Voice dựa theo Brand ID được lựa chọn ──
-  const { data: profileData, isLoading: isLoadingProfile } = useQuery<BrandProfileSchema>({
-    queryKey: ["brand-profile", "detail", activeBrandId],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/brand-profile/${activeBrandId}`);
-      if (!res.ok) throw new Error("Hồ sơ thương hiệu chưa được thiết lập.");
-      return await res.json();
-    },
-    enabled: !!activeBrandId,
-    retry: false,
-  });
-
-  // ─── Query 3: Tải kho tư liệu RAG phục vụ kết xuất thông minh ──────────────
-  const { data: ragDocuments = [], isLoading: isLoadingRag } = useQuery<RagDocument[]>({
-    queryKey: ["rag", "list"],
-    queryFn: async () => {
-      const res = await fetch(`${API_BASE}/rag/`);
-      if (!res.ok) throw new Error("Không thể tải danh sách tài liệu RAG");
-      return await res.json();
-    },
-    enabled: !!syncOpen,
-  });
-
-  // ─── Mutation 1: Khởi tạo thực thể Brand mới hoàn toàn gốc ────────────────
-  const createBrandMutation = useMutation({
-    mutationFn: async (name: string) => {
-      const res = await fetch(`${API_BASE}/brand-profile`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, owner_id: CURRENT_OWNER_ID }),
-      });
-      if (!res.ok) throw new Error("Có lỗi xảy ra trong quá trình khởi tạo Brand");
-      return await res.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["brands", "list", CURRENT_OWNER_ID] });
-      setIsNewBrandOpen(false);
-      setNewBrandName("");
-      navigate({ search: (prev: any) => ({ ...prev, selectedBrandId: data.brand_id }) } as any);
-    },
-    onError: (err: any) => alert(err.message),
-  });
-
-  // ─── Mutation 2: Cập nhật từng trường cấu hình (Partial Update PATCH) ──────
-  const patchFieldMutation = useMutation({
-    mutationFn: async ({ blockKey, payload }: { blockKey: string; payload: any }) => {
-      setIsPatching(blockKey);
-      const res = await fetch(`${API_BASE}/brand-profile/${activeBrandId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error("Cập nhật thuộc tính thất bại");
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["brand-profile", "detail", activeBrandId] });
-      setIsPatching(null);
-    },
-    onError: (err: any) => {
-      alert(err.message);
-      setIsPatching(null);
-    },
-  });
-
-  // ─── Mutation 3: RAG Engine - Tạo tự động Profile bằng AI từ tài liệu ─────
-  const generateMutation = useMutation({
-    mutationFn: async (documentIds: number[]) => {
-      const res = await fetch(`${API_BASE}/brand-profile/${activeBrandId}/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document_ids: documentIds }),
-      });
-      if (!res.ok) throw new Error("Trục trặc trong tiến trình phân tách tài liệu");
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["brand-profile", "detail", activeBrandId] });
-      setSelectedDocuments([]);
-      navigate({ search: (prev: any) => ({ ...prev, syncOpen: undefined }) } as any);
-    },
-    onError: (err: any) => alert(`Thất bại: ${err.message}`),
-  });
-
-  // ─── Mutation 4: Xóa thực thể thương hiệu hiện tại ─────────────────────────
-  const deleteBrandMutation = useMutation({
-    mutationFn: async (brandId: string) => {
-      const res = await fetch(`${API_BASE}/brand-profile/${brandId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Hệ thống không thể xóa thương hiệu này");
-      return brandId;
-    },
-    onSuccess: (deletedId) => {
-      queryClient.invalidateQueries({ queryKey: ["brands", "list", CURRENT_OWNER_ID] });
-      if (activeBrandId === deletedId) {
-        navigate({ search: (prev: any) => ({ ...prev, selectedBrandId: undefined }) } as any);
-      }
-      setBrandToDelete(null);
-    },
-    onError: (err: any) => {
-      alert(err.message);
-      setBrandToDelete(null);
-    },
-  });
-
-  // ─── Xử lý cập nhật cục bộ qua hàm PATCH bọc tiện ích ─────────────────────
-  const executePartialUpdate = (fieldOrBlock: string, updatedPayload: any) => {
-    if (!activeBrandId) return;
-    patchFieldMutation.mutate({
-      blockKey: fieldOrBlock,
-      payload: updatedPayload,
-    });
-  };
-
-  const toggleSection = (id: number) => {
-    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const handleToggleDocument = (id: number) => {
-    setSelectedDocuments((prev) =>
-      prev.includes(id) ? prev.filter((docId) => docId !== id) : [...prev, id]
-    );
-  };
-
-  // ─── Giao Diện Thành Phần Section Layout ───────────────────────────────────
-  const Section = ({ id, title, blockKey, children }: { id: number; title: string; blockKey: string; children: React.ReactNode }) => (
-    <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-slate-900">
-      <button
-        onClick={() => toggleSection(id)}
-        className="w-full flex items-center justify-between px-5 py-4 bg-slate-50/70 dark:bg-slate-900/50 hover:bg-slate-100/70 dark:hover:bg-slate-800/70 transition-colors"
-      >
-        <div className="flex items-center gap-3 text-left">
-          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 font-mono">
-            {String(id).padStart(2, "0")}
-          </span>
-          <h3 className="font-semibold text-slate-800 dark:text-slate-200 text-sm tracking-tight flex items-center gap-2">
-            {title}
-            {isPatching === blockKey && <Loader2 className="w-3 h-3 animate-spin text-indigo-500" />}
-          </h3>
+// ─── RESPONSIVE LIST HEADER ───
+function GmailListHeader({ totalItems }: { totalItems: number }) {
+  return (
+    <div className="flex items-center justify-between px-3 sm:px-4 bg-background border-b border-border/80 h-14 shrink-0 w-full select-none">
+      {/* Cụm trái: Checkbox + Action Buttons */}
+      <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+        <div className="flex items-center justify-center p-1 hover:bg-accent rounded cursor-pointer transition-colors shrink-0">
+          <Checkbox id="select-all" className="h-4 w-4 rounded-[3px]" />
         </div>
-        {expanded[id] ? <ChevronDown size={16} className="text-slate-400" /> : <ChevronRight size={16} className="text-slate-400" />}
-      </button>
-      {expanded[id] && (
-        <div className="px-5 py-5 border-t border-slate-100 dark:border-slate-800 space-y-4">
-          {children}
-        </div>
-      )}
-    </div>
-  );
+        
+        <div className="h-4 w-[1px] bg-border shrink-0 mx-0.5 sm:mx-1" />
 
-  // ─── Giao Diện Thành Phần Nhập Thẻ (Tag Input) ─────────────────────────────
-  const TagInput = ({ tags, onAdd, onRemove, placeholder, variant = "outline" }: { tags: string[]; onAdd: (tag: string) => void; onRemove: (index: number) => void; placeholder: string; variant?: "outline" | "destructive" | "secondary" }) => (
-    <div className="space-y-2.5">
-      <div className="flex flex-wrap gap-1.5">
-        {tags.map((tag, i) => (
-          <Badge key={i} variant={variant} className="text-xs font-medium pl-2 pr-1 py-0.5 rounded-md">
-            {tag}
-            <button type="button" className="ml-1 rounded-full p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700" onClick={() => onRemove(i)}>
-              <X className="w-2.5 h-2.5" />
-            </button>
-          </Badge>
-        ))}
+        {/* Nút Làm mới - Ẩn chữ trên mobile */}
+        <button className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent border border-border/50 rounded-md shadow-sm transition-colors bg-card shrink-0">
+          <RefreshCw className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Làm mới</span>
+        </button>
+
+        {/* Nút Lưu trữ - Ẩn chữ trên mobile */}
+        <button className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent border border-border/50 rounded-md shadow-sm transition-colors bg-card shrink-0">
+          <Archive className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Lưu trữ</span>
+        </button>
+
+        {/* Nút Xóa chọn - Ẩn chữ trên mobile */}
+        <button className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 border border-destructive/20 rounded-md shadow-sm transition-colors bg-card shrink-0">
+          <Trash2 className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Xóa chọn</span>
+        </button>
       </div>
-      <Input
-        placeholder={placeholder}
-        className="h-8 text-xs bg-slate-50/50 dark:bg-slate-950"
-        onKeyDown={(e) => {
-          const el = e.currentTarget;
-          if (e.key === "Enter" && el.value.trim()) {
-            onAdd(el.value.trim());
-            el.value = "";
-          }
-        }}
-      />
-    </div>
-  );
 
-  if (isLoadingBrands) {
+      {/* Cụm phải: Phân trang - Ép shrink-0 để không bị bóp méo width */}
+      <div className="flex items-center gap-2 sm:gap-4 text-xs text-muted-foreground font-medium shrink-0 ml-2">
+        <span className="text-[11px] sm:text-xs whitespace-nowrap">1-{totalItems} / {totalItems}</span>
+        <div className="flex items-center gap-0.5 sm:gap-1 border border-border/60 rounded-md p-0.5 bg-card">
+          <button disabled className="p-1 hover:bg-accent rounded disabled:opacity-30 transition-colors">
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <div className="h-3 w-[1px] bg-border" />
+          <button disabled className="p-1 hover:bg-accent rounded disabled:opacity-30 transition-colors">
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── RESPONSIVE DETAIL PANEL ───
+function ContentDetailPanel({ contentId, onClose }: { contentId: string, onClose: () => void }) {
+  const { data } = useQuery({ queryKey: ["content-list"], queryFn: fetchContentData })
+  const activeItem = data?.find(item => item.id === contentId)
+
+  if (!activeItem) {
     return (
-      <div className="flex items-center justify-center py-32 gap-2 text-muted-foreground text-xs font-medium">
-        <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> Đang thiết lập cấu trúc tổ chức...
+      <div className="flex h-full flex-col items-center justify-center text-muted-foreground p-4 text-left w-full bg-background">
+        <Inbox className="h-8 w-8 opacity-40 mb-2" />
+        <p className="text-xs">Không tìm thấy nội dung hoặc đã bị xóa</p>
+        <button onClick={onClose} className="mt-4 text-xs text-blue-600 font-medium underline">Quay lại danh sách</button>
       </div>
-    );
+    )
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex antialiased">
+    <div className="h-full flex flex-col bg-background text-left w-full overflow-hidden animate-in fade-in duration-150">
+      {/* Detail Toolbar tối ưu responsive */}
+      <div className="flex items-center justify-between px-3 sm:px-4 border-b border-border/80 h-14 shrink-0 bg-background w-full select-none">
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button 
+            onClick={onClose} 
+            className="flex items-center justify-center p-1.5 hover:bg-accent rounded-full text-muted-foreground hover:text-foreground transition-colors group" 
+            title="Quay lại danh sách"
+          >
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+          </button>
+          
+          <div className="h-4 w-[1px] bg-border mx-0.5 sm:mx-1" />
 
-      {/* ── SIDEBAR TRÁI: ĐIỀU HƯỚNG DANH SÁCH BRAND TỔNG HỢP ── */}
-      <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 hidden md:flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-slate-400">
-            <Building2 className="w-4 h-4 text-indigo-500" /> Thương hiệu ({brandListMeta?.total || 0})
-          </div>
-          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-md" onClick={() => setIsNewBrandOpen(true)}>
-            <Plus className="w-4 h-4" />
-          </Button>
+          <button title="Lưu trữ bản ghi" className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent border border-border/50 rounded-md shadow-sm bg-card transition-colors">
+            <Archive className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Lưu kho</span>
+          </button>
+          <button title="Xóa bản ghi này" className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/10 border border-destructive/20 rounded-md shadow-sm bg-card transition-colors">
+            <Trash2 className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Xóa bỏ</span>
+          </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto space-y-1 pr-1">
-          {brandListMeta?.brands.map((b) => (
-            <div 
-              key={b.id} 
-              className={`group flex items-center justify-between rounded-lg transition-all ${
-                activeBrandId === b.id
-                  ? "bg-indigo-50 dark:bg-indigo-950/40" 
-                  : "hover:bg-slate-50 dark:hover:bg-slate-800"
-              }`}
-            >
-              <button
-                onClick={() => navigate({ search: (prev: any) => ({ ...prev, selectedBrandId: b.id }) } as any)}
-                className={`flex-1 text-left px-3 py-2 text-xs font-medium truncate block transition-colors ${
-                  activeBrandId === b.id
-                    ? "text-indigo-600 dark:text-indigo-400 font-semibold"
-                    : "text-slate-600 dark:text-slate-400"
-                }`}
-              >
-                {b.name}
-              </button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7 opacity-0 group-hover:opacity-100 mr-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all rounded-md shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setBrandToDelete(b);
-                }}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          ))}
-        </div>
-      </aside>
-
-      {/* ── PHÂN KHU CHÍNH HIỂN THỊ HỒ SƠ CONFIG ── */}
-      <div className="flex-1 flex flex-col min-w-0">
-
-        {/* HEADER CHỨA NÚT HÀNH ĐỘNG VÀ DROPDOWN CHO MOBILE */}
-        <div className="sticky top-0 z-30 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between md:justify-end gap-2.5">
-
-            {/* Bộ chọn thương hiệu nhanh chỉ hiển thị trên màn hình Mobile nhỏ */}
-            <div className="md:hidden flex items-center gap-2">
-              <FolderHeart className="w-4 h-4 text-indigo-500" />
-              <select
-                value={activeBrandId || ""}
-                onChange={(e) => navigate({ search: (prev: any) => ({ ...prev, selectedBrandId: e.target.value }) } as any)}
-                className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 outline-none max-w-[140px]"
-              >
-                {brandListMeta?.brands.map((b) => (
-                  <option key={b.id} value={b.id} className="dark:bg-slate-900">{b.name}</option>
-                ))}
-              </select>
-              <button onClick={() => setIsNewBrandOpen(true)} className="p-1 rounded bg-slate-100 dark:bg-slate-800">
-                <Plus className="w-3 h-3" />
-              </button>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {/* Nút Xóa Thương Hiệu Hiện Tại */}
-              {activeBrandDetails && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-                  onClick={() => setBrandToDelete(activeBrandDetails)}
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                  <span className="hidden sm:inline">Xóa thương hiệu</span>
-                </Button>
-              )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={!activeBrandId}
-                className="h-8 text-xs font-semibold border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 text-slate-800 dark:text-slate-200 shadow-xs"
-                onClick={() => navigate({ search: (prev: any) => ({ ...prev, syncOpen: true }) } as any)}
-              >
-                <Sparkles className="w-3.5 h-3.5 mr-1.5 text-indigo-500 fill-indigo-500/10" />
-                Tài liệu
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* KHU VỰC HIỂN THỊ CHI TIẾT CÁC Ô BIỂU MẪU CẤU HÌNH */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 pb-24 space-y-4">
-
-            {!activeBrandId ? (
-              <div className="text-center py-20 border border-dashed rounded-xl text-xs text-slate-400">
-                Chưa có thương hiệu nào tồn tại. Vui lòng nhấn nút dấu cộng (+) ở thanh menu để khởi tạo.
-              </div>
-            ) : isLoadingProfile ? (
-              <div className="flex items-center justify-center py-20 text-xs gap-2 text-slate-400">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-500" /> Đang đồng bộ hóa kho định chế...
-              </div>
-            ) : !profileData ? (
-              <div className="text-center py-16 border border-dashed rounded-xl bg-white dark:bg-slate-900 p-8 space-y-3">
-                <p className="text-xs text-slate-400">Thương hiệu này hiện chưa được thiết lập kiến trúc nhận diện AI Voice.</p>
-                <Button size="sm" className="h-8 text-xs bg-indigo-600 text-white" onClick={() => navigate({ search: (prev: any) => ({ ...prev, syncOpen: true }) } as any)}>
-                  <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Quét tài liệu RAG ngay
-                </Button>
-              </div>
-            ) : (
-              <>
-                {/* ─── Phần 1: Giọng Điệu & Tông ─── */}
-                <Section id={1} title="Giọng Điệu & Tông" blockKey="positioning">
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Định Vị Thương Hiệu</Label>
-                      <Textarea
-                        rows={2}
-                        defaultValue={profileData.positioning || ""}
-                        onBlur={(e) => executePartialUpdate("positioning", { positioning: e.target.value })}
-                        placeholder="Xác định định vị cốt lõi của thương hiệu..."
-                        className="text-xs font-medium bg-slate-50/50 dark:bg-slate-950 focus-visible:bg-white transition-colors"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 block">Mẫu Tông Ngôn Ngữ</Label>
-                        <TagInput
-                          tags={profileData.brand_voice_rules?.tone_patterns || []}
-                          onAdd={(tag) => executePartialUpdate("brand_voice_rules", { tone_patterns: [...(profileData.brand_voice_rules?.tone_patterns || []), tag] })}
-                          onRemove={(idx) => executePartialUpdate("brand_voice_rules", { tone_patterns: profileData.brand_voice_rules.tone_patterns.filter((_, j) => j !== idx) })}
-                          placeholder="Thêm mô tả tông + Enter..."
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 block">Thuật Ngữ Bị Cấm</Label>
-                        <TagInput
-                          tags={profileData.brand_voice_rules?.forbidden_words || []}
-                          onAdd={(tag) => executePartialUpdate("brand_voice_rules", { forbidden_words: [...(profileData.brand_voice_rules?.forbidden_words || []), tag] })}
-                          onRemove={(idx) => executePartialUpdate("brand_voice_rules", { forbidden_words: profileData.brand_voice_rules.forbidden_words.filter((_, j) => j !== idx) })}
-                          placeholder="Từ ngữ cấm dùng + Enter..."
-                          variant="destructive"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </Section>
-
-                {/* ─── Phần 2: Kiến Trúc Thông Điệp ─── */}
-                <Section id={2} title="Kiến Trúc Thông Điệp" blockKey="messaging">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 block">Điểm Đau Của Khách Hàng (Pain Points)</Label>
-                      <TagInput
-                        tags={profileData.messaging?.pain_points || []}
-                        onAdd={(tag) => executePartialUpdate("messaging", { pain_points: [...(profileData.messaging?.pain_points || []), tag] })}
-                        onRemove={(idx) => executePartialUpdate("messaging", { pain_points: profileData.messaging.pain_points.filter((_, j) => j !== idx) })}
-                        placeholder="Thêm nỗi đau khách hàng + Enter..."
-                        variant="secondary"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 block">Bằng Chứng Thuyết Phục (Proof Points)</Label>
-                      <TagInput
-                        tags={profileData.messaging?.proof_points || []}
-                        onAdd={(tag) => executePartialUpdate("messaging", { proof_points: [...(profileData.messaging?.proof_points || []), tag] })}
-                        onRemove={(idx) => executePartialUpdate("messaging", { proof_points: profileData.messaging.proof_points.filter((_, j) => j !== idx) })}
-                        placeholder="Chứng chỉ, số liệu uy tín + Enter..."
-                        variant="secondary"
-                      />
-                    </div>
-                  </div>
-                </Section>
-
-                {/* ─── Phần 3: Nhận Diện Hình Ảnh ─── */}
-                <Section id={3} title="Nhận Diện Hình Ảnh" blockKey="visual_identity">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-4">
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Phong Cách Thiết Kế (Style)</Label>
-                        <Input
-                          defaultValue={profileData.visual_identity?.style_description || ""}
-                          onBlur={(e) => executePartialUpdate("visual_identity", { style_description: e.target.value })}
-                          placeholder="Tối giản, sang trọng..."
-                          className="h-9 text-xs bg-slate-50/50"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Không Khí Chủ Đạo (Mood)</Label>
-                        <Input
-                          defaultValue={profileData.visual_identity?.mood || ""}
-                          onBlur={(e) => executePartialUpdate("visual_identity", { mood: e.target.value })}
-                          placeholder="Cinematic, Hiện đại..."
-                          className="h-9 text-xs bg-slate-50/50"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 block">Bảng Màu Thương Hiệu</Label>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {(profileData.visual_identity?.color_palette || []).map((hex, i) => (
-                          <div key={i} className="flex items-center gap-1 pl-1.5 pr-1 py-1 rounded border bg-slate-50 dark:bg-slate-900 text-[11px] font-mono">
-                            <div style={{ backgroundColor: hex }} className="w-3 h-3 rounded-xs" />
-                            <span>{hex}</span>
-                            <button onClick={() => executePartialUpdate("visual_identity", { color_palette: profileData.visual_identity.color_palette.filter((_, j) => j !== i) })}>
-                              <X className="w-3 h-3 text-slate-400" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      <Input
-                        placeholder="Mã #HEX + Enter"
-                        className="h-8 text-xs"
-                        onKeyDown={(e) => {
-                          const el = e.currentTarget;
-                          if (e.key === "Enter" && el.value.startsWith("#")) {
-                            executePartialUpdate("visual_identity", { color_palette: [...(profileData.visual_identity?.color_palette || []), el.value.trim()] });
-                            el.value = "";
-                          }
-                        }}
-                      />
-                    </div>
-                  </div>
-                </Section>
-
-                {/* ─── Phần 4: Đối Tượng & Định Hướng Chuyển Đổi ─── */}
-                <Section id={4} title="Đối Tượng & Định Hướng Chuyển Đổi" blockKey="audience">
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Chân Dung Đối Tượng Mục Tiêu</Label>
-                      <Textarea
-                        rows={2}
-                        defaultValue={profileData.audience || ""}
-                        onBlur={(e) => executePartialUpdate("audience", { audience: e.target.value })}
-                        placeholder="Mô tả phân khúc đối tượng đích..."
-                        className="text-xs font-medium bg-slate-50/50"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 block">Cấu Trúc Lời Kêu Gọi Hành Động (CTA Mẫu)</Label>
-                      <TagInput
-                        tags={profileData.brand_voice_rules?.cta_patterns || []}
-                        onAdd={(tag) => executePartialUpdate("brand_voice_rules", { cta_patterns: [...(profileData.brand_voice_rules?.cta_patterns || []), tag] })}
-                        onRemove={(idx) => executePartialUpdate("brand_voice_rules", { cta_patterns: profileData.brand_voice_rules.cta_patterns.filter((_, j) => j !== idx) })}
-                        placeholder="Thêm CTA hành động mẫu + Enter..."
-                      />
-                    </div>
-                  </div>
-                </Section>
-
-                {/* ─── Phần 5: Thư Viện Nội Dung Mẫu ─── */}
-                <Section id={5} title="Thư Viện Nội Dung Mẫu" blockKey="content_examples">
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Mẫu Nội Dung Mạng Xã Hội (Social Post)</Label>
-                      <Textarea
-                        rows={3}
-                        defaultValue={profileData.content_examples?.social_post || ""}
-                        onBlur={(e) => executePartialUpdate("content_examples", { social_post: e.target.value })}
-                        className="text-xs font-mono bg-slate-50/50"
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Mẫu Văn Bản Blog</Label>
-                        <Textarea
-                          rows={3}
-                          defaultValue={profileData.content_examples?.blog_post || ""}
-                          onBlur={(e) => executePartialUpdate("content_examples", { blog_post: e.target.value })}
-                          className="text-xs font-mono bg-slate-50/50"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 block">Mẫu Tiêu Đề Quảng Cáo (Ad Copy)</Label>
-                        <Textarea
-                          rows={3}
-                          defaultValue={profileData.content_examples?.ad_copy || ""}
-                          onBlur={(e) => executePartialUpdate("content_examples", { ad_copy: e.target.value })}
-                          className="text-xs font-mono bg-slate-50/50"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </Section>
-              </>
-            )}
-          </div>
+        <div className="flex items-center gap-1.5 sm:gap-3">
+          <span className="text-[10px] sm:text-xs font-medium px-1.5 sm:px-2 py-0.5 bg-muted border border-border/40 rounded flex items-center gap-1">
+            <TypeIcon type={activeItem.icon} />
+            <span className="hidden xs:inline">{activeItem.type}</span>
+          </span>
+          <StatusBadge status={activeItem.status} />
+          
+          <div className="h-4 w-[1px] bg-border mx-0.5 sm:mx-1" />
+          
+          <button className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-md shadow transition-colors">
+            <Edit3 className="h-3.5 w-3.5" /> 
+            <span className="hidden sm:inline">Sửa nội dung</span>
+          </button>
         </div>
       </div>
 
-      {/* ── MODAL 1: KHỞI TẠO BRAND MỚI ── */}
-      <Dialog open={isNewBrandOpen} onOpenChange={setIsNewBrandOpen}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold">Tạo Thương Hiệu Mới</DialogTitle>
-            <DialogDescription className="text-xs">Định danh một thực thể kinh doanh độc lập để AI phân tích cấu trúc.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 pt-2">
-            <Input
-              placeholder="Ví dụ: VinFast Vietnam, Highland Coffee..."
-              value={newBrandName}
-              onChange={(e) => setNewBrandName(e.target.value)}
-              className="h-9 text-xs"
-            />
-            <Button
-              className="w-full h-9 text-xs font-bold bg-indigo-600 text-white"
-              disabled={!newBrandName.trim() || createBrandMutation.isPending}
-              onClick={() => createBrandMutation.mutate(newBrandName)}
-            >
-              {createBrandMutation.isPending && <Loader2 className="w-3 h-3 animate-spin mr-2" />}
-              Khai sinh thương hiệu
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── MODAL 2: KHAI PHÁ TỪ TÀI LIỆU KIẾN THỨC (LUỒNG RAG) ── */}
-      <Dialog open={!!syncOpen} onOpenChange={(open) => navigate({ search: (prev) => ({ ...prev, syncOpen: open ? true : undefined }) } as any)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold flex items-center gap-2">
-              <FileText className="w-4 h-4 text-indigo-500" /> Khai Phá Từ Tài Liệu RAG
-            </DialogTitle>
-            <DialogDescription className="text-xs">Trích xuất tri thức từ các nguồn tài liệu thô được chỉ định để tự động điền các ô cấu hình phía sau.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 pt-2 max-h-[300px] overflow-y-auto pr-1">
-            {isLoadingRag ? (
-              <div className="flex items-center justify-center py-10 text-xs gap-2 text-slate-500">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Đang liên kết kho lưu trữ...
-              </div>
-            ) : (
-              ragDocuments.map((doc) => {
-                const isChecked = selectedDocuments.includes(doc.id);
-                return (
-                  <div
-                    key={doc.id}
-                    onClick={() => handleToggleDocument(doc.id)}
-                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
-                      isChecked 
-                        ? "border-indigo-600 bg-indigo-50/30 dark:bg-indigo-950/20" 
-                        : "border-slate-200 dark:border-slate-800 hover:bg-slate-50"
-                    }`}
-                  >
-                    <Checkbox 
-                      id={`doc-${doc.id}`} 
-                      checked={isChecked} 
-                      onCheckedChange={() => handleToggleDocument(doc.id)} 
-                      className="mt-0.5" 
-                    />
-                    <div className="flex-1 space-y-0.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer select-none truncate block">
-                          {doc.title}
-                        </label>
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 scale-90 origin-right capitalize">
-                          {doc.document_type}
-                        </Badge>
-                      </div>
-                      <p className="text-[11px] text-slate-400">
-                        {doc.chunk_count} đoạn mã • Trạng thái:{" "}
-                        <span className={doc.status === "completed" ? "text-emerald-500 font-medium" : "text-amber-500"}>
-                          {doc.status}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+      {/* Body Viewport */}
+      <div className="flex-1 overflow-y-auto bg-slate-50/40 dark:bg-zinc-950/20 p-4 sm:p-6 md:p-8">
+        <div className="max-w-3xl mx-auto bg-background border border-border/60 rounded-xl shadow-sm p-5 sm:p-6 md:p-8 space-y-6">
+          <div className="flex items-start justify-between gap-4 w-full">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-foreground/95 leading-snug">{activeItem.title}</h1>
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap mt-1 bg-muted/80 px-2 py-0.5 rounded border border-border/30 shrink-0">{activeItem.time}</span>
           </div>
           
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => navigate({ search: (prev) => ({ ...prev, syncOpen: undefined }) } as any)}
-            >
-              Hủy
-            </Button>
-            <Button
-              size="sm"
-              className="h-8 text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700"
-              disabled={selectedDocuments.length === 0 || generateMutation.isPending}
-              onClick={() => generateMutation.mutate(selectedDocuments)}
-            >
-              {generateMutation.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1.5" />}
-              Bắt đầu trích xuất AI
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── MODAL 3: XÁC NHẬN XÓA THƯƠNG HIỆU ── */}
-      <Dialog open={!!brandToDelete} onOpenChange={(open) => !open && setBrandToDelete(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-bold text-rose-600 flex items-center gap-2">
-              <Trash2 className="w-4 h-4" /> Xác nhận xóa thương hiệu
-            </DialogTitle>
-            <DialogDescription className="text-xs pt-1">
-              Hành động này sẽ xóa vĩnh viễn thương hiệu{" "}
-              <strong className="text-slate-800 dark:text-slate-200">"{brandToDelete?.name}"</strong>{" "}
-              và toàn bộ dữ liệu cấu hình AI Voice liên quan. Thao tác này không thể hoàn tác.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-end gap-2 pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              onClick={() => setBrandToDelete(null)}
-              disabled={deleteBrandMutation.isPending}
-            >
-              Hủy bỏ
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              className="h-8 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700"
-              onClick={() => brandToDelete && deleteBrandMutation.mutate(brandToDelete.id)}
-              disabled={deleteBrandMutation.isPending}
-            >
-              {deleteBrandMutation.isPending && <Loader2 className="w-3 h-3 animate-spin mr-1.5" />}
-              Xác nhận xóa
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
+          <hr className="border-border/60" />
+          
+          <div 
+            className="prose prose-sm dark:prose-invert max-w-none text-sm md:text-base text-foreground/90 space-y-4 leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: activeItem.content || activeItem.preview }}
+          />
+        </div>
+      </div>
     </div>
-  );
+  )
+}
+
+export const Route = createFileRoute("/brand")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    contentId: (search.contentId as string) || undefined,
+  }),
+  component: ContentPage,
+})
+
+// ─── MAIN COMPONENT ───
+function ContentPage() {
+  const search = Route.useSearch()
+  const navigate = useNavigate()
+  
+  const { data: contentItems = [], isLoading } = useQuery({
+    queryKey: ["content-list"],
+    queryFn: fetchContentData
+  })
+
+  const currentId = search.contentId
+
+  const handleSelectId = (id: string) => {
+    navigate({
+      search: (prev) => ({ ...prev, contentId: id })
+    })
+  }
+
+  const handleCloseDetail = () => {
+    navigate({
+      search: (prev) => ({ ...prev, contentId: undefined })
+    })
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (contentItems.length === 0) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center px-4 text-center">
+        <Inbox className="h-12 w-12 text-muted-foreground/30" />
+        <p className="mt-4 text-sm text-muted-foreground font-medium">Chưa có nội dung marketing nào</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-background w-full">
+      {!currentId ? (
+        <div className="h-full flex flex-col min-w-0 w-full overflow-hidden text-left items-stretch justify-start">
+          <GmailListHeader totalItems={contentItems.length} />
+
+          {/* Vùng cuộn danh sách */}
+          <div className="flex-1 overflow-y-auto divide-y divide-border/40 w-full bg-card/20">
+            {contentItems.map((item) => {
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleSelectId(item.id)}
+                  className="group flex items-start gap-2.5 sm:gap-3 px-3 sm:px-4 py-3.5 cursor-pointer border-b border-border/40 bg-background hover:bg-accent/40 transition-all select-none text-left justify-start w-full"
+                >
+                  <div className="mt-0.5 flex items-center justify-center shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox className="h-3.5 w-3.5 rounded-[3px] opacity-70 group-hover:opacity-100" />
+                  </div>
+
+                  <div className="mt-0.5 text-muted-foreground shrink-0 flex items-center justify-center">
+                    <TypeIcon type={item.icon} />
+                  </div>
+
+                  <div className="min-w-0 flex-1 text-left flex flex-col items-start justify-start">
+                    <div className="flex items-center gap-2 w-full justify-start">
+                      <span className="text-[10px] sm:text-[11px] uppercase tracking-wider font-semibold text-muted-foreground">
+                        {item.type}
+                      </span>
+                      <StatusBadge status={item.status} />
+                      <span className="text-[10px] sm:text-[11px] text-muted-foreground ml-auto whitespace-nowrap shrink-0">{item.time}</span>
+                    </div>
+
+                    <h3 className="text-sm mt-1 font-medium text-foreground/90 truncate w-full text-left">
+                      {item.title}
+                    </h3>
+
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 w-full text-left">
+                      {item.preview}
+                    </p>
+                  </div>
+
+                  {/* Nút ẩn bớt trên mobile để tránh lệch layout */}
+                  <div className="shrink-0 self-center hidden sm:block">
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                    >
+                      <MoreHorizontal className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 min-w-0 h-full w-full">
+          <ContentDetailPanel contentId={currentId} onClose={handleCloseDetail} />
+        </div>
+      )}
+    </div>
+  )
 }

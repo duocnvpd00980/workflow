@@ -13,9 +13,11 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PlannerRouteImport } from './routes/planner'
+import { Route as Page_researchRouteImport } from './routes/page_research'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as Brand_v1RouteImport } from './routes/brand_v1'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ArtifactsRouteImport } from './routes/artifacts'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -41,6 +43,11 @@ const PlannerRoute = PlannerRouteImport.update({
   path: '/planner',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Page_researchRoute = Page_researchRouteImport.update({
+  id: '/page_research',
+  path: '/page_research',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const KnowledgeRoute = KnowledgeRouteImport.update({
   id: '/knowledge',
   path: '/knowledge',
@@ -54,6 +61,11 @@ const IntegrationsRoute = IntegrationsRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Brand_v1Route = Brand_v1RouteImport.update({
+  id: '/brand_v1',
+  path: '/brand_v1',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BrandRoute = BrandRouteImport.update({
@@ -82,9 +94,11 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
+  '/brand_v1': typeof Brand_v1Route
   '/history': typeof HistoryRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
+  '/page_research': typeof Page_researchRoute
   '/planner': typeof PlannerRoute
   '/products': typeof ProductsRoute
   '/research': typeof ResearchRoute
@@ -95,9 +109,11 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
+  '/brand_v1': typeof Brand_v1Route
   '/history': typeof HistoryRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
+  '/page_research': typeof Page_researchRoute
   '/planner': typeof PlannerRoute
   '/products': typeof ProductsRoute
   '/research': typeof ResearchRoute
@@ -109,9 +125,11 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
+  '/brand_v1': typeof Brand_v1Route
   '/history': typeof HistoryRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
+  '/page_research': typeof Page_researchRoute
   '/planner': typeof PlannerRoute
   '/products': typeof ProductsRoute
   '/research': typeof ResearchRoute
@@ -124,9 +142,11 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/artifacts'
     | '/brand'
+    | '/brand_v1'
     | '/history'
     | '/integrations'
     | '/knowledge'
+    | '/page_research'
     | '/planner'
     | '/products'
     | '/research'
@@ -137,9 +157,11 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/artifacts'
     | '/brand'
+    | '/brand_v1'
     | '/history'
     | '/integrations'
     | '/knowledge'
+    | '/page_research'
     | '/planner'
     | '/products'
     | '/research'
@@ -150,9 +172,11 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/artifacts'
     | '/brand'
+    | '/brand_v1'
     | '/history'
     | '/integrations'
     | '/knowledge'
+    | '/page_research'
     | '/planner'
     | '/products'
     | '/research'
@@ -164,9 +188,11 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   ArtifactsRoute: typeof ArtifactsRoute
   BrandRoute: typeof BrandRoute
+  Brand_v1Route: typeof Brand_v1Route
   HistoryRoute: typeof HistoryRoute
   IntegrationsRoute: typeof IntegrationsRoute
   KnowledgeRoute: typeof KnowledgeRoute
+  Page_researchRoute: typeof Page_researchRoute
   PlannerRoute: typeof PlannerRoute
   ProductsRoute: typeof ProductsRoute
   ResearchRoute: typeof ResearchRoute
@@ -203,6 +229,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PlannerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/page_research': {
+      id: '/page_research'
+      path: '/page_research'
+      fullPath: '/page_research'
+      preLoaderRoute: typeof Page_researchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/knowledge': {
       id: '/knowledge'
       path: '/knowledge'
@@ -222,6 +255,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand_v1': {
+      id: '/brand_v1'
+      path: '/brand_v1'
+      fullPath: '/brand_v1'
+      preLoaderRoute: typeof Brand_v1RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/brand': {
@@ -260,9 +300,11 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   ArtifactsRoute: ArtifactsRoute,
   BrandRoute: BrandRoute,
+  Brand_v1Route: Brand_v1Route,
   HistoryRoute: HistoryRoute,
   IntegrationsRoute: IntegrationsRoute,
   KnowledgeRoute: KnowledgeRoute,
+  Page_researchRoute: Page_researchRoute,
   PlannerRoute: PlannerRoute,
   ProductsRoute: ProductsRoute,
   ResearchRoute: ResearchRoute,

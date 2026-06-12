@@ -15,9 +15,19 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
-  SheetTitle, 
+  SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
+
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import {
   TooltipProvider,
@@ -34,6 +44,9 @@ import {
   Package,
   Menu,
   MoreHorizontal,
+  Search,
+  Plus,
+  Filter,
   type LucideIcon,
 } from "lucide-react";
 
@@ -61,7 +74,6 @@ const primaryNav: NavItem[] = [
   { label: "Brand", to: "/brand", icon: Palette },
   { label: "Kế hoạch", to: "/planner", icon: Zap },
   { label: "Tra cứu", to: "/research", icon: Zap },
-  
 ];
 
 const secondaryNav: NavItem[] = [
@@ -77,7 +89,7 @@ const secondaryNav: NavItem[] = [
 
 function useScrollReset() {
   const location = useLocation();
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     ref.current?.scrollTo(0, 0);
   }, [location.pathname]);
@@ -88,7 +100,6 @@ function useScrollReset() {
 // COMPONENTS
 // ─────────────────────────────────────────────
 
-/** Left-border weight indicator + color for active state */
 function NavLink({
   to,
   label,
@@ -115,7 +126,6 @@ function NavLink({
           : "text-muted-foreground hover:bg-muted hover:text-foreground"
       )}
     >
-      {/* Active indicator bar */}
       {isActive && (
         <span
           className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-primary"
@@ -138,7 +148,7 @@ function NavLink({
   );
 }
 
-/** Sidebar nav item */
+// Giữ nguyên component Sidebar Item
 function SidebarNavItem({
   item,
   isActive,
@@ -156,7 +166,7 @@ function SidebarNavItem({
   );
 }
 
-/** Mobile bottom nav item */
+// Giữ nguyên component Mobile Item bên ngoài
 function MobileNavItem({
   item,
   isActive,
@@ -186,10 +196,7 @@ function MobileNavItem({
   );
 }
 
-// ─────────────────────────────────────────────
-// SIDEBAR SHELL (shared desktop+tablet)
-// ─────────────────────────────────────────────
-
+// Giữ nguyên component Sidebar Content cho Desktop
 function SidebarContent({
   isActive,
   onNavClick,
@@ -199,7 +206,6 @@ function SidebarContent({
 }) {
   return (
     <>
-      {/* Logo */}
       <div className="h-16 px-4 flex items-center gap-3 shrink-0">
         <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
           <Zap size={18} className="text-primary-foreground" aria-hidden="true" />
@@ -207,7 +213,6 @@ function SidebarContent({
         <span className="text-base font-semibold tracking-tight">Agent</span>
       </div>
 
-      {/* Primary group */}
       <nav className="px-2 space-y-0.5" aria-label="Chính">
         <p className="px-2 pb-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
           Chính
@@ -223,7 +228,6 @@ function SidebarContent({
 
       <div className="mx-4 my-2 h-px bg-border" aria-hidden="true" />
 
-      {/* Secondary group */}
       <nav className="px-2 space-y-0.5" aria-label="Phụ">
         <p className="px-2 pb-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
           Quản lý
@@ -242,21 +246,18 @@ function SidebarContent({
   );
 }
 
-// ─────────────────────────────────────────────
-// LOADING SKELETON
-// ─────────────────────────────────────────────
-
 function ContentSkeleton() {
   return (
-    <div className="flex-1 p-6 space-y-4 animate-pulse">
-      <div className="h-7 w-1/3 rounded-lg bg-muted" />
-      <div className="h-4 w-2/3 rounded bg-muted" />
-      <div className="h-4 w-1/2 rounded bg-muted" />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-        <div className="h-32 rounded-xl bg-muted" />
-        <div className="h-32 rounded-xl bg-muted" />
-        <div className="h-32 rounded-xl bg-muted" />
-      </div>
+    <div className="animate-pulse">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="border-b px-4 py-3 flex items-start gap-3">
+          <div className="h-5 w-5 rounded bg-muted shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-3/4 rounded bg-muted" />
+            <div className="h-3 w-1/2 rounded bg-muted" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -267,15 +268,11 @@ function ContentSkeleton() {
 
 export default function AppLayout({ children }: Props) {
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
   const scrollRef = useScrollReset();
-
-  // Get page title from current route
-  const pageTitle =
-    primaryNav.find((item) => item.to === currentPath)?.label ||
-    secondaryNav.find((item) => item.to === currentPath)?.label ||
-    "Agent";
 
   const isActive = useCallback(
     (to: string) => (to === "/" ? currentPath === "/" : currentPath.startsWith(to)),
@@ -284,149 +281,169 @@ export default function AppLayout({ children }: Props) {
 
   const closeSheet = useCallback(() => setSheetOpen(false), []);
 
+  // ─── PHÂN TÁCH ITEM CHO MOBILE BOTTOM NAV (CHỐNG TRÀN VỠ GRID) ───
+  // Lấy chính xác 4 phần tử đầu tiên hiển thị ngoài thanh Tabbar bottom
+  const mobileVisibleNav = primaryNav.slice(0, 4);
+  // Đẩy phần tử thứ 5 ("Tra cứu") vào nhóm danh sách ẩn trong Sheet "Khác"
+  const mobileHiddenPrimaryNav = primaryNav.slice(4);
+
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="h-dvh flex bg-background overflow-hidden">
+      <div className="h-dvh flex bg-gray-50 overflow-hidden">
 
-        {/* ══════════════════════════════════════
-            DESKTOP SIDEBAR  ≥1280px
-        ══════════════════════════════════════ */}
+        {/* DESKTOP SIDEBAR ≥1280px (GIỮ NGUYÊN THAY ĐỔI) */}
         <aside
-          className="hidden xl:flex w-[240px] border-r flex-col shrink-0"
+          className="hidden xl:flex w-[240px] flex-col shrink-0"
           role="navigation"
           aria-label="Điều hướng chính"
         >
           <SidebarContent isActive={isActive} />
         </aside>
 
-        {/* ══════════════════════════════════════
-            TABLET SIDEBAR  768–1279px
-            Full labels, grouped — no icon-only
-        ══════════════════════════════════════ */}
+        {/* TABLET SIDEBAR 768–1279px (GIỮ NGUYÊN THAY ĐỔI) */}
         <aside
-          className="hidden md:flex xl:hidden w-[200px] border-r flex-col shrink-0"
+          className="hidden md:flex xl:hidden w-[200px] flex-col shrink-0"
           role="navigation"
           aria-label="Điều hướng chính"
         >
           <SidebarContent isActive={isActive} />
         </aside>
 
-        {/* ══════════════════════════════════════
-            CONTENT AREA
-        ══════════════════════════════════════ */}
+        {/* CONTENT AREA */}
         <div className="flex-1 flex flex-col min-w-0">
 
-          {/* Header */}
-          <header className="h-14 border-b px-3 md:px-4 flex items-center justify-between shrink-0 gap-3">
-            {/* Left: Mobile menu + route title */}
-            <div className="flex items-center gap-3 min-w-0">
-              {/* Mobile hamburger */}
-              <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                <SheetTrigger asChild>
-                  <button
-                    className="md:hidden h-11 w-11 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    aria-label="Mở menu"
-                  >
-                    <Menu size={20} aria-hidden="true" />
-                  </button>
-                </SheetTrigger>
-                <SheetContent
-                  side="bottom"
-                  className="rounded-t-[20px] h-auto"
-                  style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+          {/* HEADER — TOOLBAR (ĐÃ SỬA ĐỂ RESPONSIVE TRÊN MOBILE) */}
+          <header className="h-14 px-3 md:px-4 flex items-center gap-2 sm:gap-3 shrink-0 bg-background md:bg-gray-50 border-b md:border-0">
+            {/* Mobile hamburger menu */}
+            <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+              <SheetTrigger asChild>
+                <button
+                  className="md:hidden h-9 w-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label="Mở menu"
                 >
-                  <SheetTitle className="sr-only">Menu điều hướng</SheetTitle>
-                  <SheetDescription className="sr-only">
-                    Truy cập tất cả các mục trong ứng dụng
-                  </SheetDescription>
+                  <Menu size={20} aria-hidden="true" />
+                </button>
+              </SheetTrigger>
+              <SheetContent
+                side="bottom"
+                className="rounded-t-[20px] h-auto max-h-[82vh] overflow-y-auto"
+                style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+              >
+                <SheetTitle className="sr-only">Menu điều hướng</SheetTitle>
+                <SheetDescription className="sr-only">
+                  Truy cập tất cả các mục trong ứng dụng
+                </SheetDescription>
 
-                  {/* Drag handle */}
-                  <div className="pt-3 pb-2 flex justify-center">
-                    <div className="w-10 h-1 bg-muted rounded-full" aria-hidden="true" />
-                  </div>
+                <div className="pt-2 pb-3 flex justify-center">
+                  <div className="w-10 h-1 bg-muted rounded-full" aria-hidden="true" />
+                </div>
 
-                  {/* Nav groups */}
-                  <nav className="px-4 space-y-0.5" aria-label="Mobile navigation">
-                    <p className="px-2 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      Chính
-                    </p>
-                    {primaryNav.map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        label={item.label}
-                        Icon={item.icon}
-                        isActive={isActive(item.to)}
-                        onClick={closeSheet}
-                      />
-                    ))}
-                    <p className="px-2 py-1 mt-3 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      Quản lý
-                    </p>
-                    {secondaryNav.map((item) => (
-                      <NavLink
-                        key={item.to}
-                        to={item.to}
-                        label={item.label}
-                        Icon={item.icon}
-                        isActive={isActive(item.to)}
-                        onClick={closeSheet}
-                      />
-                    ))}
-                  </nav>
+                <nav className="px-2 space-y-0.5" aria-label="Mobile navigation">
+                  <p className="px-2 py-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Chính
+                  </p>
+                  {/* Render đầy đủ mảng primaryNav trong menu vuốt lên */}
+                  {primaryNav.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                      Icon={item.icon}
+                      isActive={isActive(item.to)}
+                      onClick={closeSheet}
+                    />
+                  ))}
+                  <p className="px-2 py-1 mt-4 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                    Quản lý
+                  </p>
+                  {secondaryNav.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                      Icon={item.icon}
+                      isActive={isActive(item.to)}
+                      onClick={closeSheet}
+                    />
+                  ))}
+                </nav>
 
-                  {/* Safe area spacer */}
-                  <div className="h-6" />
-                </SheetContent>
-              </Sheet>
+                <div className="h-4" />
+              </SheetContent>
+            </Sheet>
 
-              {/* Route-aware title */}
-              <h1 className="font-semibold text-base truncate">{pageTitle}</h1>
+            {/* Ô Search: Co dãn chiếm khoảng trống còn lại */}
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Tìm nội dung..."
+                className="pl-9 h-9 bg-muted/50 border-0 w-full text-sm"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
 
-            {/* Right: empty for now */}
-            <div className="shrink-0" />
+            {/* Select Filter: Thu nhỏ hoặc ẩn bớt text trên mobile để tránh chèn ép */}
+            <Select value={filter} onValueChange={setFilter}>
+              <SelectTrigger className="h-9 w-[95px] sm:w-[130px] bg-muted/50 border-0 text-xs sm:text-sm shrink-0 px-2">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tất cả</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="scheduled">Scheduled</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Button New CTA: Ẩn chữ trên mobile chỉ giữ dấu cộng để tối giản diện tích */}
+            <Button size="sm" className="gap-1 bg-indigo-600 hover:bg-indigo-700 h-9 shrink-0 px-2.5 sm:px-3">
+              <Plus className="h-4 w-4 stroke-[2.5]" />
+              <span className="hidden sm:inline">New</span>
+            </Button>
+
+            {/* Nút More: Ẩn hẳn trên Mobile để nhường chỗ cho Input */}
+            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 hidden sm:flex">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
           </header>
 
-          {/* Scrollable content */}
+          {/* MAIN CONTAINER — GIỮ NGUYÊN CSS GỐC CỦA BẠN */}
           <main
             ref={scrollRef}
             role="main"
             aria-label="Nội dung trang"
-            className="flex-1 overflow-auto min-h-0"
+            className="flex-1 overflow-auto min-h-0 bg-background md:rounded-lg md:m-4 border-6 border-white"
           >
-            {/* Max-width container, centered */}
-            <div className="mx-auto w-full max-w-[1200px] px-4 py-6">
+            <div className="w-full min-h-0 rounded-lg overflow-auto">
               <Suspense fallback={<ContentSkeleton />}>
                 {children}
               </Suspense>
             </div>
           </main>
 
-          {/* ══════════════════════════════════════
-              MOBILE BOTTOM NAV  <768px
-          ══════════════════════════════════════ */}
+          {/* SỬA ĐỔI TOÀN DIỆN: MOBILE BOTTOM NAV CHUẨN 5 CỘT GRID KHÔNG VỠ */}
           <nav
             className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-50 grid grid-cols-5"
             style={{
-              height: "calc(56px + env(safe-area-inset-bottom, 0px))",
+              height: "calc(52px + env(safe-area-inset-bottom, 0px))",
               paddingBottom: "env(safe-area-inset-bottom, 0px)",
             }}
             role="navigation"
-            aria-label="Tab bar"
+            aria-label="Tab bar mobile"
           >
-            {primaryNav.map((item) => (
+            {/* Chỉ render 4 items đầu ngoài thanh bottom */}
+            {mobileVisibleNav.map((item) => (
               <MobileNavItem key={item.to} item={item} isActive={isActive(item.to)} />
             ))}
 
-            {/* More */}
+            {/* Item cột số 5: Kích hoạt menu mở rộng vuốt đáy lên */}
             <button
               onClick={() => setSheetOpen(true)}
               aria-label="Xem thêm"
               aria-expanded={sheetOpen}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 min-h-[44px] transition-colors",
-                "outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg",
+                "flex flex-col items-center justify-center gap-0.5 min-h-[44px] transition-colors outline-none select-none",
                 sheetOpen ? "text-primary" : "text-muted-foreground"
               )}
             >
@@ -439,10 +456,9 @@ export default function AppLayout({ children }: Props) {
             </button>
           </nav>
 
-          {/* Mobile bottom nav spacer so content doesn't hide behind nav */}
           <div
             className="md:hidden shrink-0"
-            style={{ height: "calc(56px + env(safe-area-inset-bottom, 0px))" }}
+            style={{ height: "calc(52px + env(safe-area-inset-bottom, 0px))" }}
             aria-hidden="true"
           />
         </div>

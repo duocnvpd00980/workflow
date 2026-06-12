@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research - Marketing AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { font-family: 'Inter', sans-serif; }
+        .sidebar-item { transition: all 0.2s; }
+        .sidebar-item:hover { background: #f3f4f6; }
+        .sidebar-item.active { background: #e5e7eb; border-left: 3px solid #111827; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .pulse-dot { animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .hidden { display: none !important; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<!-- APP CONTAINER -->
+<div class="flex h-screen">
+
+    <!-- SIDEBAR -->
+    <aside class="w-56 bg-white border-r border-gray-200 flex flex-col flex-shrink-0">
+        <div class="p-4 flex items-center gap-2">
+            <div class="w-8 h-8 bg-black rounded-lg flex items-center justify-center">
+                <i class="fas fa-bolt text-white text-sm"></i>
+            </div>
+            <span class="font-semibold text-sm">Agent</span>
+        </div>
+
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Chính</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-bolt w-4 text-center"></i>
+                    <span>Tạo</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-brain w-4 text-center"></i>
+                    <span>Tri thức</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-palette w-4 text-center"></i>
+                    <span>Brand</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-bolt w-4 text-center"></i>
+                    <span>Kế hoạch</span>
+                </a>
+                <a href="#" class="sidebar-item active flex items-center gap-3 px-2 py-2 rounded-lg text-sm font-medium text-gray-900">
+                    <i class="fas fa-search w-4 text-center"></i>
+                    <span>Tra cứu</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="px-3 py-2">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1 px-2">Quản lý</div>
+            <nav class="space-y-0.5">
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-cube w-4 text-center"></i>
+                    <span>Kho</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-clock w-4 text-center"></i>
+                    <span>Lịch sử</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-chart-bar w-4 text-center"></i>
+                    <span>Thống kê</span>
+                </a>
+                <a href="#" class="sidebar-item flex items-center gap-3 px-2 py-2 rounded-lg text-sm text-gray-600">
+                    <i class="fas fa-plug w-4 text-center"></i>
+                    <span>Tích hợp</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="flex-1"></div>
+        <div class="p-3">
+            <div class="flex items-center gap-2 px-2 py-1.5 bg-gray-900 rounded-lg text-white text-xs">
+                <i class="fas fa-route text-green-400"></i>
+                <span>TanStack Router</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- HEADER -->
+        <header class="bg-white border-b border-gray-200 px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Research</h1>
+                    <p class="text-sm text-gray-500 mt-0.5">Nhập thông tin doanh nghiệp — AI sẽ tự động phân tích và tạo Brand Voice</p>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENT AREA -->
+        <div class="flex-1 overflow-y-auto p-6">
+
+            <!-- STEP 1: INPUT FORM -->
+            <div id="step-input" class="max-w-2xl mx-auto fade-in">
+                <div class="bg-white rounded-xl border border-gray-200 p-8">
+                    <div class="text-center mb-8">
+                        <div class="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-search text-white text-xl"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-gray-900">Bắt đầu Research</h2>
+                        <p class="text-sm text-gray-500 mt-2">Chỉ cần nhập thông tin cơ bản. AI sẽ tự động quét web, phân tích và tạo Brand Voice cho bạn.</p>
+                    </div>
+
+                    <div class="space-y-5">
+                        <!-- Brand Name -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tên doanh nghiệp / thương hiệu <span class="text-red-500">*</span></label>
+                            <input type="text" id="brand-name" placeholder="VD: Acme Corp" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all">
+                        </div>
+
+                        <!-- Website -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Website <span class="text-xs text-gray-400 font-normal">(nếu có)</span></label>
+                            <input type="text" id="brand-website" placeholder="https://example.com" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all">
+                        </div>
+
+                        <!-- Industry -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Ngành nghề <span class="text-xs text-gray-400 font-normal">(giúp AI tìm đúng thông tin)</span></label>
+                            <select id="brand-industry" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all">
+                                <option value="">-- Chọn ngành --</option>
+                                <option>Công nghệ / SaaS</option>
+                                <option>Tài chính / Ngân hàng</option>
+                                <option>Thương mại điện tử</option>
+                                <option>Dịch vụ B2B</option>
+                                <option>Sản xuất</option>
+                                <option>Giáo dục</option>
+                                <option>Y tế / Sức khỏe</option>
+                                <option>Thời trang / Làm đẹp</option>
+                                <option>Ẩm thực / F&B</option>
+                                <option>Bất động sản</option>
+                                <option>Khác</option>
+                            </select>
+                        </div>
+
+                        <!-- Description -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Mô tả ngắn về doanh nghiệp <span class="text-xs text-gray-400 font-normal">(càng chi tiết càng tốt)</span></label>
+                            <textarea id="brand-desc" rows="3" placeholder="VD: Chúng tôi cung cấp giải pháp ngân hàng số cho doanh nghiệp SME tại Việt Nam, tập trung vào quản lý dòng tiền và thanh toán quốc tế..." class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all resize-none"></textarea>
+                        </div>
+
+                        <!-- Target Audience -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Đối tượng khách hàng mục tiêu</label>
+                            <input type="text" id="brand-audience" placeholder="VD: Doanh nghiệp SME 25-200 nhân viên, ngành xuất nhập khẩu" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all">
+                        </div>
+
+                        <!-- Submit -->
+                        <button onclick="startResearch()" class="w-full py-3.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center justify-center gap-2">
+                            <i class="fas fa-magic"></i>
+                            Bắt đầu Research — AI sẽ tự động phân tích
+                        </button>
+
+                        <p class="text-xs text-gray-400 text-center">AI sẽ quét web, phân tích đối thủ, trích xuất insights và tạo Brand Voice. Thời gian: 1-2 phút.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: PROCESSING -->
+            <div id="step-processing" class="hidden max-w-xl mx-auto fade-in">
+                <div class="bg-white rounded-xl border border-gray-200 p-10 text-center">
+                    <div class="w-20 h-20 bg-gray-900 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <i class="fas fa-robot text-white text-2xl"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-900 mb-2">AI đang phân tích...</h2>
+                    <p class="text-sm text-gray-500 mb-8">Đang quét web và tổng hợp thông tin về <span id="processing-name" class="font-semibold text-gray-900">Acme Corp</span></p>
+
+                    <div class="space-y-4 max-w-sm mx-auto text-left">
+                        <div class="flex items-center gap-4" id="proc-step-1">
+                            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-check text-green-600 text-xs"></i>
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">Thu thập thông tin</div>
+                                <div class="text-xs text-gray-500">Quét website, báo chí, social media</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4" id="proc-step-2">
+                            <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-spinner fa-spin text-blue-600 text-xs"></i>
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">Phân tích & sàng lọc</div>
+                                <div class="text-xs text-gray-500">Loại bỏ nguồn không liên quan, trùng lặp</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4" id="proc-step-3">
+                            <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-hourglass text-gray-400 text-xs"></i>
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-gray-400">Trích xuất insights</div>
+                                <div class="text-xs text-gray-400">Vị trí, đối tượng, tone giọng, đối thủ</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4" id="proc-step-4">
+                            <div class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-hourglass text-gray-400 text-xs"></i>
+                            </div>
+                            <div>
+                                <div class="text-sm font-medium text-gray-400">Tạo Brand Voice Profile</div>
+                                <div class="text-xs text-gray-400">Tổng hợp thành profile chuẩn bị cho bạn duyệt</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 max-w-sm mx-auto">
+                        <div class="w-full bg-gray-100 rounded-full h-2">
+                            <div id="proc-progress" class="bg-gray-900 h-2 rounded-full transition-all duration-500" style="width: 25%"></div>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-2" id="proc-status">Đang quét website...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 3: REVIEW RESULTS -->
+            <div id="step-review" class="hidden max-w-3xl mx-auto fade-in">
+
+                <!-- Success Banner -->
+                <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-6 flex items-center gap-3">
+                    <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <i class="fas fa-check-circle text-green-600"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm font-semibold text-green-800">Research hoàn thành!</div>
+                        <div class="text-xs text-green-600">AI đã phân tích 12 nguồn, trích xuất 24 insights. Hãy xem lại và chỉnh sửa nếu cần.</div>
+                    </div>
+                </div>
+
+                <!-- AI Summary -->
+                <div class="bg-gray-900 rounded-xl p-6 text-white mb-6">
+                    <div class="flex items-start gap-4">
+                        <div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-robot text-white"></i>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="text-sm font-semibold mb-2">Tóm tắt AI</h3>
+                            <p class="text-sm text-gray-300 leading-relaxed">"Acme Corp là ngân hàng số B2B cho SME Việt Nam, định vị chuyên nghiệp và đáng tin cậy. Đối tượng chính là doanh nghiệp xuất nhập khẩu cần giải pháp tài chính hiệu quả. Giọng điệu nên duy trì tính chuyên nghiệp, dùng số liệu cụ thể, tránh ngôn ngữ quá casual."</p>
+                            <div class="flex items-center gap-4 mt-3">
+                                <span class="text-xs text-gray-500"><i class="fas fa-database mr-1"></i>8 nguồn hợp lệ</span>
+                                <span class="text-xs text-gray-500"><i class="fas fa-clock mr-1"></i>45 giây</span>
+                                <span class="text-xs text-gray-500"><i class="fas fa-brain mr-1"></i>GPT-4o</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Insights List -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-4">Insights đã trích xuất</h3>
+                    <div class="space-y-4">
+
+                        <!-- Insight 1 -->
+                        <div class="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i class="fas fa-bullseye text-blue-600 text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-sm font-semibold text-gray-900">Vị trí thị trường</span>
+                                        <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Tin cậy cao</span>
+                                    </div>
+                                    <p class="text-sm text-gray-700">Ngân hàng số chuyên biệt cho doanh nghiệp SME tại Việt Nam, tập trung vào quản lý dòng tiền và thanh toán quốc tế.</p>
+                                </div>
+                                <button class="text-gray-400 hover:text-gray-600 p-1"><i class="fas fa-pen text-xs"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Insight 2 -->
+                        <div class="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i class="fas fa-users text-green-600 text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-sm font-semibold text-gray-900">Đối tượng khách hàng</span>
+                                        <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Tin cậy cao</span>
+                                    </div>
+                                    <p class="text-sm text-gray-700">Doanh nghiệp nhỏ và vừa 25-200 nhân viên, doanh thu 5-50 tỷ VND/năm. Ngành nghề: Xuất nhập khẩu, sản xuất, dịch vụ B2B.</p>
+                                </div>
+                                <button class="text-gray-400 hover:text-gray-600 p-1"><i class="fas fa-pen text-xs"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Insight 3 -->
+                        <div class="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i class="fas fa-gem text-purple-600 text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-sm font-semibold text-gray-900">Điểm khác biệt</span>
+                                        <span class="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">Cần xác minh</span>
+                                    </div>
+                                    <p class="text-sm text-gray-700">Tiết kiệm 30% thời gian quản lý tài chính, phí chuyển đổi ngoại tệ thấp hơn 15%. Tích hợp phần mềm kế toán MISA, Fast.</p>
+                                </div>
+                                <button class="text-gray-400 hover:text-gray-600 p-1"><i class="fas fa-pen text-xs"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Insight 4 -->
+                        <div class="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i class="fas fa-comment-dots text-orange-600 text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-sm font-semibold text-gray-900">Giọng điệu thương hiệu</span>
+                                        <span class="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">Tin cậy cao</span>
+                                    </div>
+                                    <p class="text-sm text-gray-700">Chuyên nghiệp, đáng tin cậy, ngôn ngữ rõ ràng có cấu trúc. Tránh slang, emoji. Thích dùng số liệu cụ thể và case study.</p>
+                                </div>
+                                <button class="text-gray-400 hover:text-gray-600 p-1"><i class="fas fa-pen text-xs"></i></button>
+                            </div>
+                        </div>
+
+                        <!-- Insight 5 -->
+                        <div class="p-4 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors">
+                            <div class="flex items-start gap-3">
+                                <div class="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                                    <i class="fas fa-chess text-red-600 text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <span class="text-sm font-semibold text-gray-900">Đối thủ cạnh tranh</span>
+                                        <span class="text-xs px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">Cần xác minh</span>
+                                    </div>
+                                    <p class="text-sm text-gray-700">VPBank SME, TPBank Business, Timo Business. Acme khác biệt ở tích hợp phần mềm kế toán và hỗ trợ xuất nhập khẩu.</p>
+                                </div>
+                                <button class="text-gray-400 hover:text-gray-600 p-1"><i class="fas fa-pen text-xs"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sources -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                    <h3 class="text-sm font-semibold text-gray-900 mb-4">Nguồn dữ liệu đã quét</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <span class="px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-700 flex items-center gap-1.5"><i class="fas fa-check text-green-500 text-[10px]"></i> acme-corp.com</span>
+                        <span class="px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-700 flex items-center gap-1.5"><i class="fas fa-check text-green-500 text-[10px]"></i> acme-corp.com/about</span>
+                        <span class="px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-700 flex items-center gap-1.5"><i class="fas fa-check text-green-500 text-[10px]"></i> vnexpress.net</span>
+                        <span class="px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-700 flex items-center gap-1.5"><i class="fas fa-check text-green-500 text-[10px]"></i> cafef.vn</span>
+                        <span class="px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-700 flex items-center gap-1.5"><i class="fas fa-check text-green-500 text-[10px]"></i> techinasia.com</span>
+                        <span class="px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-700 flex items-center gap-1.5"><i class="fas fa-check text-green-500 text-[10px]"></i> linkedin.com</span>
+                        <span class="px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-400 flex items-center gap-1.5"><i class="fas fa-times text-gray-300 text-[10px]"></i> facebook.com (loại bỏ)</span>
+                        <span class="px-3 py-1.5 bg-gray-100 rounded-lg text-xs text-gray-400 flex items-center gap-1.5"><i class="fas fa-times text-gray-300 text-[10px]"></i> reddit.com (loại bỏ)</span>
+                    </div>
+                </div>
+
+                <!-- Action -->
+                <div class="bg-white rounded-xl border border-gray-200 p-6 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-sm font-semibold text-gray-900">Sẵn sàng tạo Brand Voice?</h3>
+                        <p class="text-xs text-gray-500 mt-1">AI sẽ tự động tạo Brand Voice Profile từ insights này. Bạn có thể chỉnh sửa sau.</p>
+                    </div>
+                    <button onclick="pushToBrandVoice()" class="px-6 py-3 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition-colors flex items-center gap-2">
+                        <i class="fas fa-arrow-right"></i>
+                        Tạo Brand Voice
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+function startResearch() {
+    const name = document.getElementById('brand-name').value.trim();
+    if (!name) {
+        document.getElementById('brand-name').focus();
+        document.getElementById('brand-name').classList.add('ring-2', 'ring-red-500');
+        setTimeout(() => document.getElementById('brand-name').classList.remove('ring-2', 'ring-red-500'), 2000);
+        return;
+    }
+
+    document.getElementById('processing-name').textContent = name;
+    document.getElementById('step-input').classList.add('hidden');
+    document.getElementById('step-processing').classList.remove('hidden');
+
+    // Step 1 done, step 2 running
+    setTimeout(() => {
+        document.getElementById('proc-step-2').querySelector('.w-8').className = 'w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0';
+        document.getElementById('proc-step-2').querySelector('.fa-spinner').className = 'fas fa-check text-green-600 text-xs';
+        document.getElementById('proc-step-3').querySelector('.w-8').className = 'w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0';
+        document.getElementById('proc-step-3').querySelector('.fa-hourglass').className = 'fas fa-spinner fa-spin text-blue-600 text-xs';
+        document.getElementById('proc-step-3').querySelector('.text-sm').className = 'text-sm font-medium text-gray-900';
+        document.getElementById('proc-step-3').querySelector('.text-xs').className = 'text-xs text-gray-500';
+        document.getElementById('proc-progress').style.width = '50%';
+        document.getElementById('proc-status').textContent = 'Đang phân tích nội dung...';
+    }, 1500);
+
+    // Step 2 done, step 3 running
+    setTimeout(() => {
+        document.getElementById('proc-step-3').querySelector('.w-8').className = 'w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0';
+        document.getElementById('proc-step-3').querySelector('.fa-spinner').className = 'fas fa-check text-green-600 text-xs';
+        document.getElementById('proc-step-4').querySelector('.w-8').className = 'w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0';
+        document.getElementById('proc-step-4').querySelector('.fa-hourglass').className = 'fas fa-spinner fa-spin text-blue-600 text-xs';
+        document.getElementById('proc-step-4').querySelector('.text-sm').className = 'text-sm font-medium text-gray-900';
+        document.getElementById('proc-step-4').querySelector('.text-xs').className = 'text-xs text-gray-500';
+        document.getElementById('proc-progress').style.width = '75%';
+        document.getElementById('proc-status').textContent = 'Đang trích xuất insights...';
+    }, 3500);
+
+    // Done
+    setTimeout(() => {
+        document.getElementById('proc-step-4').querySelector('.w-8').className = 'w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0';
+        document.getElementById('proc-step-4').querySelector('.fa-spinner').className = 'fas fa-check text-green-600 text-xs';
+        document.getElementById('proc-progress').style.width = '100%';
+        document.getElementById('proc-status').textContent = 'Hoàn thành!';
+
+        setTimeout(() => {
+            document.getElementById('step-processing').classList.add('hidden');
+            document.getElementById('step-review').classList.remove('hidden');
+        }, 800);
+    }, 5500);
+}
+
+function pushToBrandVoice() {
+    alert('Đang chuyển sang Brand Voice Setup...\\n\\nAI sẽ tự động tạo Brand Voice Profile từ insights đã duyệt.');
+}
+</script>
+
+</body>
+</html>
