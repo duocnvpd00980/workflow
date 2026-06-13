@@ -13,6 +13,7 @@ const queryClient = new QueryClient()
 // (Bổ sung truyền queryClient vào context để các file routes sau này lấy ra dùng chung)
 const router = createRouter({
   routeTree,
+  scrollRestoration: true,
   context: {
     queryClient,
   }

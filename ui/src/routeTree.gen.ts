@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as ProductsRouteImport } from './routes/products'
@@ -16,13 +17,19 @@ import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as Page_researchRouteImport } from './routes/page_research'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
-import { Route as HistoryRouteImport } from './routes/history'
+import { Route as CreateaRouteImport } from './routes/createa'
 import { Route as Brand_v1RouteImport } from './routes/brand_v1'
+import { Route as Brand_V2RouteImport } from './routes/brand_V2'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ArtifactsRouteImport } from './routes/artifacts'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -58,14 +65,19 @@ const IntegrationsRoute = IntegrationsRouteImport.update({
   path: '/integrations',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
+const CreateaRoute = CreateaRouteImport.update({
+  id: '/createa',
+  path: '/createa',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Brand_v1Route = Brand_v1RouteImport.update({
   id: '/brand_v1',
   path: '/brand_v1',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Brand_V2Route = Brand_V2RouteImport.update({
+  id: '/brand_V2',
+  path: '/brand_V2',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BrandRoute = BrandRouteImport.update({
@@ -94,8 +106,9 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
+  '/brand_V2': typeof Brand_V2Route
   '/brand_v1': typeof Brand_v1Route
-  '/history': typeof HistoryRoute
+  '/createa': typeof CreateaRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/page_research': typeof Page_researchRoute
@@ -103,14 +116,16 @@ export interface FileRoutesByFullPath {
   '/products': typeof ProductsRoute
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
+  '/brand_V2': typeof Brand_V2Route
   '/brand_v1': typeof Brand_v1Route
-  '/history': typeof HistoryRoute
+  '/createa': typeof CreateaRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/page_research': typeof Page_researchRoute
@@ -118,6 +133,7 @@ export interface FileRoutesByTo {
   '/products': typeof ProductsRoute
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,8 +141,9 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
+  '/brand_V2': typeof Brand_V2Route
   '/brand_v1': typeof Brand_v1Route
-  '/history': typeof HistoryRoute
+  '/createa': typeof CreateaRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/page_research': typeof Page_researchRoute
@@ -134,6 +151,7 @@ export interface FileRoutesById {
   '/products': typeof ProductsRoute
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -142,8 +160,9 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/artifacts'
     | '/brand'
+    | '/brand_V2'
     | '/brand_v1'
-    | '/history'
+    | '/createa'
     | '/integrations'
     | '/knowledge'
     | '/page_research'
@@ -151,14 +170,16 @@ export interface FileRouteTypes {
     | '/products'
     | '/research'
     | '/settings'
+    | '/tasks'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/analytics'
     | '/artifacts'
     | '/brand'
+    | '/brand_V2'
     | '/brand_v1'
-    | '/history'
+    | '/createa'
     | '/integrations'
     | '/knowledge'
     | '/page_research'
@@ -166,14 +187,16 @@ export interface FileRouteTypes {
     | '/products'
     | '/research'
     | '/settings'
+    | '/tasks'
   id:
     | '__root__'
     | '/'
     | '/analytics'
     | '/artifacts'
     | '/brand'
+    | '/brand_V2'
     | '/brand_v1'
-    | '/history'
+    | '/createa'
     | '/integrations'
     | '/knowledge'
     | '/page_research'
@@ -181,6 +204,7 @@ export interface FileRouteTypes {
     | '/products'
     | '/research'
     | '/settings'
+    | '/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -188,8 +212,9 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   ArtifactsRoute: typeof ArtifactsRoute
   BrandRoute: typeof BrandRoute
+  Brand_V2Route: typeof Brand_V2Route
   Brand_v1Route: typeof Brand_v1Route
-  HistoryRoute: typeof HistoryRoute
+  CreateaRoute: typeof CreateaRoute
   IntegrationsRoute: typeof IntegrationsRoute
   KnowledgeRoute: typeof KnowledgeRoute
   Page_researchRoute: typeof Page_researchRoute
@@ -197,10 +222,18 @@ export interface RootRouteChildren {
   ProductsRoute: typeof ProductsRoute
   ResearchRoute: typeof ResearchRoute
   SettingsRoute: typeof SettingsRoute
+  TasksRoute: typeof TasksRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -250,11 +283,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IntegrationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
+    '/createa': {
+      id: '/createa'
+      path: '/createa'
+      fullPath: '/createa'
+      preLoaderRoute: typeof CreateaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/brand_v1': {
@@ -262,6 +295,13 @@ declare module '@tanstack/react-router' {
       path: '/brand_v1'
       fullPath: '/brand_v1'
       preLoaderRoute: typeof Brand_v1RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/brand_V2': {
+      id: '/brand_V2'
+      path: '/brand_V2'
+      fullPath: '/brand_V2'
+      preLoaderRoute: typeof Brand_V2RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/brand': {
@@ -300,8 +340,9 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   ArtifactsRoute: ArtifactsRoute,
   BrandRoute: BrandRoute,
+  Brand_V2Route: Brand_V2Route,
   Brand_v1Route: Brand_v1Route,
-  HistoryRoute: HistoryRoute,
+  CreateaRoute: CreateaRoute,
   IntegrationsRoute: IntegrationsRoute,
   KnowledgeRoute: KnowledgeRoute,
   Page_researchRoute: Page_researchRoute,
@@ -309,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsRoute: ProductsRoute,
   ResearchRoute: ResearchRoute,
   SettingsRoute: SettingsRoute,
+  TasksRoute: TasksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

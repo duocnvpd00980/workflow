@@ -56,7 +56,7 @@ interface TaskListResponse {
   offset: number;
 }
 
-export const Route = createFileRoute('/history')({
+export const Route = createFileRoute('/tasks')({
   component: JobHistoryPage,
 });
 

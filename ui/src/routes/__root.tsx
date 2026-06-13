@@ -10,8 +10,9 @@ import {
 import {
   ReactQueryDevtools,
 } from "@tanstack/react-query-devtools";
+import AppLayout from "@/layout/AppLayout";
 
-import AppLayout from "@/layout/app-layout";
+
 
 function RootLayout() {
   return (

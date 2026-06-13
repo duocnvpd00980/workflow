@@ -15,12 +15,10 @@ import {
   Mail,
   Smartphone,
   FileText,
-  Plus,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { createFileRoute } from "@tanstack/react-router"
-import { ResearchBackgroundWidget } from "./ResearchBackgroundWidget"
 
 // ─── TYPES ───
 type ContentItem = {
@@ -135,11 +133,9 @@ const FILTERS = [
 function ListView({
   items,
   onSelect,
-  onOpenWidget,
 }: {
   items: ContentItem[]
   onSelect: (id: string) => void
-  onOpenWidget: () => void 
 }) {
   const [filter, setFilter] = useState("all")
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -194,16 +190,6 @@ function ListView({
           <span className="text-xs text-muted-foreground hidden sm:inline font-medium">
             Hồ sơ: {filtered.length} thương hiệu
           </span>
-
-          <Button 
-            size="sm" 
-            className="h-8 text-xs gap-1.5 font-bold px-3 bg-slate-900 dark:bg-zinc-800 text-white"
-            onClick={onOpenWidget} // <--- Kích hoạt hiện khay Gmail chạy ngầm
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Tạo Brand Voice</span>
-          </Button>
-          
           <div className="flex items-center border border-border/60 rounded-lg overflow-hidden bg-background">
             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-muted" disabled>
               <ChevronLeft className="h-3.5 w-3.5" />
@@ -560,7 +546,7 @@ function DetailView({ item, onClose }: { item: any; onClose: () => void }) {
 }
 
 // ─── ROUTE ───
-export const Route = createFileRoute("/brand")({
+export const Route = createFileRoute("/brand_V2")({
   validateSearch: (search: Record<string, unknown>) => ({
     contentId: (search.contentId as string) || undefined,
   }),
@@ -572,9 +558,6 @@ function ContentPage() {
   const search = Route.useSearch()
   const navigate = useNavigate()
 
-  const [isWidgetOpen, setIsWidgetOpen] = useState(false)
-  const [localItems, setLocalItems] = useState<ContentItem[]>(MOCK_DATA)
-
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["content-list"],
     queryFn: async () => MOCK_DATA,
@@ -585,21 +568,6 @@ function ContentPage() {
   const setId = (id: string | undefined) =>
     navigate({ search: (prev) => ({ ...prev, contentId: id }) })
 
-  const handleWizardComplete = (newProfileData: any) => {
-    const newId = (localItems.length + 1).toString()
-    const finalNewItem: ContentItem = {
-      id: newId,
-      status: "published",
-      time: "Vừa xong",
-      preview: newProfileData.positioning.substring(0, 65) + "...",
-      dos: ["Đưa số liệu thực tế", "Giọng điệu ổn định, trang nhã"],
-      donts: ["Tránh dùng tiếng bồi, từ lóng", "Hạn chế so sánh tiêu cực"],
-      ...newProfileData
-    }
-    setLocalItems([finalNewItem, ...localItems])
-    setId(newId) // Mở luôn màn hình DetailView của thương hiệu mới tạo
-  }
-
   if (isLoading) return (
     <div className="flex h-[50vh] items-center justify-center">
       <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground/80" />
@@ -607,23 +575,11 @@ function ContentPage() {
   )
 
   return (
-  <div className="h-[calc(100vh-4rem)] overflow-hidden bg-background relative">
-    {activeItem ? (
-      <DetailView item={activeItem} onClose={() => setId(undefined)} />
-    ) : (
-      <ListView 
-        items={items} 
-        onSelect={(id) => setId(id)} 
-        onOpenWidget={() => setIsWidgetOpen(true)} 
-      />
-    )}
-
-    {/* Đảm bảo widget đã được đặt ở đây */}
-    <ResearchBackgroundWidget 
-      isOpen={isWidgetOpen}
-      onClose={() => setIsWidgetOpen(false)}
-      onComplete={handleWizardComplete}
-    />
-  </div>
-)
+    <div className="h-[calc(100vh-4rem)] overflow-hidden bg-background">
+      {activeItem
+        ? <DetailView item={activeItem} onClose={() => setId(undefined)} />
+        : <ListView items={items} onSelect={(id) => setId(id)} />
+      }
+    </div>
+  )
 }
