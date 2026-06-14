@@ -161,7 +161,7 @@ function useToast() {
 // ==========================================
 // ROUTE SETUP
 // ==========================================
-export const Route = createFileRoute('/chat')({
+export const Route = createFileRoute('/old/chat')({
   component: ContentEngineApp,
 });
 

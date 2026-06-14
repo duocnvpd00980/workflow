@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   UploadCloud,
@@ -10,16 +10,38 @@ import {
   ShieldCheck,
   Loader2,
   Book,
-  Palette,
-  BarChart3,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   X,
   ExternalLink,
+  FileText,
+  HelpCircle,
+  ShoppingCart,
+  RefreshCw,
+  Eye,
+  Plus,
+  Archive,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,11 +51,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { BASE } from "@/config";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
-import { useNavigate } from "@tanstack/react-router";
-
+import { cn } from "@/lib/utils"
+import { Separator } from "@/components/ui/separator";
 
 // ─── Types ────────────────────────────────────────────────
 interface DocOut {
@@ -77,22 +99,124 @@ interface PageDetail {
   created_at: string;
 }
 
-// ─── Constants ────────────────────────────────────────────
-const DOC_TYPE_META: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  product_knowledge: {
-    label: "Sản phẩm & dịch vụ",
-    color: "bg-blue-50 text-blue-600",
-    icon: <Book size={14} />,
-  },
-  brand: {
-    label: "Thương hiệu",
-    color: "bg-violet-50 text-violet-600",
-    icon: <Sparkles size={14} />,
-  },
+// ─── Category model (UI grouping for Tabs / Card grid) ────
+// NOTE: "document_type" values returned by the API today are mostly
+// "brand" và "product_knowledge". Loại "document" và "qa" được map ở
+// đây để phục vụ UI mới — backend có thể cần bổ sung enum sau.
+type CategoryKey = "document" | "qa" | "product" | "website";
 
+const CATEGORY_META: Record<
+  CategoryKey,
+  { label: string; icon: React.ReactNode; color: string }
+> = {
+  document: {
+    label: "Tài liệu",
+    icon: <FileText size={14} />,
+    color: "bg-blue-50 text-blue-600",
+  },
+  qa: {
+    label: "QA",
+    icon: <HelpCircle size={14} />,
+    color: "bg-amber-50 text-amber-600",
+  },
+  product: {
+    label: "Sản phẩm",
+    icon: <ShoppingCart size={14} />,
+    color: "bg-emerald-50 text-emerald-600",
+  },
+  website: {
+    label: "Website",
+    icon: <Globe size={14} />,
+    color: "bg-violet-50 text-violet-600",
+  },
 };
 
-// ─── API ──────────────────────────────────────────────────
+
+
+// ─── FILTER CHIPS ───
+const FILTERS = [
+  { label: "Tất cả", value: "all", icon: <HelpCircle size={14} /> },
+  { label: "Tài liệu",   value: "Blog" , icon: <FileText size={14} />},
+  { label: "QA",  value: "Email", icon: <HelpCircle size={14} />},
+  { label: "Sản phẩm", value: "Products", icon: <ShoppingCart size={14} />},
+  { label: "Website",    value: "Ads" , icon: <Globe size={14} />},
+] as const
+
+function getCategoryKey(documentType: string): CategoryKey {
+  switch (documentType) {
+    case "product_knowledge":
+    case "product":
+      return "product";
+    case "qa":
+      return "qa";
+    case "brand":
+    case "website":
+      return "website";
+    default:
+      return "document";
+  }
+}
+
+// ─── Verification badge (MOCK) ─────────────────────────────
+// Chưa có field "verified" từ API — tạm suy ra từ "status" cho tới khi
+// backend trả về trường xác minh thật.
+type VerificationState = "verified" | "review" | "error";
+
+function getVerification(doc: DocOut): VerificationState {
+  if (doc.status === "failed") return "error";
+  if (doc.status === "processing") return "review";
+  return "verified";
+}
+
+const VERIFICATION_META: Record<
+  VerificationState,
+  { label: string; className: string; icon: React.ReactNode }
+> = {
+  verified: {
+    label: "Verified",
+    className: "text-emerald-600",
+    icon: <ShieldCheck size={12} />,
+  },
+  review: {
+    label: "Needs review",
+    className: "text-amber-600",
+    icon: <Loader2 size={12} className="animate-spin" />,
+  },
+  error: {
+    label: "Error",
+    className: "text-rose-600",
+    icon: <X size={12} />,
+  },
+};
+
+const STATUS_LABEL: Record<DocOut["status"], string> = {
+  completed: "Sẵn sàng",
+  processing: "Đang xử lý",
+  failed: "Lỗi",
+};
+
+const STATUS_DOT: Record<DocOut["status"], React.ReactNode> = {
+  completed: (
+    <span className="flex items-center gap-1 text-[10px] text-emerald-600 shrink-0">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+      Ready
+    </span>
+  ),
+  processing: (
+    <span className="flex items-center gap-1 text-[10px] text-amber-600 shrink-0">
+      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+      Indexing
+    </span>
+  ),
+  failed: (
+    <span className="flex items-center gap-1 text-[10px] text-rose-600 shrink-0">
+      <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+      Error
+    </span>
+  ),
+};
+
+// ─── API (KHÔNG ĐỔI) ────────────────────────────────────────
 const api = {
   list: (): Promise<DocOut[]> =>
     fetch(`${BASE}/`).then((r) => {
@@ -160,144 +284,67 @@ const api = {
 // ─── Helpers ──────────────────────────────────────────────
 const isUrl = (s: string) => /^https?:\/\/.+/.test(s.trim());
 
-const STATUS_BADGE: Record<DocOut["status"], React.ReactNode> = {
-  completed: (
-    <Badge className="bg-emerald-50 text-emerald-700 border-none text-[10px]">Sẵn sàng</Badge>
-  ),
-  processing: (
-    <Badge className="bg-amber-50 text-amber-700 border-none text-[10px] animate-pulse">
-      Đang xử lý
-    </Badge>
-  ),
-  failed: (
-    <Badge className="bg-rose-50 text-rose-700 border-none text-[10px]">Lỗi</Badge>
-  ),
-};
-
 const formatDate = (dateStr: string) => {
   const d = new Date(dateStr);
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 };
 
-// ─── Brand Identity Panel (Right Drawer UI Modified) ──────
-function BrandIdentityPanel({ pageId, onClose }: { pageId: number; onClose: () => void }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ["page-detail", pageId],
-    queryFn: () => api.pageDetail(pageId),
-  });
+// MOCK: chưa có timestamp "last sync" riêng từ API — tạm tính theo created_at
+const formatRelative = (dateStr: string) => {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "vừa xong";
+  if (mins < 60) return `${mins} phút trước`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} giờ trước`;
+  const days = Math.floor(hours / 24);
+  return `${days} ngày trước`;
+};
 
+interface MockChunk {
+  id: number;
+  chars: number;
+  text: string;
+}
 
-  const identity = data?.extracted?.identity;
-  const brandPages = data?.extracted?.brand_pages ?? [];
-  const wordCount = data?.extracted?.word_count;
-  const content = data?.content;
+// MOCK: chunk-level content chưa có API riêng. Với tài liệu brand, ta có
+// "content" đầy đủ từ pageDetail nên tự cắt thành các đoạn để preview.
+// Với loại khác, hiển thị placeholder theo chunk_count cho tới khi có API.
+function buildMockChunks(
+  content: string | null | undefined,
+  chunkCount: number,
+): MockChunk[] {
+  if (content && content.trim().length > 0) {
+    const size = 280;
+    const chunks: MockChunk[] = [];
+    for (let i = 0; i < content.length; i += size) {
+      const slice = content.slice(i, i + size).trim();
+      if (!slice) continue;
+      chunks.push({ id: chunks.length + 1, chars: slice.length, text: slice });
+    }
+    return chunks;
+  }
+  return Array.from({ length: Math.max(chunkCount, 0) }, (_, i) => ({
+    id: i + 1,
+    chars: 0,
+    text: "Nội dung đoạn sẽ hiển thị khi API trả về chunk-level content.",
+  }));
+}
 
+// ─── Small presentational helpers ──────────────────────────
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1">
+      {children}
+    </p>
+  );
+}
 
-
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity animate-in fade-in duration-300"
-        onClick={onClose}
-      />
-
-      {/* Khung nội dung mọc từ bên phải (Right Drawer) */}
-      <div className="relative bg-white h-full w-full max-w-md md:max-w-lg shadow-2xl flex flex-col z-10 border-l border-slate-200 animate-in slide-in-from-right duration-300 ease-out">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 shrink-0">
-          <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-violet-500" />
-            <span className="text-sm font-semibold text-slate-800">
-              Brand Identity
-            </span>
-            {wordCount && (
-              <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                {wordCount} từ trong RAG
-              </span>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="overflow-y-auto flex-1 px-5 py-5 space-y-5">
-
-
-          {isLoading && (
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-12 bg-slate-100 rounded-lg animate-pulse" />
-              ))}
-            </div>
-          )}
-
-          {!isLoading && !identity && (
-            <p className="text-sm text-slate-400 text-center py-6">
-              Chưa có dữ liệu brand identity
-            </p>
-          )}
-
-          {identity && (
-            <div className="space-y-4">
-              {identity.brand_name && (
-                <Field label="Tên thương hiệu" value={identity.brand_name} highlight />
-              )}
-              {identity.description && (
-                <Field label="Mô tả" value={identity.description} />
-              )}
-              {identity.mission && (
-                <Field label="Sứ mệnh" value={identity.mission} />
-              )}
-              {identity.vision && (
-                <Field label="Tầm nhìn" value={identity.vision} />
-              )}
-              {identity.story && (
-                <Field label="Câu chuyện thương hiệu" value={identity.story} />
-              )}
-              {identity.values && identity.values.length > 0 && (
-                <TagField label="Giá trị cốt lõi" items={identity.values} color="violet" />
-              )}
-              {identity.strengths && identity.strengths.length > 0 && (
-                <TagField label="Thế mạnh" items={identity.strengths} color="blue" />
-              )}
-              {identity.tone && identity.tone.length > 0 && (
-                <TagField label="Phong cách" items={identity.tone} color="emerald" />
-              )}
-            </div>
-          )}
-
-          {/* Pages followed */}
-          {brandPages.length > 0 && (
-            <div className="pt-2 border-t border-slate-100">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
-                Trang brand đã crawl ({brandPages.length})
-              </p>
-              <div className="space-y-1">
-                {brandPages.map((u) => (
-                  <a
-                    key={u}
-                    href={u}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-violet-600 truncate py-0.5"
-                  >
-                    <ExternalLink size={11} className="shrink-0" />
-                    <span className="truncate">{u}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-
-          <MarkdownRenderer content={content || "Chưa có nội dung..."} />
-        </div>
-      </div>
+function MetaRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between bg-slate-50/50 rounded px-2 py-1.5 border border-slate-100 text-xs">
+      <span className="text-slate-400">{label}</span>
+      <span className="font-medium text-slate-700">{value}</span>
     </div>
   );
 }
@@ -333,6 +380,376 @@ function TagField({ label, items, color }: { label: string; items: string[]; col
   );
 }
 
+// ─── Drag & drop file zone ──────────────────────────────────
+function DropZone({
+  accept,
+  hint,
+  onFile,
+  disabled,
+}: {
+  accept: string;
+  hint: string;
+  onFile: (file: File) => void;
+  disabled?: boolean;
+}) {
+  const [dragOver, setDragOver] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!disabled) setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        if (disabled) return;
+        const file = e.dataTransfer.files?.[0];
+        if (file) onFile(file);
+      }}
+      onClick={() => !disabled && inputRef.current?.click()}
+      className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+        disabled
+          ? "opacity-50 cursor-not-allowed border-slate-200"
+          : dragOver
+            ? "border-indigo-400 bg-indigo-50 cursor-pointer"
+            : "border-slate-200 hover:border-slate-300 cursor-pointer"
+      }`}
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        disabled={disabled}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onFile(file);
+          e.target.value = "";
+        }}
+      />
+      <UploadCloud size={22} className="mx-auto text-slate-400 mb-2" />
+      <p className="text-xs text-slate-600">
+        Kéo thả file vào đây hoặc <span className="text-indigo-600 font-medium">chọn file</span>
+      </p>
+      <p className="text-[10px] text-slate-400 mt-1">{hint}</p>
+    </div>
+  );
+}
+
+// ─── Document card ──────────────────────────────────────────
+function DocCard({
+  doc,
+  onView,
+  onDelete,
+  onSync,
+  isSyncing,
+  isDeleting,
+}: {
+  doc: DocOut;
+  onView: (doc: DocOut) => void;
+  onDelete: (doc: DocOut) => void;
+  onSync: (doc: DocOut) => void;
+  isSyncing: boolean;
+  isDeleting: boolean;
+}) {
+  const category = getCategoryKey(doc.document_type);
+  const meta = CATEGORY_META[category];
+  const verification = getVerification(doc);
+  const vMeta = VERIFICATION_META[verification];
+
+  return (
+    <Card
+      onClick={() => onView(doc)}
+      className="cursor-pointer hover:shadow-md hover:border-slate-300 transition-all"
+    >
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between">
+          <div className={`p-2 rounded-lg ${meta.color}`}>{meta.icon}</div>
+          {STATUS_DOT[doc.status]}
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-slate-900 truncate" title={doc.title}>
+            {doc.title}
+          </p>
+          <div className={`inline-flex items-center gap-1 mt-1 text-[11px] ${vMeta.className}`}>
+            {vMeta.icon}
+            {vMeta.label}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] text-slate-500">
+          <span>{doc.status === "completed" ? `${doc.chunk_count} đoạn` : "—"}</span>
+          <span>Sync: {formatRelative(doc.created_at)}</span>
+        </div>
+
+        <div
+          className="flex items-center gap-1 pt-2 border-t border-slate-100"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-slate-400 hover:text-indigo-600"
+            onClick={() => onSync(doc)}
+            disabled={isSyncing}
+            title="Đồng bộ lại"
+          >
+            {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-slate-400 hover:text-slate-700"
+            onClick={() => onView(doc)}
+            title="Xem chi tiết"
+          >
+            <Eye size={14} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-slate-400 hover:text-rose-500 ml-auto"
+            onClick={() => onDelete(doc)}
+            disabled={isDeleting}
+            title="Xóa"
+          >
+            <Trash2 size={14} />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Drawer chi tiết tài liệu (Sheet) ───────────────────────
+function DocDrawer({
+  doc,
+  onClose,
+  onDelete,
+  onSync,
+  isSyncing,
+  isDeleting,
+}: {
+  doc: DocOut;
+  onClose: () => void;
+  onDelete: (doc: DocOut) => void;
+  onSync: (doc: DocOut) => void;
+  isSyncing: boolean;
+  isDeleting: boolean;
+}) {
+  const category = getCategoryKey(doc.document_type);
+  const meta = CATEGORY_META[category];
+  const verification = getVerification(doc);
+  const vMeta = VERIFICATION_META[verification];
+  const isBrand = doc.document_type === "brand";
+
+  const { data: pages = [] } = useQuery({
+    queryKey: ["doc-pages", doc.id],
+    queryFn: () => api.pages(doc.id),
+    enabled: isBrand && doc.status === "completed",
+  });
+
+  const firstPageId = pages[0]?.id;
+  const { data: pageDetail, isLoading: detailLoading } = useQuery({
+    queryKey: ["page-detail", firstPageId],
+    queryFn: () => api.pageDetail(firstPageId!),
+    enabled: !!firstPageId,
+  });
+
+  const identity = pageDetail?.extracted?.identity;
+  const brandPages = pageDetail?.extracted?.brand_pages ?? [];
+  const wordCount = pageDetail?.extracted?.word_count;
+  const content = pageDetail?.content;
+
+  const chunks = useMemo(
+    () => buildMockChunks(content, doc.chunk_count),
+    [content, doc.chunk_count],
+  );
+
+  return (
+    <Sheet open onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-lg p-0 flex flex-col gap-0">
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-slate-200 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className={`p-1.5 rounded shrink-0 ${meta.color}`}>{meta.icon}</div>
+            <span className="text-sm font-semibold text-slate-800 truncate">{doc.title}</span>
+            {wordCount && (
+              <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full shrink-0">
+                {wordCount} từ
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 mt-1.5 text-[11px]">
+            <span className={`inline-flex items-center gap-1 ${vMeta.className}`}>
+              {vMeta.icon}
+              {vMeta.label}
+            </span>
+            <span className="text-slate-300">•</span>
+            <span className="text-slate-500">Sync: {formatRelative(doc.created_at)}</span>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-5">
+          {/* Ask AI — sắp ra mắt */}
+          <div className="relative">
+            <Sparkles size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-indigo-400" />
+            <Input
+              placeholder="Hỏi về tài liệu này..."
+              className="pl-8 h-9 text-xs bg-slate-50"
+              readOnly
+              onFocus={() => toast.info("Tính năng hỏi AI về tài liệu sắp ra mắt")}
+            />
+          </div>
+
+          {/* Metadata */}
+          <div className="space-y-2">
+            <SectionLabel>Metadata</SectionLabel>
+            <div className="grid grid-cols-2 gap-2">
+              <MetaRow label="Loại" value={meta.label} />
+              <MetaRow label="Kích thước" value={doc.file_size ?? "—"} />
+              <MetaRow label="Số đoạn" value={String(doc.chunk_count)} />
+              <MetaRow label="Ngày tạo" value={formatDate(doc.created_at)} />
+              <MetaRow label="Nguồn" value={isBrand ? "Website" : "Upload"} />
+              <MetaRow label="Trạng thái" value={STATUS_LABEL[doc.status]} />
+            </div>
+          </div>
+
+          {/* Brand identity (chỉ cho document_type = brand) */}
+          {isBrand && (
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <SectionLabel>
+                <Sparkles size={11} className="text-violet-500" /> Brand Identity
+              </SectionLabel>
+
+              {detailLoading && (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-10 bg-slate-100 rounded-lg animate-pulse" />
+                  ))}
+                </div>
+              )}
+
+              {!detailLoading && !identity && (
+                <p className="text-xs text-slate-400 text-center py-4">
+                  Chưa có dữ liệu brand identity
+                </p>
+              )}
+
+              {identity && (
+                <div className="space-y-2">
+                  {identity.brand_name && <Field label="Tên thương hiệu" value={identity.brand_name} highlight />}
+                  {identity.description && <Field label="Mô tả" value={identity.description} />}
+                  {identity.mission && <Field label="Sứ mệnh" value={identity.mission} />}
+                  {identity.vision && <Field label="Tầm nhìn" value={identity.vision} />}
+                  {identity.story && <Field label="Câu chuyện thương hiệu" value={identity.story} />}
+                  {identity.values && identity.values.length > 0 && (
+                    <TagField label="Giá trị cốt lõi" items={identity.values} color="violet" />
+                  )}
+                  {identity.strengths && identity.strengths.length > 0 && (
+                    <TagField label="Thế mạnh" items={identity.strengths} color="blue" />
+                  )}
+                  {identity.tone && identity.tone.length > 0 && (
+                    <TagField label="Phong cách" items={identity.tone} color="emerald" />
+                  )}
+                </div>
+              )}
+
+              {brandPages.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2">
+                    Trang đã crawl ({brandPages.length})
+                  </p>
+                  <div className="space-y-1">
+                    {brandPages.map((u) => (
+                      <a
+                        key={u}
+                        href={u}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-violet-600 truncate py-0.5"
+                      >
+                        <ExternalLink size={11} className="shrink-0" />
+                        <span className="truncate">{u}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Chunks */}
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <SectionLabel>Chunks ({chunks.length})</SectionLabel>
+            {chunks.length === 0 ? (
+              <p className="text-xs text-slate-400 text-center py-2">Chưa có dữ liệu chunk</p>
+            ) : (
+              <Accordion type="single" collapsible className="w-full">
+                {chunks.map((c) => (
+                  <AccordionItem key={c.id} value={`chunk-${c.id}`}>
+                    <AccordionTrigger className="text-xs py-2">
+                      Chunk {c.id} {c.chars > 0 ? `(${c.chars} chars)` : ""}
+                    </AccordionTrigger>
+                    <AccordionContent className="text-xs text-slate-600 leading-relaxed">
+                      {c.text}
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            )}
+          </div>
+
+          {/* Preview */}
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <SectionLabel>Preview</SectionLabel>
+            <div className="border border-slate-100 rounded-lg bg-slate-50/50 p-3 max-h-64 overflow-y-auto">
+              <MarkdownRenderer content={content || "Chưa có nội dung xem trước."} />
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="border-t border-slate-200 p-3 flex gap-2 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 h-8 text-xs gap-1.5"
+            onClick={() => onSync(doc)}
+            disabled={isSyncing}
+          >
+            {isSyncing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            Sync Now
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 h-8 text-xs gap-1.5 text-rose-600 border-rose-200 hover:bg-rose-50"
+            onClick={() => onDelete(doc)}
+            disabled={isDeleting}
+          >
+            <Trash2 size={13} />
+            Delete
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Upload type chooser (Step 1) ───────────────────────────
+const UPLOAD_TYPES: { key: CategoryKey; label: string; desc: string }[] = [
+  { key: "document", label: "Tài liệu", desc: "PDF, DOC, TXT — tài liệu dài" },
+  { key: "qa", label: "QA", desc: "Câu hỏi & trả lời" },
+  { key: "product", label: "Sản phẩm", desc: "Thông tin sản phẩm + ảnh" },
+  { key: "website", label: "Website", desc: "Crawl nội dung từ URL" },
+];
+
 // ─── Route ────────────────────────────────────────────────
 export const Route = createFileRoute("/knowledge")({
   component: KnowledgePage,
@@ -340,49 +757,89 @@ export const Route = createFileRoute("/knowledge")({
 
 export default function KnowledgePage() {
   const qc = useQueryClient();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
 
+  // ── Header / filter state ─────────────────────────────────
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [brandPanelPageId, setBrandPanelPageId] = useState<number | null>(null);
-  const [urlInput, setUrlInput] = useState("");
-  const docType = "brand";
+  const [activeCategory, setActiveCategory] = useState<"all" | CategoryKey>("all");
+
+  // ── Drawer state ──────────────────────────────────────────
+  const [drawerDocId, setDrawerDocId] = useState<number | null>(null);
+
+  // ── Delete dialog state ────────────────────────────────────
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
 
+  // ── Upload modal state ──────────────────────────────────────
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadStep, setUploadStep] = useState<1 | 2>(1);
+  const [uploadType, setUploadType] = useState<CategoryKey | null>(null);
+
+  // Website crawl
+  const [urlInput, setUrlInput] = useState("");
+  const [autoCrawl, setAutoCrawl] = useState(true);
+
+  // QA (mock, chưa có API)
+  const [qaText, setQaText] = useState("");
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+
+  const [filter, setFilter] = useState("all")
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+
+
+  
+  // ── Queries ─────────────────────────────────────────────────
   const { data: docs = [], isLoading } = useQuery({
     queryKey: ["rag-docs"],
     queryFn: api.list,
     refetchInterval: 5_000,
   });
 
-  const { data: docPages = [] } = useQuery({
-    queryKey: ["doc-pages", selectedId],
-    queryFn: () => api.pages(selectedId!),
-    enabled: !!selectedId && docs.find((d) => d.id === selectedId)?.document_type === "brand",
-  });
-
+  // ── Mutations (logic giữ nguyên) ─────────────────────────────
   const uploadMutation = useMutation({
-    mutationFn: ({ title, file }: { title: string; file: File }) =>
-      api.upload(title, file, docType),
+    mutationFn: ({ title, file, document_type }: { title: string; file: File; document_type: string }) =>
+      api.upload(title, file, document_type),
     onSuccess: (data) => {
       toast.success(`"${data.title}" đã được ingest!`);
       qc.invalidateQueries({ queryKey: ["rag-docs"] });
+      closeUploadModal();
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
-
 
   const crawlBrandMutation = useMutation({
     mutationFn: (url: string) => api.crawlBusiness(url),
     onSuccess: (data) => {
-      toast.success(`Đã crawl brand: "${data.title}"`);
-      setUrlInput("");
+      toast.success(`Đã crawl: "${data.title}"`);
       qc.invalidateQueries({ queryKey: ["rag-docs"] });
+      closeUploadModal();
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  // MOCK: chưa có API cho loại QA — tạm thêm vào danh sách hiển thị phía
+  // client, sẽ thay bằng API thật khi backend hỗ trợ.
+  const qaMockMutation = useMutation({
+    mutationFn: async (text: string) => {
+      await new Promise((r) => setTimeout(r, 600));
+      const pairs = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+      return { count: Math.max(pairs.length, 1) };
+    },
+    onSuccess: ({ count }) => {
+      const fakeDoc: DocOut = {
+        id: -Date.now(),
+        title: `QA – ${count} cặp câu hỏi`,
+        status: "completed",
+        document_type: "qa",
+        chunk_count: count,
+        file_size: null,
+        created_at: new Date().toISOString(),
+      };
+      qc.setQueryData<DocOut[]>(["rag-docs"], (old = []) => [fakeDoc, ...old]);
+      toast.success("Đã lưu QA (demo — cần API thật để lưu vĩnh viễn)");
+      closeUploadModal();
+    },
   });
 
   const deleteMutation = useMutation({
@@ -401,279 +858,395 @@ export default function KnowledgePage() {
       toast.success("Đã xóa tài liệu");
       setDeleteDialogOpen(false);
       setDeleteDocId(null);
-      setSelectedId(null);
+      setDrawerDocId(null);
     },
   });
 
-  const isCrawling = crawlBrandMutation.isPending;
+  // MOCK: chưa có API "sync" — tạm refetch danh sách để giả lập đồng bộ.
+  const syncMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await new Promise((r) => setTimeout(r, 500));
+      return id;
+    },
+    onSuccess: () => {
+      toast.success("Đã đồng bộ lại tài liệu");
+      qc.invalidateQueries({ queryKey: ["rag-docs"] });
+    },
+    onError: () => toast.error("Đồng bộ thất bại"),
+  });
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    uploadMutation.mutate({ title: file.name, file });
-    e.target.value = "";
+  // ── Derived data ───────────────────────────────────────────
+  const counts = useMemo(() => {
+    const c: Record<CategoryKey, number> = { document: 0, qa: 0, product: 0, website: 0 };
+    docs.forEach((d) => {
+      c[getCategoryKey(d.document_type)] += 1;
+    });
+    return c;
+  }, [docs]);
+
+  const filtered = useMemo(() => {
+    return docs.filter((d) => {
+      const matchesSearch = d.title.toLowerCase().includes(search.toLowerCase());
+      const matchesTab = activeCategory === "all" || getCategoryKey(d.document_type) === activeCategory;
+      return matchesSearch && matchesTab;
+    });
+  }, [docs, search, activeCategory]);
+
+  const isEmpty = !isLoading && filtered.length === 0;
+  const drawerDoc = docs.find((d) => d.id === drawerDocId) ?? null;
+  const urlError = urlInput.trim() !== "" && !isUrl(urlInput);
+
+  // Simulated progress bar trong upload modal
+  const isUploading = uploadMutation.isPending || crawlBrandMutation.isPending || qaMockMutation.isPending;
+  const [uploadProgress, setUploadProgress] = useState(0);
+  useEffect(() => {
+    if (!isUploading) {
+      setUploadProgress(0);
+      return;
+    }
+    setUploadProgress(10);
+    const interval = setInterval(() => {
+      setUploadProgress((p) => (p < 90 ? p + Math.random() * 18 : p));
+    }, 300);
+    return () => clearInterval(interval);
+  }, [isUploading]);
+
+  // ── Handlers ─────────────────────────────────────────────────
+  const closeUploadModal = () => {
+    setUploadModalOpen(false);
+    setUploadStep(1);
+    setUploadType(null);
+    setQaText("");
+    setUrlInput("");
+  };
+
+  const handleFileUpload = (file: File, category: "document" | "product") => {
+    const document_type = category === "product" ? "product_knowledge" : "document";
+    uploadMutation.mutate({ title: file.name, file, document_type });
   };
 
   const handleCrawl = () => {
     const url = urlInput.trim();
     if (!url || !isUrl(url)) return;
-    crawlBrandMutation.mutate(url);  // Luôn dùng brand
+    crawlBrandMutation.mutate(url);
   };
 
-  const handleDocClick = async (doc: DocOut) => {
-    setSelectedId(doc.id);
-    if (doc.document_type === "brand" && doc.status === "completed") {
-      const pages = await api.pages(doc.id);
-      if (pages.length > 0) {
-        setBrandPanelPageId(pages[0].id);
-      }
-    }
+  // MOCK: import CSV cho QA — đọc text thô và nối vào textarea, chưa có
+  // parser CSV chính thức / API lưu trữ.
+  const handleQaCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result ?? "");
+      setQaText((prev) => (prev ? `${prev}\n\n${text}` : text));
+      toast.success(`Đã nạp ${file.name} (demo)`);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   };
 
-  const urlError = urlInput.trim() !== "" && !isUrl(urlInput);
-  const filtered = useMemo(
-    () => docs.filter((d) => d.title.toLowerCase().includes(search.toLowerCase())),
-    [docs, search],
-  );
-  const isEmpty = !isLoading && filtered.length === 0;
-
-  const CrawlButtonLabel = () => {
-    if (isCrawling) return <Loader2 size={13} className="animate-spin" />;
-    if (docType === "brand") return <Sparkles size={13} />;
-    return <Globe size={13} />;
+  const handleDeleteClick = (doc: DocOut) => {
+    setDeleteDocId(doc.id);
+    setDeleteDialogOpen(true);
   };
+
+  const handleSync = (doc: DocOut) => syncMutation.mutate(doc.id);
 
   return (
-    <div className="flex flex-col h-full bg-white">
-
-      <div className="flex items-center gap-1  sm:flex shrink-0">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate({ to: "/knowledge" })}
-          className="h-8 text-xs text-slate-600 hover:text-slate-900 gap-1"
-        >
-          <Sparkles size={13} />
-          <span>Thương hiệu</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate({ to: "/products" })}
-          className="h-8 text-xs text-slate-600 hover:text-slate-900 gap-1"
-        >
-          <Book size={13} />
-          <span>Sản phẩm & dịch vụ</span>
-        </Button>
-      </div>
-      {/* ─── TOOLBAR ──────────────────────────────────────────── */}
-      <div className="h-14 border-b border-slate-200 flex items-center gap-2 px-4 shrink-0 bg-white">
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".pdf,.docx,.txt,.csv,.xlsx,.md"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-        <Button
-          size="sm"
-          onClick={() => fileRef.current?.click()}
-          disabled={uploadMutation.isPending}
-          className="gap-1.5 h-8 text-xs bg-indigo-600 hover:bg-indigo-700 shrink-0"
-        >
-          {uploadMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <UploadCloud size={13} />}
-          <span className="hidden sm:inline">Tải file</span>
-        </Button>
-
-
-
-
-
-        <div className="flex-1 hidden sm:flex items-start gap-2 min-w-0 max-w-sm">
-          <div className="relative flex-1">
-            <Globe size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <Input
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCrawl()}
-              placeholder={docType === "brand" ? "https://brand-homepage.com" : "https://example.com"}
-              className={`pl-7 h-8 text-xs bg-slate-50 border-slate-200 ${urlError ? "border-rose-500 bg-rose-50" : ""}`}
-              disabled={isCrawling}
-            />
-            {urlError && <p className="text-[10px] text-rose-600 mt-0.5">URL không hợp lệ</p>}
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleCrawl}
-            disabled={isCrawling || !urlInput.trim() || urlError}
-            className={`h-8 text-xs shrink-0 gap-1 ${docType === "brand" ? "border-violet-200 text-violet-600 hover:bg-violet-50" : ""}`}
-          >
-            <CrawlButtonLabel />
-            <span className="hidden md:inline">
-              {docType === "brand" ? "Crawl Brand" : "Crawl"}
-            </span>
+    <div className="flex flex-col h-full bg-background/50">
+      
+      {/* TOOLBAR */}
+      <div className="shrink-0 flex items-center justify-between px-4 h-12 border-b border-border/60 bg-background gap-2 select-none">
+        <div className="flex items-center gap-1">
+          <Separator orientation="vertical" className="h-4 mx-1.5" />
+          <Button onClick={() => setUploadModalOpen(true)} variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground hover:bg-muted/80">
+            <Plus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Thêm mới</span>
           </Button>
-        </div>
-
-        <div className="flex-1 hidden sm:block" />
-
-        <div className="relative w-44 hidden sm:block">
-          <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm kiếm…"
-            className="pl-7 h-8 text-xs bg-slate-50 border-slate-200"
-          />
-        </div>
-
-        <span className="text-xs font-medium text-slate-500 shrink-0 ml-2">
-          Tài liệu ({filtered.length})
-        </span>
-      </div>
-
-      {/* ─── MOBILE TOOLBAR ───────────────────────────────────── */}
-      <div className="sm:hidden flex flex-col gap-2 px-4 py-2 border-b border-slate-200 bg-white shrink-0">
-
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Globe size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <Input
-              value={urlInput}
-              onChange={(e) => setUrlInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCrawl()}
-              placeholder="https://example.com"
-              className={`pl-7 h-8 text-xs bg-slate-50 border-slate-200 ${urlError ? "border-rose-500 bg-rose-50" : ""}`}
-              disabled={isCrawling}
-            />
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleCrawl}
-            disabled={isCrawling || !urlInput.trim() || urlError}
-            className={`h-8 text-xs shrink-0 ${docType === "brand" ? "border-violet-200 text-violet-600" : ""}`}
-          >
-            {isCrawling ? <Loader2 size={13} className="animate-spin" /> : docType === "brand" ? "Brand" : "Crawl"}
+          <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground hover:bg-muted/80">
+            <Archive className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Lưu trữ</span>
           </Button>
+          {selected.size > 0 && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive">
+              <Trash2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Xóa ({selected.size})</span>
+            </Button>
+          )}
         </div>
-        {urlError && <p className="text-[10px] text-rose-600">URL không hợp lệ</p>}
-        <div className="relative">
-          <Search size={13} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm kiếm…"
-            className="pl-7 h-8 text-xs bg-slate-50 border-slate-200 w-full"
-          />
+
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs text-muted-foreground hidden sm:inline font-medium">
+            {filtered.length} nội dung
+          </span>
+          <div className="flex items-center border border-border/60 rounded-lg overflow-hidden bg-background">
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-muted" disabled>
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </Button>
+            <Separator orientation="vertical" className="h-3" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-muted" disabled>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* ─── CONTENT ──────────────────────────────────────────── */}
+      {/* FILTER BAR */}
+
+
+
+      {/* FILTER BAR */}
+      <div className="shrink-0 flex items-center gap-1.5 px-4 h-11 border-b border-border/40 bg-muted/20 overflow-x-auto scrollbar-none select-none">
+        <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as "all" | CategoryKey)} className="w-full sm:w-auto">
+          <TabsList className="bg-transparent p-0 h-auto gap-1 justify-start flex-nowrap overflow-x-auto scrollbar-none w-full sm:flex-wrap sm:overflow-visible sm:w-auto">
+            <TabsTrigger
+              value="all"
+              className="inline-flex items-center px-3 h-6 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all duration-150 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-xs data-[state=active]:font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/80"
+            >
+              Tất cả
+            </TabsTrigger>
+
+            {(Object.keys(CATEGORY_META) as CategoryKey[]).map((key) => (
+              <TabsTrigger
+                key={key}
+                value={key}
+                className="inline-flex items-center gap-1 px-3 h-6 rounded-full text-xs font-medium whitespace-nowrap shrink-0 transition-all duration-150 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-xs data-[state=active]:font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/80"
+              >
+                {CATEGORY_META[key].label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </div>
+
+      
+
+      {/* ─── CONTENT — CARD GRID ──────────────────────────────── */}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto w-full px-4 py-4 max-w-[1100px]">
+        <div className="mx-auto w-full px-4 py-4 max-w-[1200px]">
+          {isLoading && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-36 bg-slate-100 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          )}
+
           {isEmpty && (
-            <div className="flex flex-col items-center justify-center text-center py-12">
+            <div className="flex flex-col items-center justify-center text-center py-16">
               <div className="h-12 w-12 rounded-lg bg-slate-100 flex items-center justify-center mb-3">
                 <UploadCloud size={20} className="text-slate-400" />
               </div>
               <h3 className="text-sm font-medium text-slate-900 mb-1">Chưa có tài liệu nào</h3>
               <p className="text-xs text-slate-500 mb-4 max-w-xs">
-                Tải file hoặc nhập URL để xây dựng cơ sở tri thức
+                Thêm tài liệu, QA, sản phẩm hoặc website để xây dựng cơ sở tri thức
               </p>
               <Button
                 size="sm"
-                onClick={() => fileRef.current?.click()}
-                className="gap-1 h-8 text-xs bg-indigo-600 hover:bg-indigo-700"
+                onClick={() => setUploadModalOpen(true)}
+                className="gap-1.5 h-8 text-xs bg-indigo-600 hover:bg-indigo-700"
               >
-                <UploadCloud size={13} />Tải file
+                <Plus size={13} />
+                Thêm tài liệu
               </Button>
             </div>
           )}
 
-          {isLoading && (
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-16 bg-slate-100 rounded-lg animate-pulse" />
+          {!isLoading && filtered.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {filtered.map((doc) => (
+                <DocCard
+                  key={doc.id}
+                  doc={doc}
+                  onView={(d) => setDrawerDocId(d.id)}
+                  onDelete={handleDeleteClick}
+                  onSync={handleSync}
+                  isSyncing={syncMutation.isPending && syncMutation.variables === doc.id}
+                  isDeleting={deleteMutation.isPending && deleteMutation.variables === doc.id}
+                />
               ))}
             </div>
           )}
 
-          {!isLoading && filtered.length > 0 && (
-            <div className="divide-y divide-slate-200 border border-slate-200 rounded-lg overflow-hidden bg-white">
-              {filtered.map((doc) => {
-                const meta = DOC_TYPE_META[doc.document_type] ?? DOC_TYPE_META.product_knowledge;
-                const isBrand = doc.document_type === "brand";
-                return (
-                  <div
-                    key={doc.id}
-                    onClick={() => handleDocClick(doc)}
-                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${selectedId === doc.id ? "bg-indigo-50/50" : "hover:bg-slate-50/50"
-                      }`}
-                  >
-                    <div className={`p-1.5 rounded shrink-0 ${meta.color}`}>{meta.icon}</div>
-
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-900 truncate">{doc.title}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-xs text-slate-500 flex-wrap">
-                        <span className="px-2 py-0.5 bg-slate-100 rounded text-[10px] font-medium whitespace-nowrap">
-                          {meta.label}
-                        </span>
-                        <span>#{doc.id}</span>
-                        {doc.file_size && <><span>•</span><span>{doc.file_size}</span></>}
-                        {doc.status === "completed" && <><span>•</span><span>{doc.chunk_count} đoạn</span></>}
-                        <span>•</span>
-                        <span>Tạo: {formatDate(doc.created_at)}</span>
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 hidden sm:block">{STATUS_BADGE[doc.status]}</div>
-
-                    {isBrand && doc.status === "completed" && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDocClick(doc); }}
-                        className="h-7 px-2 flex items-center gap-1 rounded text-[11px] text-violet-600 bg-violet-50 hover:bg-violet-100 transition-colors shrink-0"
-                        title="Xem brand identity"
-                      >
-                        <Sparkles size={11} />
-                        <span className="hidden sm:inline">Identity</span>
-                        <ChevronRight size={11} />
-                      </button>
-                    )}
-
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setDeleteDocId(doc.id); setDeleteDialogOpen(true); }}
-                      disabled={deleteMutation.isPending}
-                      className="h-11 w-11 flex items-center justify-center rounded hover:bg-rose-50 text-slate-300 hover:text-rose-500 transition-colors shrink-0 disabled:opacity-50"
-                      aria-label="Xóa"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {!isEmpty && (
-            <div className="flex items-start gap-2 text-xs text-slate-500 mt-4 pt-4 border-t border-slate-200">
-              <ShieldCheck size={14} className="mt-px shrink-0 text-emerald-600" />
-              <span>Tài liệu được lưu trữ Private Cloud — không dùng cho training công khai</span>
-            </div>
-          )}
+         
         </div>
       </div>
 
-      {/* ─── BRAND IDENTITY PANEL ─────────────────────────────── */}
-      {brandPanelPageId && (
-        <BrandIdentityPanel
-          pageId={brandPanelPageId}
-          onClose={() => setBrandPanelPageId(null)}
+      {/* ─── DRAWER CHI TIẾT ──────────────────────────────────── */}
+      {drawerDoc && (
+        <DocDrawer
+          doc={drawerDoc}
+          onClose={() => setDrawerDocId(null)}
+          onDelete={handleDeleteClick}
+          onSync={handleSync}
+          isSyncing={syncMutation.isPending && syncMutation.variables === drawerDoc.id}
+          isDeleting={deleteMutation.isPending && deleteMutation.variables === drawerDoc.id}
         />
       )}
 
-      {/* ─── DELETE DIALOG ────────────────────────────────────── */}
+      {/* ─── UPLOAD MODAL (2 bước) ────────────────────────────── */}
+      <Dialog
+        open={uploadModalOpen}
+        onOpenChange={(open) => (open ? setUploadModalOpen(true) : closeUploadModal())}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Book size={16} className="text-indigo-600" />
+              Thêm tài liệu
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Step 1: chọn loại */}
+          {uploadStep === 1 && (
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              {UPLOAD_TYPES.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => {
+                    setUploadType(t.key);
+                    setUploadStep(2);
+                  }}
+                  className="flex flex-col items-center gap-1.5 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/40 p-4 transition-colors text-center"
+                >
+                  <div className={`p-2 rounded-lg ${CATEGORY_META[t.key].color}`}>{CATEGORY_META[t.key].icon}</div>
+                  <span className="text-sm font-medium text-slate-800">{t.label}</span>
+                  <span className="text-[10px] text-slate-400">{t.desc}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Step 2: upload theo loại */}
+          {uploadStep === 2 && uploadType && (
+            <div className="space-y-4 pt-1">
+              <button
+                onClick={() => setUploadStep(1)}
+                className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1 -mt-1"
+              >
+                <ChevronLeft size={13} />
+                Đổi loại tài liệu
+              </button>
+
+              {uploadType === "document" && (
+                <DropZone
+                  accept=".pdf,.docx,.txt,.csv,.xlsx,.md"
+                  hint="PDF, DOC, TXT — tối đa 50MB"
+                  onFile={(file) => handleFileUpload(file, "document")}
+                  disabled={uploadMutation.isPending}
+                />
+              )}
+
+              {uploadType === "qa" && (
+                <div className="space-y-3">
+                  <Textarea
+                    value={qaText}
+                    onChange={(e) => setQaText(e.target.value)}
+                    placeholder={"Câu hỏi: ...\nTrả lời: ...\n\n(Mỗi cặp Q&A cách nhau 1 dòng trống)"}
+                    className="min-h-[160px] text-xs"
+                    disabled={qaMockMutation.isPending}
+                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={csvInputRef}
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={handleQaCsv}
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5"
+                      onClick={() => csvInputRef.current?.click()}
+                      disabled={qaMockMutation.isPending}
+                    >
+                      <UploadCloud size={13} />
+                      Import CSV
+                    </Button>
+                    <span className="text-[10px] text-slate-400">Cột: Question, Answer</span>
+                  </div>
+                </div>
+              )}
+
+              {uploadType === "product" && (
+                <div className="space-y-3">
+                  <DropZone
+                    accept=".pdf,.docx,.txt,.csv,.xlsx,.md"
+                    hint="File thông tin sản phẩm — tối đa 50MB"
+                    onFile={(file) => handleFileUpload(file, "product")}
+                    disabled={uploadMutation.isPending}
+                  />
+                  <DropZone
+                    accept=".zip"
+                    hint="Ảnh sản phẩm (.zip) — sẽ hỗ trợ sau"
+                    onFile={() => toast.info("Upload ảnh sản phẩm sẽ được hỗ trợ sau")}
+                    disabled
+                  />
+                </div>
+              )}
+
+              {uploadType === "website" && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Globe size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    <Input
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleCrawl()}
+                      placeholder="https://example.com"
+                      className={`pl-8 h-9 text-xs bg-slate-50 border-slate-200 ${urlError ? "border-rose-500 bg-rose-50" : ""}`}
+                      disabled={crawlBrandMutation.isPending}
+                    />
+                  </div>
+                  {urlError && <p className="text-[10px] text-rose-600">URL không hợp lệ</p>}
+                  <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={autoCrawl}
+                      onChange={(e) => setAutoCrawl(e.target.checked)}
+                      className="rounded border-slate-300"
+                    />
+                    Tự động crawl các trang liên quan (sẽ hỗ trợ sau)
+                  </label>
+                </div>
+              )}
+
+              {isUploading && (
+                <div className="space-y-1.5">
+                  <Progress value={uploadProgress} className="h-1.5" />
+                  <p className="text-[10px] text-slate-500">Đang tải lên... {Math.round(uploadProgress)}%</p>
+                </div>
+              )}
+
+              {uploadType === "qa" && (
+                <Button
+                  onClick={() => qaMockMutation.mutate(qaText)}
+                  disabled={!qaText.trim() || qaMockMutation.isPending}
+                  className="w-full h-8 text-xs bg-indigo-600 hover:bg-indigo-700 gap-1.5"
+                >
+                  {qaMockMutation.isPending && <Loader2 size={13} className="animate-spin" />}
+                  Lưu QA
+                </Button>
+              )}
+
+              {uploadType === "website" && (
+                <Button
+                  onClick={handleCrawl}
+                  disabled={!urlInput.trim() || urlError || crawlBrandMutation.isPending}
+                  className="w-full h-8 text-xs bg-indigo-600 hover:bg-indigo-700 gap-1.5"
+                >
+                  {crawlBrandMutation.isPending ? <Loader2 size={13} className="animate-spin" /> : <Globe size={13} />}
+                  Crawl
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── DELETE DIALOG (giữ nguyên logic) ─────────────────── */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogTitle>Xóa tài liệu?</AlertDialogTitle>

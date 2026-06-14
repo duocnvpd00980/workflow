@@ -57,7 +57,29 @@ def call_groq(prompt: str, max_tokens: int = 500) -> str:
         if "rate" in error_type:
             return "[ERROR:rate_limit]"
         return "[ERROR:fatal]"
-    
+
+def call_groq_stream(prompt: str, max_tokens: int = 500):
+    """Stream response từ Groq — yield từng chunk."""
+    try:
+        stream = groq_client.chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_completion_tokens=max_tokens,
+            temperature=0.7,
+            top_p=1,
+            stop=None,
+            timeout=LLM_TIMEOUT,
+            stream=True,  # ✅ Bật streaming
+        )
+        
+        for chunk in stream:
+            content = chunk.choices[0].delta.content
+            if content:
+                yield content
+                
+    except Exception as e:
+        yield f"[ERROR: {str(e)[:50]}]"
+        
 def call_gemini(prompt: str, max_tokens: int = 1000) -> str:
     """Helper: Gọi trực tiếp mô hình Gemini 2.5 Flash xử lý văn bản"""
     try:
@@ -85,12 +107,9 @@ def call_gemini(prompt: str, max_tokens: int = 1000) -> str:
 def call_gemini_imagen(prompt_desc: str) -> bytes:
     """Gọi Pollinations API bằng cách xác thực qua Header"""
     try:
-        # URL của Pollinations hỗ trợ prompt tiếng Anh
-        # Thay thế khoảng trắng bằng %20 để URL hợp lệ
         safe_prompt = prompt_desc.replace(" ", "%20")
         url = f"https://gen.pollinations.ai/image/{safe_prompt}?model=flux&width=1024&height=576&nologo=true"
         
-        # Header xác thực theo tài liệu của Pollinations
         headers = {
             "Authorization": "Bearer sk_J68kYhDowZ8FTDPupSlolhNEcnqsWZ1P"
         }
@@ -105,14 +124,9 @@ def call_gemini_imagen(prompt_desc: str) -> bytes:
             
     except Exception as e:
         logger.error(f"Lỗi hệ thống tạo ảnh: {str(e)}")
-        # Trả về placeholder nếu lỗi
         return requests.get("https://via.placeholder.com/1024x576?text=Image+Unavailable").content
     
 def filter_knowledge_with_groq(user_request: str, raw_knowledge: list) -> str:
-    """
-    Filters raw RAG context using advanced System Prompt Engineering (XML tagging, 
-    Role anchoring, and strict context extraction instructions) via Groq.
-    """
     if not raw_knowledge:
         return "No relevant context found."
     if not user_request:
@@ -120,7 +134,6 @@ def filter_knowledge_with_groq(user_request: str, raw_knowledge: list) -> str:
 
     raw_context = str(raw_knowledge)
 
-    # SYSTEM PROMPT: Thiết lập vai trò chuyên gia, luật và cấu trúc dữ liệu (Kiểu Jasper/Copy.ai)
     system_prompt = (
         "You are an Elite Context Optimization Engine. Your sole purpose is to analyze a user's content creation request "
         "and surgically extract ONLY the highly relevant facts, data points, or room/service specifications from the "
@@ -132,7 +145,6 @@ def filter_knowledge_with_groq(user_request: str, raw_knowledge: list) -> str:
         "4. Maintain a clear, dense, professional structure optimized for downstream Copywriting LLMs."
     )
 
-    # USER PROMPT: Truyền dữ liệu qua các thẻ XML bọc cô lập để tránh Prompt Injection
     user_prompt = f"""
     <user_intent>
     {user_request}
@@ -152,7 +164,7 @@ def filter_knowledge_with_groq(user_request: str, raw_knowledge: list) -> str:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.0,  # Tuyệt đối không cho sáng tạo ở bước lọc dữ liệu
+            temperature=0.0,
             timeout=LLM_TIMEOUT
         )
         
@@ -175,7 +187,6 @@ def _merge_usage(current: dict, tokens: int, node: str) -> dict:
 
 
 def _build_brand_block(brand_profile: dict) -> str:
-    """🌟 ĐÃ SỬA: Nhận trực tiếp dict brand_profile phẳng từ State"""
     rules = "\n".join(f"  - {r}" for r in brand_profile.get("tone_patterns", []))
     ctas  = ", ".join(brand_profile.get("cta_samples", []))
     forbidden = ", ".join(brand_profile.get("forbidden_words", []))
@@ -226,7 +237,6 @@ async def prepare(state: dict) -> dict:
     try:
         async with AsyncSessionLocal() as db:
 
-            # ── 1. Brand theo brand_id (thuộc business đã chọn) ─────────────
             if brand_id:
                 brand = (await db.execute(
                     select(Brand)
@@ -259,7 +269,6 @@ async def prepare(state: dict) -> dict:
                         ],
                     }
 
-            # ── 2. ResearchResult mới nhất theo business_id ──────────────────
             if business_id:
                 rs = (await db.execute(
                     select(ResearchResult)
@@ -280,7 +289,6 @@ async def prepare(state: dict) -> dict:
                     {"has_research": False, "competitor_analysis": "Chưa có dữ liệu"}
                 )
 
-                # ── 3. DocumentPage theo business_id (qua DocumentSource) ────
                 pages = (await db.execute(
                     select(DocumentPage)
                     .join(DocumentPage.source)
@@ -289,7 +297,6 @@ async def prepare(state: dict) -> dict:
                     .limit(5)
                 )).scalars().all()
 
-                # ── 4. HotelRoom theo business_id ────────────────────────────
                 rooms = (await db.execute(
                     select(HotelRoom)
                     .where(
@@ -324,7 +331,6 @@ async def prepare(state: dict) -> dict:
     except Exception as e:
         logger.exception(f"[PREPARE] {e}")
 
-    # ── Fallback ─────────────────────────────────────────────────────────────
     brand_profile = brand_profile or {
         "brand_name":      "Default",
         "positioning":     "Chuyên nghiệp",
@@ -338,7 +344,6 @@ async def prepare(state: dict) -> dict:
         "embedded_snapshot": "Phòng tiêu chuẩn",
     }]
 
-    # ── Filter context bằng Groq ─────────────────────────────────────────────
     try:
         full_context = {
             "brand_profile": brand_profile,
@@ -392,7 +397,6 @@ async def prepare(state: dict) -> dict:
     }
 
 def visual_intent_analyzer(state: dict) -> dict:
-    """Node 1b: Dùng Gemini phân tích cấu trúc bài viết để lên layout hình ảnh hoàn chỉnh"""
     print("--- NODE 1b: VISUAL INTENT ANALYZER (GEMINI) ---")
     request_text = state.get("request", "")
     brand_profile = state.get("brand_profile", {})
@@ -421,7 +425,6 @@ def visual_intent_analyzer(state: dict) -> dict:
         elif "tags:" in line:
             tags = [t.strip() for t in line.split(":", 1)[1].split(",")]
 
-    # 🌟 ĐÃ SỬA: KHÔNG unpack **state. Chỉ trả về đúng key 'visual_intent'
     return {
         "visual_intent": {
             "image_count": image_count,
@@ -432,11 +435,12 @@ def visual_intent_analyzer(state: dict) -> dict:
 
 
 def execute_social(state: dict) -> dict:
-    platform = "Twitter" if "tweet" in state["request"].lower() else "Facebook"
+    request = state.get("request", "")  # ✅ SỬA: dùng .get() thay vì []
+    platform = "Twitter" if "tweet" in request.lower() else "Facebook"
     brand_profile = state.get("brand_profile", {})
     
     prompt = (
-        f"Write a {platform} caption for: {state['request']}\n"
+        f"Write a {platform} caption for: {request}\n"  # ✅ Dùng biến request
         f"Max 280 chars. Add 2-3 hashtags.\n\n"
         f"=== Brand Context ===\n{_build_brand_block(brand_profile)}\n\n"
         f"=== History Memory ===\n{_build_memory_block(state.get('memory_history', []))}"
@@ -444,17 +448,17 @@ def execute_social(state: dict) -> dict:
     
     caption = call_gemini(prompt, max_tokens=300)
     if caption.startswith("[ERROR:"):
-        return {"error": caption[7:-1]} # 🌟 ĐÃ SỬA: Trả về lỗi riêng biệt, không unpack state
+        return {**state, "error": caption[7:-1]}
         
     return {
-        "draft": {"content": caption, "metadata": {"platform": platform, "type": "social"}, "version": state.get("draft", {}).get("version", 0) + 1},
-        "usage": _merge_usage(state["usage"], 200, "social"),
+        "draft": {"content": caption, "metadata": {"platform": platform, "type": "social"}, "version": (state.get("draft") or {}).get("version", 0) + 1},
+        "usage": _merge_usage(state.get("usage", {}), 200, "social"),
     }
 
 
 def execute_blog(state: dict) -> dict:
-    """Node 2: Tạo bản thảo Blog có nhúng vị trí ảnh định sẵn từ Node 1b"""
     print("--- NODE 2: EXECUTE BLOG (GEMINI WRITER) ---")
+    request = state.get("request", "")  # ✅ SỬA
     brand_profile = state.get("brand_profile", {})
     v_intent = state.get("visual_intent", {})
     
@@ -465,7 +469,7 @@ def execute_blog(state: dict) -> dict:
     )
 
     prompt = (
-        f"Viết một bài blog chuyên sâu về chủ đề: {state['request']}\n"
+        f"Viết một bài blog chuyên sâu về chủ đề: {request}\n"  # ✅ Dùng biến
         f"Yêu cầu: Sử dụng thẻ tiêu đề H2, văn phong tự nhiên, độ dài khoảng 600-900 từ.\n"
         f"{img_instruction}\n\n"
         f"=== Nguyên tắc thương hiệu ===\n{_build_brand_block(brand_profile)}\n\n"
@@ -482,23 +486,24 @@ def execute_blog(state: dict) -> dict:
             }
         }
         
-    current_version = state.get("draft", {}).get("version", 0) if state.get("draft") else 0
+    current_version = (state.get("draft") or {}).get("version", 0)
     return {
         "draft": {"content": draft, "metadata": {"type": "blog", "word_count": len(draft.split())}, "version": current_version + 1},
-        "usage": _merge_usage(state["usage"], 800, "blog"),
+        "usage": _merge_usage(state.get("usage", {}), 800, "blog"),
     }
 
 
 def execute_image(state: dict) -> dict:
+    request = state.get("request", "")  # ✅ SỬA
     brand_profile = state.get("brand_profile", {})
     prompt = (
-        f"Tạo một đoạn Prompt tiếng Anh chi tiết để đưa vào AI sinh ảnh cho chủ đề: {state['request']}\n"
+        f"Tạo một đoạn Prompt tiếng Anh chi tiết để đưa vào AI sinh ảnh cho chủ đề: {request}\n"  # ✅ Dùng biến
         f"=== Brand Context ===\n{_build_brand_block(brand_profile)}"
     )
     
     img_prompt = call_gemini(prompt, max_tokens=300)
     if img_prompt.startswith("[ERROR:"):
-        return {"error": img_prompt[7:-1]}
+        return {**state, "error": img_prompt[7:-1]}
         
     return {
         "draft": {
@@ -506,13 +511,14 @@ def execute_image(state: dict) -> dict:
             "metadata": {"type": "image", "image_url": f"https://api.example.com/images/{uuid.uuid4().hex[:12]}.png", "prompt": img_prompt},
             "version": 1,
         },
-        "usage": _merge_usage(state["usage"], 150, "image"),
+        "usage": _merge_usage(state.get("usage", {}), 150, "image"),
     }
 
 def execute_research(state: dict) -> dict:
+    request = state.get("request", "")  # ✅ SỬA
     brand_profile = state.get("brand_profile", {})
     prompt = (
-        f"Research and write a comprehensive report on: {state['request']}\n"
+        f"Research and write a comprehensive report on: {request}\n"  # ✅ Dùng biến
         f"=== Brand Context ===\n{_build_brand_block(brand_profile)}"
     )
     
@@ -529,7 +535,7 @@ def execute_research(state: dict) -> dict:
         },
         "approved":       True,
         "publish_status": "published",
-        "usage":          _merge_usage(state["usage"], 900, "research"),
+        "usage":          _merge_usage(state.get("usage", {}), 900, "research"),
     }
 
 
@@ -538,26 +544,26 @@ def review_pause(state: dict) -> dict:
     action = interrupt({
         "status":     "paused",
         "node":       "review_pause",
-        "draft":      state["draft"],
-        "usage":      state["usage"],
-        "session_id": state["session_id"],
+        "draft":      state.get("draft"),
+        "usage":      state.get("usage"),
+        "session_id": state.get("session_id"),
     })
     
     user_action = action.get("action", "save")
     
     if user_action == "approve":
-        return {**state, "approved": True, "error": None}
+        return {**state, "approved": True, "error": None, "status_action": None}
         
     elif user_action == "revise":
-        # 🌟 ĐÃ SỬA: Đặt cờ hiệu "status_action" riêng biệt thay vì gán đè vào "error" 
         return {
             **state,
             "approved": False, 
             "status_action": "revise", 
-            "request": action.get("feedback", "Hãy tối ưu lại bài viết.")
+            "request": action.get("feedback", "Hãy tối ưu lại bài viết."),
+            "error": None,
         }
         
-    return {**state, "approved": False, "error": None}
+    return {**state, "approved": False, "error": None, "status_action": None}
 
 
 
@@ -565,44 +571,38 @@ def review_pause(state: dict) -> dict:
 def visual_asset_selector(state: dict) -> dict:
     print("--- NODE 3b: TẠO ẢNH & LƯU VÀO APP/MEDIA ---")
     
-    # Lấy thông tin session để phân thư mục
     session_id = state.get("session_id", "default")
     save_path = Path("app/media") / session_id
     os.makedirs(save_path, exist_ok=True)
     
-    content = state["draft"]["content"]
+    draft = state.get("draft") or {"content": "", "metadata": {}, "version": 0}
+    content = draft.get("content", "")
     
     def generate_and_save(match):
         desc = match.group(1)
         try:
-            # Gọi hàm tạo ảnh thật
             img_bytes = call_gemini_imagen(f"Professional marketing photo of: {desc}")
             
-            # Lưu xuống ổ đĩa
             file_name = f"image_{uuid.uuid4().hex[:8]}.png"
             file_full_path = save_path / file_name
             with open(file_full_path, "wb") as f:
                 f.write(img_bytes)
                 
-            # Trả về link để client hiển thị
             return f"![{desc}](/static/media/{session_id}/{file_name})"
         except Exception as e:
             return f"![Ảnh lỗi: {desc}](https://via.placeholder.com/150?text=Error)"
 
-    # Regex thay thế placeholder
     final_content = re.sub(r"\[PLACEHOLDER_IMAGE_\d+: (.*?)\]", generate_and_save, content)
     
     return {
         **state,
-        "draft": { **state["draft"], "content": final_content }
+        "draft": { **draft, "content": final_content }
     }
 
 def context_synthesizer(state: dict) -> dict:
     print("--- NODE 4: CONTEXT SYNTHESIZER (UPDATING MEMORY) ---")
-    current_memory = state.get("memory_history", [])
-    if current_memory is None:
-        current_memory = []
-        
+    current_memory = state.get("memory_history") or []
+    
     current_memory.append({
         "user_feedback": state.get("request", "Cần điều chỉnh văn phong bài viết.")
     })
@@ -610,31 +610,32 @@ def context_synthesizer(state: dict) -> dict:
     return {
         **state,
         "memory_history": current_memory,
-        "status_action": None, # Reset cờ hiệu revise
+        "status_action": None,
         "error": None
     }
 
 
 def publish(state: dict) -> dict:
-    return {**state, "publish_status": "published"}
+    return {**state, "publish_status": "published", "status_action": None}
 
 
 def save(state: dict) -> dict:
-    return {**state}
+    return {**state, "status_action": None}
 
 
-# ── Edge Conditions (Hàm điều hướng Router) ───────────────────────────────────
+# ── Edge Conditions ───────────────────────────────────
 
 def select_template(state: dict) -> str:
-    if state.get("error"):
+    if state.get("error") and not state.get("status_action"):
         return "save"
-    return f"execute_{state['template']}"
+    return f"execute_{state.get('template', 'social')}"
 
 
 def route_after_review(state: dict) -> str:
-    # 🌟 ĐÃ SỬA: Kiểm tra theo cờ hiệu "status_action" để định tuyến sửa bài chính xác
     if state.get("status_action") == "revise":
         return "revise"
     if state.get("approved"):
         return "publish"
+    if state.get("error"):
+        return "save"
     return "save"

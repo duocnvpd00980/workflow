@@ -17,13 +17,13 @@ import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as Page_researchRouteImport } from './routes/page_research'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
+import { Route as Index_fixedRouteImport } from './routes/index_fixed'
 import { Route as CreateaRouteImport } from './routes/createa'
-import { Route as Brand_v1RouteImport } from './routes/brand_v1'
-import { Route as Brand_V2RouteImport } from './routes/brand_V2'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ArtifactsRouteImport } from './routes/artifacts'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as OldChatRouteImport } from './routes/old/chat'
 
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
@@ -65,19 +65,14 @@ const IntegrationsRoute = IntegrationsRouteImport.update({
   path: '/integrations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Index_fixedRoute = Index_fixedRouteImport.update({
+  id: '/index_fixed',
+  path: '/index_fixed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreateaRoute = CreateaRouteImport.update({
   id: '/createa',
   path: '/createa',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Brand_v1Route = Brand_v1RouteImport.update({
-  id: '/brand_v1',
-  path: '/brand_v1',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Brand_V2Route = Brand_V2RouteImport.update({
-  id: '/brand_V2',
-  path: '/brand_V2',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BrandRoute = BrandRouteImport.update({
@@ -100,15 +95,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OldChatRoute = OldChatRouteImport.update({
+  id: '/old/chat',
+  path: '/old/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
-  '/brand_V2': typeof Brand_V2Route
-  '/brand_v1': typeof Brand_v1Route
   '/createa': typeof CreateaRoute
+  '/index_fixed': typeof Index_fixedRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/page_research': typeof Page_researchRoute
@@ -117,15 +116,15 @@ export interface FileRoutesByFullPath {
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/old/chat': typeof OldChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
-  '/brand_V2': typeof Brand_V2Route
-  '/brand_v1': typeof Brand_v1Route
   '/createa': typeof CreateaRoute
+  '/index_fixed': typeof Index_fixedRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/page_research': typeof Page_researchRoute
@@ -134,6 +133,7 @@ export interface FileRoutesByTo {
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/old/chat': typeof OldChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -141,9 +141,8 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
-  '/brand_V2': typeof Brand_V2Route
-  '/brand_v1': typeof Brand_v1Route
   '/createa': typeof CreateaRoute
+  '/index_fixed': typeof Index_fixedRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
   '/page_research': typeof Page_researchRoute
@@ -152,6 +151,7 @@ export interface FileRoutesById {
   '/research': typeof ResearchRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/old/chat': typeof OldChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -160,9 +160,8 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/artifacts'
     | '/brand'
-    | '/brand_V2'
-    | '/brand_v1'
     | '/createa'
+    | '/index_fixed'
     | '/integrations'
     | '/knowledge'
     | '/page_research'
@@ -171,15 +170,15 @@ export interface FileRouteTypes {
     | '/research'
     | '/settings'
     | '/tasks'
+    | '/old/chat'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/analytics'
     | '/artifacts'
     | '/brand'
-    | '/brand_V2'
-    | '/brand_v1'
     | '/createa'
+    | '/index_fixed'
     | '/integrations'
     | '/knowledge'
     | '/page_research'
@@ -188,15 +187,15 @@ export interface FileRouteTypes {
     | '/research'
     | '/settings'
     | '/tasks'
+    | '/old/chat'
   id:
     | '__root__'
     | '/'
     | '/analytics'
     | '/artifacts'
     | '/brand'
-    | '/brand_V2'
-    | '/brand_v1'
     | '/createa'
+    | '/index_fixed'
     | '/integrations'
     | '/knowledge'
     | '/page_research'
@@ -205,6 +204,7 @@ export interface FileRouteTypes {
     | '/research'
     | '/settings'
     | '/tasks'
+    | '/old/chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -212,9 +212,8 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   ArtifactsRoute: typeof ArtifactsRoute
   BrandRoute: typeof BrandRoute
-  Brand_V2Route: typeof Brand_V2Route
-  Brand_v1Route: typeof Brand_v1Route
   CreateaRoute: typeof CreateaRoute
+  Index_fixedRoute: typeof Index_fixedRoute
   IntegrationsRoute: typeof IntegrationsRoute
   KnowledgeRoute: typeof KnowledgeRoute
   Page_researchRoute: typeof Page_researchRoute
@@ -223,6 +222,7 @@ export interface RootRouteChildren {
   ResearchRoute: typeof ResearchRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
+  OldChatRoute: typeof OldChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -283,25 +283,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IntegrationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/index_fixed': {
+      id: '/index_fixed'
+      path: '/index_fixed'
+      fullPath: '/index_fixed'
+      preLoaderRoute: typeof Index_fixedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/createa': {
       id: '/createa'
       path: '/createa'
       fullPath: '/createa'
       preLoaderRoute: typeof CreateaRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/brand_v1': {
-      id: '/brand_v1'
-      path: '/brand_v1'
-      fullPath: '/brand_v1'
-      preLoaderRoute: typeof Brand_v1RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/brand_V2': {
-      id: '/brand_V2'
-      path: '/brand_V2'
-      fullPath: '/brand_V2'
-      preLoaderRoute: typeof Brand_V2RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/brand': {
@@ -332,6 +325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/old/chat': {
+      id: '/old/chat'
+      path: '/old/chat'
+      fullPath: '/old/chat'
+      preLoaderRoute: typeof OldChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -340,9 +340,8 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   ArtifactsRoute: ArtifactsRoute,
   BrandRoute: BrandRoute,
-  Brand_V2Route: Brand_V2Route,
-  Brand_v1Route: Brand_v1Route,
   CreateaRoute: CreateaRoute,
+  Index_fixedRoute: Index_fixedRoute,
   IntegrationsRoute: IntegrationsRoute,
   KnowledgeRoute: KnowledgeRoute,
   Page_researchRoute: Page_researchRoute,
@@ -351,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResearchRoute: ResearchRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
+  OldChatRoute: OldChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

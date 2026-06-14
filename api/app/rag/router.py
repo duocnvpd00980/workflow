@@ -54,7 +54,6 @@ async def list_docs(db: AsyncSession = Depends(get_db)):
 # ═══════════════════════════════════════════════════════════════════════════════
 # UPLOAD
 # ═══════════════════════════════════════════════════════════════════════════════
-
 @router.post("/upload/", status_code=202)
 async def upload(
     background_tasks: BackgroundTasks,
@@ -62,8 +61,6 @@ async def upload(
     document_type: str = Form("product_knowledge"),
     file: UploadFile = ...,
     db: AsyncSession = Depends(get_db),
-    rag: RAG = Depends(get_rag),
-    loader: DocumentLoader = Depends(get_loader),
 ):
     if not title.strip():
         raise HTTPException(400, "Tiêu đề trống.")
@@ -88,7 +85,7 @@ async def upload(
 
     background_tasks.add_task(
         RagBackgroundService.upload_bg,
-        content, suffix, doc.id, bg_task_id, document_type, rag, loader,
+        content, suffix, doc.id, bg_task_id, document_type,
     )
 
     return {

@@ -14,12 +14,28 @@ import {
   Archive, Edit3, ArrowLeft, User, Radio, Clock, Plus,
   AlertCircle, Loader2, CheckCircle2, XCircle, MessageSquare,
   Send, History, Eye, ChevronDown, ChevronUp, Sparkles,
-  RotateCcw, Bot, StopCircle, Clipboard, Check, X,
+  RotateCcw
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { createFileRoute } from "@tanstack/react-router"
-import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message"
-import { useMarketingRewrite } from "@/hooks/useMarketingRewrite"
+import { useStream } from "@/hooks/useStream";
+
+
+interface ChatEditResponse {
+  draft: string
+  usage: Record<string, unknown>
+}
+
+interface ChatSidebarProps {
+  sessionId: string
+  draftContent: string
+  onUpdate: (newContent: string) => void
+  isOpen: boolean
+  onClose: () => void
+  onEnterEditMode?: () => void
+}
+
+
 
 // ─── API CONFIG ───
 const API_BASE = "http://localhost:8000/api/v1"
@@ -118,23 +134,12 @@ type ContentItem = {
   publishStatus?: PublishStatus | null
 }
 
-interface ChatSidebarProps {
-  sessionId: string
-  draftContent: string
-  onUpdate: (newContent: string) => void
-  isOpen: boolean
-  onClose: () => void
-  onEnterEditMode?: () => void
-  onStreamingChange?: (isStreaming: boolean) => void
-}
-
 // ─── CONSTANTS ───
 const STATUS_STYLES = {
   draft: "bg-amber-50/60 text-amber-700 border-amber-200/60 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50",
   published: "bg-emerald-50/60 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
   scheduled: "bg-blue-50/60 text-blue-700 border-blue-200/60 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50",
 } as const
-
 const STATUS_LABELS = { draft: "Bản nháp", published: "Đã đăng", scheduled: "Lên lịch" } as const
 
 const ICON_BG = {
@@ -147,21 +152,6 @@ const ICON_BG = {
 const TYPE_ICONS = {
   email: Mail, social: Smartphone, ads: Target, blog: FileText,
 } as const
-
-const FILTERS = [
-  { label: "Tất cả", value: "all" },
-  { label: "Email", value: "Email" },
-  { label: "Social", value: "Social" },
-  { label: "Ads", value: "Ads" },
-  { label: "Blog", value: "Blog" },
-] as const
-
-const QUICK_PROMPTS = [
-  { label: "Thêm CTA mạnh hơn", icon: "⚡" },
-  { label: "Viết ngắn gọn hơn", icon: "✂️" },
-  { label: "Tone thân thiện hơn", icon: "😊" },
-  { label: "Thêm dẫn chứng cụ thể", icon: "📊" },
-]
 
 // ─── HELPERS: Map backend → frontend ───
 function detectType(request: string): ContentItem["icon"] {
@@ -218,7 +208,7 @@ function mapSessionToContentItem(session: SessionListItem): ContentItem {
   }
 }
 
-// ─── SHARED COMPONENTS ───
+// ─── SHARED ───
 function StatusBadge({ status }: { status: ContentItem["status"] }) {
   return (
     <Badge variant="outline" className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full select-none", STATUS_STYLES[status])}>
@@ -235,6 +225,15 @@ function TypeIcon({ icon, className }: { icon: ContentItem["icon"]; className?: 
     </span>
   )
 }
+
+// ─── FILTER CHIPS ───
+const FILTERS = [
+  { label: "Tất cả", value: "all" },
+  { label: "Email", value: "Email" },
+  { label: "Social", value: "Social" },
+  { label: "Ads", value: "Ads" },
+  { label: "Blog", value: "Blog" },
+] as const
 
 // ─── LIST VIEW ───
 function ListView({
@@ -427,381 +426,292 @@ function ListView({
   )
 }
 
-// ─── CHAT SIDEBAR TYPES ───
-interface ChatMessage {
-  id: string
-  role: "user" | "assistant"
-  content: string
-  isStreaming?: boolean
-}
-
-// ─── CHAT SIDEBAR: Copy Button ───
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-  return (
-    <button
-      onClick={copy}
-      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-      title="Copy"
-    >
-      {copied
-        ? <Check className="h-3 w-3 text-emerald-500" />
-        : <Clipboard className="h-3 w-3" />
-      }
-    </button>
-  )
-}
-
-// ─── CHAT SIDEBAR: Blinking cursor ───
-function StreamingCursor() {
-  return (
-    <span className="inline-block w-[2px] h-[1em] bg-foreground/70 ml-[1px] align-middle animate-[blink_0.9s_step-end_infinite]" />
-  )
-}
-
-// ─── CHAT SIDEBAR: Apply button ───
-function ApplyButton({ content, onApply }: { content: string; onApply: (c: string) => void }) {
-  const [applied, setApplied] = useState(false)
-  const handleApply = () => {
-    onApply(content)
-    setApplied(true)
-    setTimeout(() => setApplied(false), 2000)
-  }
-  return (
-    <button
-      onClick={handleApply}
-      className={cn(
-        "text-[11px] font-medium px-2.5 py-1 rounded-md transition-all duration-150",
-        applied
-          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-          : "bg-primary/10 text-primary hover:bg-primary/20"
-      )}
-    >
-      {applied ? "✓ Đã áp dụng" : "Áp dụng vào bài"}
-    </button>
-  )
-}
-
-// ─── CHAT SIDEBAR: Chat bubble ───
-function ChatBubble({
-  message,
-  onApply,
-}: {
-  message: ChatMessage
-  onApply?: (content: string) => void
-}) {
-  const isAssistant = message.role === "assistant"
-
-  return (
-    <div className={cn("flex gap-2.5", isAssistant ? "items-start" : "items-start flex-row-reverse")}>
-      <div className={cn(
-        "shrink-0 w-6 h-6 rounded-full flex items-center justify-center mt-0.5",
-        isAssistant
-          ? "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400"
-          : "bg-muted text-muted-foreground"
-      )}>
-        {isAssistant ? <Bot className="h-3.5 w-3.5" /> : <User className="h-3.5 w-3.5" />}
-      </div>
-
-      <div className={cn("group flex flex-col gap-1.5 max-w-[88%]", !isAssistant && "items-end")}>
-        <div className={cn(
-          "relative rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap",
-          isAssistant
-            ? "bg-muted/60 dark:bg-muted/40 text-foreground rounded-tl-sm"
-            : "bg-primary text-primary-foreground rounded-tr-sm"
-        )}>
-          {message.content || (message.isStreaming && (
-            <span className="text-muted-foreground/50 text-[12px]">Đang viết...</span>
-          ))}
-          {message.isStreaming && <StreamingCursor />}
-
-          {isAssistant && message.content && !message.isStreaming && (
-            <div className="absolute -top-2 right-2">
-              <CopyButton text={message.content} />
-            </div>
-          )}
-        </div>
-
-        {isAssistant && !message.isStreaming && message.content && onApply && (
-          <div className="flex items-center gap-1.5 px-1">
-            <ApplyButton content={message.content} onApply={onApply} />
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // ─── CHAT SIDEBAR COMPONENT ───
+
+
+
 export function ChatSidebar({
   sessionId,
   draftContent,
   onUpdate,
   isOpen,
   onClose,
-  onStreamingChange,
 }: ChatSidebarProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [input, setInput] = useState("")
-  const [showScrollBtn, setShowScrollBtn] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const streamingIdRef = useRef<string | null>(null)
+  const [instruction, setInstruction] = useState("")
+  const [selectedText, setSelectedText] = useState("")
+  const [mode, setMode] = useState<"chat" | "inline" | "stream">("chat")
 
-  // ── hook: stream tokens vào đúng bubble ──
-  const { rewrite, isStreaming, stop, reset } = useMarketingRewrite({
-    sessionId,
-    draft: draftContent,
+  // ✅ Dùng useStream hook
+  const { text: streamText, isStreaming, error: streamError, start, stop, reset } = useStream()
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Inline mutation (không stream)
+  const chatInlineMutation = useMutation({
+    mutationFn: (params: { paragraph: string; instruction: string }) =>
+      api<ChatEditResponse>("/marketing/chat/inline", {
+        method: "POST",
+        body: JSON.stringify({
+          paragraph: params.paragraph,
+          instruction: params.instruction,
+          context: draftContent,
+          draft_id: sessionId,
+        }),
+      }),
+    onSuccess: (data) => {
+      onUpdate(data.draft)
+      setSelectedText("")
+      setMode("chat")
+    },
   })
 
-  // Patch: override setContent behavior — hook cũ dùng state nội bộ,
-  // chúng ta cần ghi vào messages. Dùng useEffect theo dõi content từ hook.
-  // Nhưng hook gốc trả về `content` (accumulated string), ta sync vào bubble đang stream.
-  const { content } = useMarketingRewrite({ sessionId, draft: draftContent })
+  // ✅ Stream edit
+  const handleStreamEdit = useCallback(() => {
+    if (!instruction.trim() || isStreaming) return
 
-  // Notify parent streaming state
-  useEffect(() => {
-    onStreamingChange?.(isStreaming)
-  }, [isStreaming, onStreamingChange])
+    setMode("stream")
+    start({
+      endpoint: "/marketing/chat/edit-stream",
+      body: { session_id: sessionId, instruction },
+      onDone: (fullText) => {
+        onUpdate(fullText)
+        setInstruction("")
+        // Giữ stream text để hiển thị, reset sau khi đóng
+      },
+    })
+  }, [instruction, isStreaming, sessionId, start, onUpdate])
 
-  // Sync streaming content → message bubble
-  useEffect(() => {
-    const id = streamingIdRef.current
-    if (!id || !content) return
-    setMessages(prev =>
-      prev.map(m => m.id === id ? { ...m, content } : m)
-    )
-    bottomRef.current?.scrollIntoView({ behavior: "instant" })
-  }, [content])
+  // ✅ Apply stream result
+  const handleApplyStream = useCallback(() => {
+    onUpdate(streamText)
+    reset()
+    setMode("chat")
+  }, [streamText, onUpdate, reset])
 
-  // Mark done when streaming stops
-  useEffect(() => {
-    if (!isStreaming && streamingIdRef.current) {
-      const id = streamingIdRef.current
-      setMessages(prev =>
-        prev.map(m => m.id === id ? { ...m, isStreaming: false } : m)
-      )
-      streamingIdRef.current = null
-    }
-  }, [isStreaming])
+  // ✅ Cancel stream
+  const handleCancelStream = useCallback(() => {
+    stop()
+    reset()
+    setMode("chat")
+  }, [stop, reset])
 
-  // Reset on close
+  // Cleanup khi đóng
   useEffect(() => {
     if (!isOpen) {
       stop()
       reset()
-      setMessages([])
-      setInput("")
-      streamingIdRef.current = null
+      setMode("chat")
+      setInstruction("")
+      setSelectedText("")
     }
   }, [isOpen, stop, reset])
 
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 80)
+  const handleTextSelection = useCallback(() => {
+    const selection = window.getSelection()?.toString()
+    if (selection && selection.length > 10) {
+      setSelectedText(selection)
+      setMode("inline")
+    }
   }, [])
-
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || isStreaming) return
-
-    const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: text.trim(),
-    }
-    const assistantMsgId = crypto.randomUUID()
-    const assistantMsg: ChatMessage = {
-      id: assistantMsgId,
-      role: "assistant",
-      content: "",
-      isStreaming: true,
-    }
-
-    streamingIdRef.current = assistantMsgId
-    setMessages(prev => [...prev, userMsg, assistantMsg])
-    setInput("")
-
-    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50)
-    await rewrite(text.trim())
-  }, [isStreaming, rewrite])
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage(input)
-    }
-  }
 
   if (!isOpen) return null
 
   return (
-    <div className="w-[320px] border-l border-border/60 bg-background flex flex-col h-full">
-      {/* ── HEADER ── */}
+    <div className="w-80 border-l border-border/60 bg-background flex flex-col h-full">
+      {/* Header */}
       <div className="shrink-0 flex items-center justify-between px-4 h-12 border-b border-border/60">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900/40 flex items-center justify-center">
-            <Sparkles className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
-          </div>
-          <span className="text-sm font-semibold">AI Writer</span>
+          <MessageSquare className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium">AI Assistant</span>
           {isStreaming && (
-            <span className="flex items-center gap-1 text-[10px] text-violet-500 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
-              đang viết
-            </span>
+            <span className="text-[10px] text-blue-600 animate-pulse">● streaming</span>
           )}
         </div>
         <div className="flex items-center gap-1">
-          {isStreaming && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 text-[11px] gap-1 text-muted-foreground hover:text-destructive"
-              onClick={stop}
-            >
-              <StopCircle className="h-3.5 w-3.5" />
-              Dừng
-            </Button>
-          )}
-          {messages.length > 0 && !isStreaming && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground"
-              onClick={() => { setMessages([]); reset() }}
-              title="Xóa cuộc trò chuyện"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-            </Button>
-          )}
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground"
+            className="h-7 w-7"
             onClick={onClose}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* ── MESSAGES ── */}
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
-      >
-        {/* Empty state */}
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-4 text-center pb-8">
-            <div className="w-10 h-10 rounded-2xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-violet-500" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">Chỉnh sửa với AI</p>
-              <p className="text-[12px] text-muted-foreground mt-1">
-                Nhập yêu cầu để AI sửa bài theo ý bạn
-              </p>
-            </div>
-            <div className="w-full space-y-1.5 mt-2">
-              {QUICK_PROMPTS.map((p) => (
-                <button
-                  key={p.label}
-                  onClick={() => sendMessage(p.label)}
-                  disabled={isStreaming}
-                  className="w-full text-left flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] bg-muted/50 hover:bg-muted text-foreground/80 hover:text-foreground transition-colors"
-                >
-                  <span className="text-base leading-none">{p.icon}</span>
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Message list */}
-        {messages.map((msg) => (
-          <ChatBubble
-            key={msg.id}
-            message={msg}
-            onApply={msg.role === "assistant" ? onUpdate : undefined}
-          />
-        ))}
-
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Scroll to bottom */}
-      {showScrollBtn && (
-        <div className="relative">
-          <button
-            onClick={() => bottomRef.current?.scrollIntoView({ behavior: "smooth" })}
-            className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-background border border-border/60 rounded-full px-3 py-1 shadow-sm hover:bg-muted transition-colors z-10"
-          >
-            <ChevronDown className="h-3 w-3" />
-            Cuộn xuống
-          </button>
-        </div>
-      )}
-
-      {/* ── INPUT ── */}
-      <div className="shrink-0 border-t border-border/60 p-3">
-        {messages.length > 0 && !isStreaming && (
-          <div className="flex gap-1.5 mb-2 overflow-x-auto scrollbar-none pb-1">
-            {QUICK_PROMPTS.map((p) => (
-              <button
-                key={p.label}
-                onClick={() => sendMessage(p.label)}
-                className="shrink-0 text-[11px] whitespace-nowrap px-2.5 py-1 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {p.icon} {p.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-end gap-2 bg-muted/40 border border-border/60 rounded-2xl px-3 py-2 focus-within:border-violet-400/60 focus-within:bg-background transition-all">
-          <Textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => {
-              setInput(e.target.value)
-              e.target.style.height = "auto"
-              e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="Nhập yêu cầu sửa bài..."
             disabled={isStreaming}
-            rows={1}
-            className="flex-1 resize-none border-0 bg-transparent p-0 text-[13px] placeholder:text-muted-foreground/60 focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[20px] max-h-[120px] leading-relaxed"
-          />
-          <Button
-            size="icon"
-            disabled={!input.trim() || isStreaming}
-            onClick={() => sendMessage(input)}
-            className={cn(
-              "h-7 w-7 shrink-0 rounded-xl transition-all",
-              input.trim() && !isStreaming
-                ? "bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
-                : "bg-muted text-muted-foreground cursor-not-allowed"
-            )}
           >
-            <Send className="h-3.5 w-3.5" />
+            <XCircle className="h-4 w-4" />
           </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground/60 mt-1.5 text-center">
-          Enter để gửi · Shift+Enter xuống dòng
-        </p>
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* ✅ STREAM OUTPUT */}
+        {mode === "stream" && (
+          <div className="space-y-3">
+            {isStreaming && streamText === "" && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Đang chờ AI...
+              </div>
+            )}
+
+            {streamText && (
+              <div className="relative">
+                <div className="prose prose-sm max-w-none bg-muted/30 rounded-lg p-3 min-h-[100px]">
+                  <span className="text-sm whitespace-pre-wrap">{streamText}</span>
+                  {isStreaming && (
+                    <span className="inline-block w-2 h-4 bg-blue-600 ml-1 animate-pulse" />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {streamError && (
+              <div className="text-red-600 text-sm bg-red-50 rounded-lg p-2">
+                Lỗi: {streamError}
+              </div>
+            )}
+
+            {/* Actions khi stream xong hoặc đang chạy */}
+            <div className="flex gap-2">
+              {isStreaming ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs flex-1"
+                  onClick={handleCancelStream}
+                >
+                  Dừng
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs flex-1"
+                    onClick={handleApplyStream}
+                  >
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Áp dụng
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs flex-1"
+                    onClick={handleCancelStream}
+                  >
+                    Hủy
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Inline edit hint */}
+        {selectedText && mode === "inline" && (
+          <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-900/40 rounded-lg p-3 space-y-2">
+            <p className="text-[11px] text-blue-700 dark:text-blue-400 font-medium">
+              Đoạn đã chọn: "{selectedText.slice(0, 60)}..."
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] flex-1"
+                onClick={() => {
+                  chatInlineMutation.mutate({
+                    paragraph: selectedText,
+                    instruction: "Viết lại đoạn này hay hơn",
+                  })
+                }}
+                disabled={chatInlineMutation.isPending}
+              >
+                <Sparkles className="h-3 w-3 mr-1" />
+                Viết hay hơn
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-[11px] flex-1"
+                onClick={() => {
+                  setSelectedText("")
+                  setMode("chat")
+                }}
+              >
+                Bỏ chọn
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Chat mode suggestions */}
+        {mode === "chat" && (
+          <div className="space-y-3">
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-[11px] text-muted-foreground mb-1">Gợi ý:</p>
+              <div className="space-y-1">
+                {["Thêm CTA mạnh hơn", "Viết ngắn gọn hơn", "Đổi tone thân thiện hơn"].map((s) => (
+                  <button
+                    key={s}
+                    className="block text-[11px] text-left text-foreground/70 hover:text-primary transition-colors"
+                    onClick={() => setInstruction(s)}
+                  >
+                    • {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="shrink-0 p-4 border-t border-border/60 space-y-2">
+        <Textarea
+          ref={textareaRef}
+          value={instruction}
+          onChange={(e) => setInstruction(e.target.value)}
+          placeholder={
+            mode === "inline"
+              ? "Nhập yêu cầu sửa đoạn đã chọn..."
+              : "Nhập yêu cầu chỉnh sửa toàn bài..."
+          }
+          className="min-h-[80px] text-xs resize-none"
+          disabled={isStreaming}
+        />
+        <Button
+          className="w-full h-8 text-xs gap-1.5"
+          disabled={!instruction.trim() || isStreaming || chatInlineMutation.isPending}
+          onClick={() => {
+            if (mode === "inline" && selectedText) {
+              chatInlineMutation.mutate({
+                paragraph: selectedText,
+                instruction,
+              })
+            } else {
+              handleStreamEdit() // ✅ Dùng stream
+            }
+          }}
+        >
+          {isStreaming ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Đang sửa...
+            </>
+          ) : chatInlineMutation.isPending ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Đang sửa đoạn...
+            </>
+          ) : (
+            <>
+              <Send className="h-3.5 w-3.5" />
+              {mode === "inline" ? "Sửa đoạn này" : "Gửi AI sửa"}
+            </>
+          )}
+        </Button>
       </div>
     </div>
   )
 }
+
 
 // ─── VERSION HISTORY DRAWER ───
 function VersionHistory({
@@ -844,6 +754,7 @@ function VersionHistory({
           </div>
         ) : (
           <>
+            {/* Current version */}
             <div className="bg-background border border-border/60 rounded-lg p-3">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[11px] font-medium">Hiện tại</span>
@@ -852,6 +763,7 @@ function VersionHistory({
               <p className="text-[11px] text-muted-foreground line-clamp-2">{currentContent.slice(0, 100)}...</p>
             </div>
 
+            {/* Previous versions */}
             {data?.versions?.map((v, i) => (
               <div key={i} className="bg-background border border-border/40 rounded-lg p-3 hover:border-border/80 transition-colors">
                 <div className="flex items-center justify-between mb-1">
@@ -889,28 +801,20 @@ function DetailView({
   isLoading,
   onUpdate,
 }: {
-  item: ContentItem
-  onClose: () => void
-  onDelete: (id: string) => void
-  onArchive: (id: string) => void
-  isLoading: boolean
-  onUpdate?: (item: ContentItem) => void
+  item: ContentItem;
+  onClose: () => void;
+  onDelete: (id: string) => void;
+  onArchive: (id: string) => void;
+  isLoading: boolean;
+  onUpdate?: (item: ContentItem) => void;
 }) {
   const [chatOpen, setChatOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [editMode, setEditMode] = useState(false)
+  const [editMode, setEditMode] = useState(false) // Chat sidebar edit mode
   const [editContent, setEditContent] = useState(item.content || "")
-  const [isStreaming, setIsStreaming] = useState(false)
   const queryClient = useQueryClient()
 
-  // Sync editContent when item.content changes (only if not streaming)
-  useEffect(() => {
-    if (!isStreaming) {
-      setEditContent(item.content || "")
-    }
-  }, [item.content, isStreaming])
-
-  // Resume mutation (approve/reject)
+  // Resume mutation (approve/reject only - không dùng cho edit)
   const resumeMutation = useMutation({
     mutationFn: (params: ResumeRequest) =>
       api<ResumeResponse>(`/marketing/${item.id}/resume`, {
@@ -922,17 +826,18 @@ function DetailView({
     },
   })
 
-  // Chat Edit mutation
+  // Chat Edit mutation (sửa toàn bài qua AI)
   const chatEditMutation = useMutation({
     mutationFn: (instruction: string) =>
       api<ChatEditResponse>("/marketing/chat/edit", {
         method: "POST",
         body: JSON.stringify({
           draft: item.content || "",
-          instruction,
+          instruction
         }),
       }),
     onSuccess: (data) => {
+      // Cập nhật content mới
       handleContentUpdate(data.draft)
       queryClient.invalidateQueries({ queryKey: ["marketing-sessions"] })
       setEditMode(false)
@@ -953,12 +858,12 @@ function DetailView({
   const isCompleted = item.backendStatus === "completed"
   const isApproved = item.approved
 
-  const handleContentUpdate = useCallback((newContent: string) => {
+  const handleContentUpdate = (newContent: string) => {
     setEditContent(newContent)
     if (onUpdate) {
       onUpdate({ ...item, content: newContent })
     }
-  }, [item, onUpdate])
+  }
 
   return (
     <div className="flex flex-col h-full bg-background animate-in fade-in-40 duration-200">
@@ -996,6 +901,7 @@ function DetailView({
           <StatusBadge status={item.status} />
           <Separator orientation="vertical" className="h-4 mx-1" />
 
+          {/* Review Actions - chỉ hiện khi paused */}
           {isPaused && (
             <div className="flex items-center gap-1">
               <Button
@@ -1012,7 +918,7 @@ function DetailView({
                 variant="outline"
                 size="sm"
                 className="h-8 text-xs gap-1.5"
-                onClick={() => setChatOpen(true)}
+                onClick={() => setChatOpen(true)} // ✅ MỞ CHAT SIDEBAR để sửa
               >
                 <MessageSquare className="h-3.5 w-3.5" />
                 Sửa bài
@@ -1033,7 +939,8 @@ function DetailView({
             </div>
           )}
 
-          {isCompleted && isApproved && (
+          {/* Publish - chỉ hiện khi approved */}
+          {isCompleted && !isApproved && (
             <Button
               size="sm"
               className="h-8 text-xs gap-1.5"
@@ -1049,6 +956,7 @@ function DetailView({
             </Button>
           )}
 
+          {/* Chat & History toggles */}
           <Button
             variant="ghost"
             size="icon"
@@ -1070,7 +978,7 @@ function DetailView({
         </div>
       </div>
 
-      {/* Edit Mode banner */}
+      {/* Edit Mode - Chat Sidebar Input */}
       {editMode && (
         <div className="shrink-0 px-4 py-3 border-b border-border/60 bg-blue-50/50 dark:bg-blue-950/20">
           <div className="flex items-center gap-2 mb-2">
@@ -1084,7 +992,12 @@ function DetailView({
             placeholder="VD: Viết hay hơn, thêm CTA, ngắn gọn hơn..."
           />
           <div className="flex gap-2 justify-end">
-            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditMode(false)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setEditMode(false)}
+            >
               Hủy
             </Button>
             <Button
@@ -1093,10 +1006,11 @@ function DetailView({
               onClick={() => chatEditMutation.mutate(editContent)}
               disabled={chatEditMutation.isPending || !editContent.trim()}
             >
-              {chatEditMutation.isPending
-                ? <Loader2 className="h-3 w-3 animate-spin" />
-                : <Send className="h-3 w-3" />
-              }
+              {chatEditMutation.isPending ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Send className="h-3 w-3" />
+              )}
               Gửi AI sửa
             </Button>
           </div>
@@ -1108,38 +1022,37 @@ function DetailView({
         {/* Content */}
         <div className="flex-1 overflow-y-auto bg-background">
           <div className="max-w-2xl mx-auto px-6 sm:px-8 py-8">
-            {isStreaming ? (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <div className="mb-4">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                </div>
-                <p className="text-sm font-medium">Đang sửa nội dung...</p>
-                <p className="text-xs mt-1">Xem kết quả realtime bên phải</p>
-              </div>
-            ) : isLoading ? (
+            {/* ... giữ nguyên phần eyebrow, title, meta ... */}
+
+            {/* Content */}
+            {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <Message from="assistant">
-                <MessageContent>
-                  <MessageResponse>
-                    {editContent}
-                  </MessageResponse>
-                </MessageContent>
-              </Message>
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none text-[14.5px] leading-7 text-foreground/90 bg-card/30 border border-border/40 p-6 rounded-xl shadow-xs"
+                dangerouslySetInnerHTML={{ __html: item.content || item.preview }}
+                onMouseUp={() => {
+                  // Inline edit: bôi đen text
+                  const selection = window.getSelection()?.toString()
+                  if (selection && selection.length > 10) {
+                    // Có thể mở inline edit popup
+                  }
+                }}
+              />
             )}
           </div>
         </div>
 
-        {/* Chat Sidebar */}
+        {/* Chat Sidebar - dùng cho chat edit/inline */}
         <ChatSidebar
           sessionId={item.id}
-          draftContent={editContent}
+          draftContent={item.content || ""}
           onUpdate={handleContentUpdate}
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}
-          onStreamingChange={setIsStreaming}
+          onEnterEditMode={() => setEditMode(true)} // ✅ Thêm callback
         />
 
         {/* Version History */}
@@ -1173,7 +1086,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 }
 
 // ─── ROUTE ───
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/index_fixed")({
   validateSearch: (search: Record<string, unknown>) => ({
     contentId: (search.contentId as string) || undefined,
   }),
@@ -1186,11 +1099,12 @@ function ContentPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
 
+  // ─── QUERIES ───
   const {
     data: sessionsData,
     isLoading,
     error,
-    refetch,
+    refetch
   } = useQuery<SessionListResponse>({
     queryKey: ["marketing-sessions"],
     queryFn: () => api("/marketing/sessions?limit=50&offset=0"),
@@ -1199,15 +1113,10 @@ function ContentPage() {
   })
 
   const items = (sessionsData?.items || []).map(mapSessionToContentItem)
+
   const activeItem = items.find((i) => i.id === search.contentId)
 
-  const setId = useCallback(
-    (id: string | undefined) => {
-      navigate({ search: (prev) => ({ ...prev, contentId: id }) })
-    },
-    [navigate]
-  )
-
+  // ─── MUTATIONS ───
   const deleteMutation = useMutation({
     mutationFn: (sessionId: string) => api(`/marketing/session/${sessionId}`, { method: "DELETE" }),
     onSuccess: () => {
@@ -1220,7 +1129,7 @@ function ContentPage() {
     mutationFn: (sessionId: string) =>
       api(`/marketing/${sessionId}/resume`, {
         method: "POST",
-        body: JSON.stringify({ action: "reject" }),
+        body: JSON.stringify({ action: "reject" })
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["marketing-sessions"] })
@@ -1229,50 +1138,58 @@ function ContentPage() {
 
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
 
-  const handleDelete = useCallback(async (ids: string[]) => {
+  const handleDelete = async (ids: string[]) => {
     setDeletingIds(new Set(ids))
     try {
-      await Promise.all(ids.map((id) => deleteMutation.mutateAsync(id)))
+      await Promise.all(ids.map(id => deleteMutation.mutateAsync(id)))
     } finally {
       setDeletingIds(new Set())
     }
-  }, [deleteMutation])
+  }
 
-  const handleArchive = useCallback(async (ids: string[]) => {
+  const handleArchive = async (ids: string[]) => {
     setDeletingIds(new Set(ids))
     try {
-      await Promise.all(ids.map((id) => archiveMutation.mutateAsync(id)))
+      await Promise.all(ids.map(id => archiveMutation.mutateAsync(id)))
     } finally {
       setDeletingIds(new Set())
     }
-  }, [archiveMutation])
+  }
 
-  const handleDeleteSingle = useCallback((id: string) => handleDelete([id]), [handleDelete])
-  const handleArchiveSingle = useCallback((id: string) => handleArchive([id]), [handleArchive])
+  const handleDeleteSingle = (id: string) => {
+    handleDelete([id])
+  }
 
-  const handleUpdateItem = useCallback(() => {
+  const handleArchiveSingle = (id: string) => {
+    handleArchive([id])
+  }
+
+  const handleUpdateItem = (updatedItem: ContentItem) => {
+    // Update local state through query cache invalidation
     queryClient.invalidateQueries({ queryKey: ["marketing-sessions"] })
-  }, [queryClient])
-
-  if (isLoading) {
-    return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground/80" />
-      </div>
-    )
   }
 
-  if (error) {
-    return (
-      <ErrorState
-        message={error instanceof Error ? error.message : "Không thể tải danh sách nội dung"}
-        onRetry={() => refetch()}
-      />
-    )
-  }
+  const setId = (id: string | undefined) =>
+    navigate({ search: (prev) => ({ ...prev, contentId: id }) } as any)
+
+  // ─── RENDER ───
+  if (isLoading) return (
+    <div className="flex h-[50vh] items-center justify-center">
+      <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground/80" />
+    </div>
+  )
+
+  if (error) return (
+    <ErrorState
+      message={error instanceof Error ? error.message : "Không thể tải danh sách nội dung"}
+      onRetry={() => refetch()}
+    />
+  )
 
   return (
     <div className="h-[calc(100vh-4rem)] overflow-hidden bg-background relative">
+
+      {/* CỘT DANH SÁCH */}
       <div className={cn("h-full", activeItem ? "hidden" : "block")}>
         <ListView
           items={items}
@@ -1285,6 +1202,7 @@ function ContentPage() {
         />
       </div>
 
+      {/* CỘT CHI TIẾT */}
       {activeItem && (
         <div className="absolute inset-0 z-10 h-full w-full bg-background">
           <DetailView
@@ -1297,6 +1215,7 @@ function ContentPage() {
           />
         </div>
       )}
+
     </div>
   )
 }

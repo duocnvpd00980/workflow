@@ -1,8 +1,12 @@
+import json
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from .schemas import (
     StartRequest, ResumeRequest, WorkflowResponse, SessionResponse,
-    ChatEditRequest, ChatInlineRequest, ChatResponse, VersionHistoryResponse,
-    SessionListResponse
+    ChatEditRequest, ChatInlineRequest, ChatEditResponse, ChatInlineResponse,
+    VersionHistoryResponse,
+    SessionListResponse, StartQueuedResponse
 )
 from .service import WorkflowService
 from typing import Optional
@@ -12,21 +16,31 @@ router = APIRouter(prefix="/marketing", tags=["marketing"])
 service = WorkflowService()
 
 # ══════════════════════════════════════════════════════════════
-# CORE WORKFLOW API (6 endpoints cũ — giữ nguyên)
+# CORE WORKFLOW API
 # ══════════════════════════════════════════════════════════════
 
 @router.post("/session", response_model=SessionResponse)
 async def create_session():
     return {"session_id": service.create_session()}
 
-@router.post("/start", response_model=WorkflowResponse)
+@router.post("/start", response_model=StartQueuedResponse, status_code=202)
 async def start(body: StartRequest):
-    result = await service.start(
-        request=body.request, 
-        brand_id=body.brand_id, 
-        auto_mode=body.auto_mode
+    """
+    Nhận yêu cầu tạo content, trả về 202 ngay lập tức.
+    Workflow chạy ngầm trong thread pool riêng biệt.
+    """
+    # Tạo session và queue task chạy ngầm, trả về ngay lập tức
+    session_id = await service.start_queued(
+        request=body.request,
+        brand_id=body.brand_id,
+        auto_mode=body.auto_mode,
     )
-    return WorkflowResponse(**result)
+    
+    return StartQueuedResponse(
+        session_id=session_id,
+        status="queued",
+        message="Workflow đã được thêm vào hàng đợi. Kiểm tra trạng thái qua GET /marketing/{session_id}"
+    )
 
 @router.get("/sessions", response_model=SessionListResponse)
 async def list_sessions(
@@ -65,40 +79,39 @@ async def delete(session_id: str):
     return {"ok": True}
 
 # ══════════════════════════════════════════════════════════════
-# CHAT API (Mới — Phương án C: Inline AI + Chat Sidebar)
+# CHAT API
 # ══════════════════════════════════════════════════════════════
 
-@router.post("/chat/edit", response_model=ChatResponse)
+@router.post("/chat/edit", response_model=ChatEditResponse)
 async def chat_edit(body: ChatEditRequest):
-    """
-    Chat sidebar: rewrite toàn bộ draft.
-    Dùng cho yêu cầu phức tạp: "đổi tone", "thêm CTA", "viết lại toàn bài".
-    """
-    result = await service.chat_edit(body.draft, body.instruction)
-    return ChatResponse(**result)
+    result = await service.chat_edit(body.session_id, body.instruction)
+    return ChatEditResponse(**result) 
 
-@router.post("/chat/inline", response_model=ChatResponse)
+
+@router.post("/chat/edit-stream")
+async def chat_edit_stream(body: ChatEditRequest):
+    async def event_generator():
+        async for chunk in service.chat_edit_stream(body.session_id, body.instruction):
+            yield f"data: {json.dumps({'text': chunk})}\n\n"
+        yield f"data: {json.dumps({'done': True})}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+    )
+
+@router.post("/chat/inline", response_model=ChatInlineResponse) 
 async def chat_inline(body: ChatInlineRequest):
-    """
-    Inline AI: rewrite đoạn bôi đen.
-    Dùng cho sửa nhanh: "ngắn hơn", "thêm emoji", "viết hay hơn".
-    Trả về diff để UI highlight changes.
-    """
     result = await service.chat_inline(body.paragraph, body.instruction, body.context)
-    return ChatResponse(**result)
+    return ChatInlineResponse(**result) 
 
 # ══════════════════════════════════════════════════════════════
-# VERSION HISTORY (Mới — Màn 4 Diff Review)
+# VERSION HISTORY
 # ══════════════════════════════════════════════════════════════
 
 @router.get("/{session_id}/versions", response_model=VersionHistoryResponse)
 async def get_versions(session_id: str):
-    """
-    Lấy version history để so sánh diff (Màn 4 Review Mode).
-    """
     result = await service.get_versions(session_id)
     if not result:
         raise HTTPException(status_code=404, detail="Session not found")
     return VersionHistoryResponse(**result)
-
-

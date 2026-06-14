@@ -341,7 +341,7 @@ const LeftSidebar = ({ className }: {
 //  ROUTE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const Route = createFileRoute("/")({ component: ChatPage });
+export const Route = createFileRoute("/old/chat-index")({ component: ChatPage });
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MAIN PAGE

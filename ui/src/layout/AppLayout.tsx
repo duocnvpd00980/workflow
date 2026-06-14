@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Sidebar, SidebarContent } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { Toaster } from "sonner";
+import { CreateModal } from "./CreateContentModal";
 
 // ─────────────────────────────────────────────
 // HOOK
@@ -215,6 +216,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                     },
                 }}
             />
+            <CreateModal open={createOpen} onClose={() => setCreateOpen(false)} />
         </TooltipProvider>
     );
 }

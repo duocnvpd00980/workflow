@@ -14,7 +14,7 @@ class ResumeRequest(BaseModel):
 
 class WorkflowResponse(BaseModel):
     session_id: str
-    status: Literal["running", "paused", "completed", "error"]
+    status: Literal["running", "paused", "completed", "error", "queued"]
     draft: Optional[Dict[str, Any]] = None
     publish_status: Optional[str] = None
     approved: Optional[bool] = None
@@ -24,12 +24,18 @@ class WorkflowResponse(BaseModel):
 class SessionResponse(BaseModel):
     session_id: str
 
+class StartQueuedResponse(BaseModel):
+    session_id: str
+    status: Literal["queued", "running"]
+    message: str
+
 # ══════════════════════════════════════════════════════════════
 # CHAT API (Mới — Phương án C: Inline AI + Chat Sidebar)
 # ══════════════════════════════════════════════════════════════
 
 class ChatEditRequest(BaseModel):
     """Chat sidebar: rewrite toàn bộ draft."""
+    session_id: str 
     draft: str
     instruction: str
 
@@ -40,11 +46,14 @@ class ChatInlineRequest(BaseModel):
     context: str             # Toàn bài viết để giữ tone
     draft_id: Optional[str] = None  # Track version
 
-class ChatResponse(BaseModel):
-    """Response cho cả 2 loại chat."""
-    draft: str               # Toàn bài mới (edit) hoặc đoạn mới (inline)
+class ChatEditResponse(BaseModel):
+    draft: str
     usage: Dict[str, Any]
-    changes: Optional[List[dict]] = None  # Diff cho inline (optional)
+
+class ChatInlineResponse(BaseModel):
+    draft: str  # String content mới
+    usage: Dict[str, Any]
+    changes: Optional[List[dict]] = None
 
 class VersionHistoryResponse(BaseModel):
     """Trả về list versions cho Màn 4 (Diff Review)."""
@@ -55,7 +64,7 @@ class VersionHistoryResponse(BaseModel):
 
 class SessionListItem(BaseModel):
     session_id: str
-    status: Literal["running", "paused", "completed", "error"]
+    status: Literal["running", "paused", "completed", "error", "queued"]
     request: Optional[str] = None
     draft: Optional[Dict[str, Any]] = None
     publish_status: Optional[str] = None

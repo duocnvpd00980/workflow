@@ -21,7 +21,7 @@ from app.marketing.nodes import (
 
 class WorkflowState(TypedDict):
     session_id: str
-    request: str
+    request: str  # ✅ Đảm bảo luôn có trong state
     brand_id: str
     template: Optional[Literal["social", "blog", "image", "research"]]
     context: dict              
@@ -32,6 +32,10 @@ class WorkflowState(TypedDict):
     error: Optional[Literal["timeout", "rate_limit", "invalid", "fatal"]]
     visual_intent: dict        
     memory_history: List[dict] 
+    brand_profile: Optional[dict]  # ✅ Thêm
+    research_data: Optional[dict]  # ✅ Thêm
+    knowledge_rag: Optional[list]  # ✅ Thêm
+    status_action: Optional[str]  # ✅ Thêm
    
 
 workflow = StateGraph(WorkflowState)

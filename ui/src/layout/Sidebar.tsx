@@ -2,7 +2,7 @@
 
 import { useCallback, useState, useEffect } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Zap, Home, BrainCircuit, ListTodo, Settings, Plus, type LucideIcon } from "lucide-react";
+import { Zap, Home, BrainCircuit, ListTodo, Settings, Plus, CalendarClock, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandItem, DeleteConfirmDialog, type Brand } from "./BrandItem";
 import { CreateBrandModal } from "./CreateBrandModal";
@@ -16,8 +16,10 @@ type NavItem = { label: string; to: string; icon: LucideIcon };
 
 const primaryNav: NavItem[] = [
     { label: "Home", to: "/", icon: Home },
-    { label: "Knowledge", to: "knowledge", icon: BrainCircuit },
+    { label: "Knowledge", to: "/knowledge", icon: BrainCircuit },
     { label: "Tasks", to: "/tasks", icon: ListTodo },
+    { label: "Planner", to: "/planner", icon: CalendarClock },
+    
 ];
 
 const INITIAL_BRANDS: Brand[] = [

@@ -124,21 +124,13 @@ class RagBackgroundService:
         doc_id: int,
         task_id: int,
         document_type: str,
-        rag: RAG,
-        loader: DocumentLoader,
     ) -> None:
-        """
-        Gọi từ FastAPI BackgroundTasks — KHÔNG async.
-        FastAPI sẽ chạy sync background task trong threadpool mặc định của nó,
-        nhưng ta dùng _CRAWL_EXECUTOR riêng để kiểm soát concurrency.
-        """
         future = _CRAWL_EXECUTOR.submit(
             RagBackgroundService._upload_sync,
-            content, suffix, doc_id, task_id, document_type, rag, loader,
+            content, suffix, doc_id, task_id, document_type,
         )
-        # Không block — fire and forget. Lỗi đã được xử lý trong _upload_sync.
         future.add_done_callback(
-            lambda f: logger.error("[upload_bg] unhandled exception", exc_info=f.exception())
+            lambda f: logger.error("[upload_bg] unhandled exception trong Executor", exc_info=f.exception())
             if f.exception() else None
         )
 

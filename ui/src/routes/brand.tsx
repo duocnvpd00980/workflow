@@ -135,11 +135,9 @@ const FILTERS = [
 function ListView({
   items,
   onSelect,
-  onOpenWidget,
 }: {
   items: ContentItem[]
   onSelect: (id: string) => void
-  onOpenWidget: () => void 
 }) {
   const [filter, setFilter] = useState("all")
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -194,15 +192,6 @@ function ListView({
           <span className="text-xs text-muted-foreground hidden sm:inline font-medium">
             Hồ sơ: {filtered.length} thương hiệu
           </span>
-
-          <Button 
-            size="sm" 
-            className="h-8 text-xs gap-1.5 font-bold px-3 bg-slate-900 dark:bg-zinc-800 text-white"
-            onClick={onOpenWidget} // <--- Kích hoạt hiện khay Gmail chạy ngầm
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Tạo Brand Voice</span>
-          </Button>
           
           <div className="flex items-center border border-border/60 rounded-lg overflow-hidden bg-background">
             <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-muted" disabled>
@@ -571,8 +560,6 @@ export const Route = createFileRoute("/brand")({
 function ContentPage() {
   const search = Route.useSearch()
   const navigate = useNavigate()
-
-  const [isWidgetOpen, setIsWidgetOpen] = useState(false)
   const [localItems, setLocalItems] = useState<ContentItem[]>(MOCK_DATA)
 
   const { data: items = [], isLoading } = useQuery({
@@ -583,22 +570,8 @@ function ContentPage() {
   const activeItem = items.find((i) => i.id === search.contentId)
 
   const setId = (id: string | undefined) =>
-    navigate({ search: (prev) => ({ ...prev, contentId: id }) })
+    navigate({ search: (prev) => ({ ...prev, contentId: id }) } as any)
 
-  const handleWizardComplete = (newProfileData: any) => {
-    const newId = (localItems.length + 1).toString()
-    const finalNewItem: ContentItem = {
-      id: newId,
-      status: "published",
-      time: "Vừa xong",
-      preview: newProfileData.positioning.substring(0, 65) + "...",
-      dos: ["Đưa số liệu thực tế", "Giọng điệu ổn định, trang nhã"],
-      donts: ["Tránh dùng tiếng bồi, từ lóng", "Hạn chế so sánh tiêu cực"],
-      ...newProfileData
-    }
-    setLocalItems([finalNewItem, ...localItems])
-    setId(newId) // Mở luôn màn hình DetailView của thương hiệu mới tạo
-  }
 
   if (isLoading) return (
     <div className="flex h-[50vh] items-center justify-center">
@@ -614,16 +587,8 @@ function ContentPage() {
       <ListView 
         items={items} 
         onSelect={(id) => setId(id)} 
-        onOpenWidget={() => setIsWidgetOpen(true)} 
       />
     )}
-
-    {/* Đảm bảo widget đã được đặt ở đây */}
-    <ResearchBackgroundWidget 
-      isOpen={isWidgetOpen}
-      onClose={() => setIsWidgetOpen(false)}
-      onComplete={handleWizardComplete}
-    />
   </div>
 )
 }
