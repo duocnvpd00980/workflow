@@ -1,532 +1,120 @@
 from __future__ import annotations
-
-import asyncio
 import json
-import logging
-import time
 import uuid
-from typing import AsyncGenerator
-
-from langgraph.types import Command
-from sqlalchemy import update
+import logging
+from typing import AsyncGenerator, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.sql import func
+from sqlalchemy import select
 
-from app.chat.models import Conversation, Message
-from app.graph import main_v7
+from app.chat.models import Message
+from app.chat.nodes import load_contexts, save_result, _build_prompt
+from app.llm_clients import stream_groq
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
-_TIMEOUT         = 30.0
-_RECURSION_LIMIT = 20
-
-NODE_LABELS: dict[str, str] = {
-    "input_guard":      "Kiểm duyệt đầu vào",
-    "heuristic_router": "Định tuyến",
-    "cache_read":       "Đọc cache",
-    "knowledge_base":   "Knowledge",
-    "knowledgebase":    "Knowledge",
-    "relevance_check":  "Đánh giá",
-    "generation":       "Sinh câu trả lời",
-    "fallback_search":  "Tìm kiếm dự phòng",
-    "output_guard":     "Kiểm duyệt đầu ra",
-    "cache_write":      "Ghi cache",
-    "final_response":   "Hoàn tất",
-}
-
-
-# ── Plan builder ──────────────────────────────────────────
-
-PLANS: dict[str, list[dict]] = {
-    "rag_knowledge": [
-        {"id": "input_guard", "label": "Kiểm duyệt đầu vào"},
-        {"id": "heuristic_router", "label": "Định tuyến"},
-        {"id": "cache_read", "label": "Đọc cache"},
-        {"id": "knowledge_base", "label": "Knowledge"},
-        {"id": "relevance_check", "label": "Đánh giá"},
-        {"id": "generation", "label": "Sinh câu trả lời"},
-        {"id": "output_guard", "label": "Kiểm duyệt đầu ra"},
-        {"id": "cache_write", "label": "Ghi cache"},
-        {"id": "final_response", "label": "Hoàn tất"},
-    ],
-    "smalltalk": [
-        {"id": "input_guard", "label": "Kiểm duyệt đầu vào"},
-        {"id": "heuristic_router", "label": "Định tuyến"},
-        {"id": "cache_read", "label": "Đọc cache"},
-        {"id": "final_response", "label": "Hoàn tất"},
-    ],
-    "fallback_search": [
-        {"id": "input_guard", "label": "Kiểm duyệt đầu vào"},
-        {"id": "heuristic_router", "label": "Định tuyến"},
-        {"id": "cache_read", "label": "Đọc cache"},
-        {"id": "fallback_search", "label": "Tìm kiếm dự phòng"},
-        {"id": "generation", "label": "Sinh câu trả lời"},
-        {"id": "output_guard", "label": "Kiểm duyệt đầu ra"},
-        {"id": "cache_write", "label": "Ghi cache"},
-        {"id": "final_response", "label": "Hoàn tất"},
-    ],
-}
-
-
-# ── Helpers ───────────────────────────────────────────────
-
-def _sse(event: str, data: dict) -> str:
-    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
-
-def _node_label(key: str) -> str:
-    return NODE_LABELS.get(key) or key
-
-def _thread_id(conversation_id: str, session_id: str) -> str:
-    return f"conv_{conversation_id}" if conversation_id else f"sess_{session_id}"
-
-def _read(obj: object | dict, key: str, default=None):
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    return getattr(obj, key, default)
-
-def _to_uuid(val: str | uuid.UUID) -> uuid.UUID:
-    if isinstance(val, uuid.UUID):
-        return val
-    return uuid.UUID(val)
-
-def _build_plan(route_to: str) -> list[dict]:
-    """Tạo plan từ route_to. Fallback về rag_knowledge nếu không match."""
-    return PLANS.get(route_to, PLANS["rag_knowledge"])
-
-
-# ── Result builder ────────────────────────────────────────
-
-def _build_result(snapshot, pipeline_error: Exception | None) -> dict:
-    if pipeline_error or not snapshot:
-        code = "TIMEOUT" if isinstance(pipeline_error, TimeoutError) else "PIPELINE_CRASH"
-        msg  = "Hệ thống quá tải, thử lại." if isinstance(pipeline_error, TimeoutError) \
-               else "Lỗi xử lý, thử lại."
-        return {
-            "status":        "error",
-            "text":          "",
-            "answer_source": "llm",
-            "confidence":    0.0,
-            "sources":       [],
-            "metrics":       {},
-            "error":         {"code": code, "message": msg, "retryable": True},
-        }
-
-    state = snapshot.values or {}
-
-    for task in (snapshot.tasks or []):
-        if task.interrupts:
-            val = task.interrupts[0].value if task.interrupts else {}
-            return {
-                "status":        "review",
-                "text":          val.get("draft", "") if isinstance(val, dict) else "",
-                "answer_source": "llm",
-                "confidence":    0.0,
-                "sources":       [],
-                "metrics":       {},
-                "error":         None,
-                "review": {
-                    "instruction": val.get("instruction", "Review nội dung."),
-                },
-            }
-
-    fr = state.get("final_response")
-
-    if fr is None:
-        return {
-            "status":        "error",
-            "text":          "",
-            "answer_source": "llm",
-            "confidence":    0.0,
-            "sources":       [],
-            "metrics":       {},
-            "error":         {
-                "code":      "NO_FRAME",
-                "message":   "final_response chưa được emit lên Bus.",
-                "retryable": False,
-            },
-        }
-
-    payload = _read(fr, "payload")
-
-    if payload is None:
-        return {
-            "status":        "error",
-            "text":          "",
-            "answer_source": "llm",
-            "confidence":    0.0,
-            "sources":       [],
-            "metrics":       {},
-            "error":         {
-                "code":      "NO_PAYLOAD",
-                "message":   "StandardFrame.payload là None.",
-                "retryable": False,
-            },
-        }
-
-    bf_status  = _read(payload, "status",  "FAILED")
-    bf_text    = _read(payload, "text",    "")
-    bf_records = _read(payload, "records", [])
-    bf_state   = _read(payload, "state",   {})
-    bf_metrics = _read(payload, "metrics", {})
-    bf_error   = _read(payload, "error",   None)
-
-    finish_reason = bf_state.get("finish_reason", "")
-    if bf_status == "SUCCESS":
-        sse_status = "fallback" if finish_reason == "fallback" else "success"
-    else:
-        sse_status = "error"
-
-    return {
-        "status":        sse_status,
-        "text":          bf_text,
-        "answer_source": bf_state.get("answer_source", "llm"),
-        "confidence":    bf_state.get("confidence", 0.0),
-        "sources":       bf_records,
-        "metrics": {
-            "latency_ms":    bf_metrics.get("latency_ms", 0.0),
-            "model":         bf_metrics.get("model", ""),
-            "input_tokens":  bf_metrics.get("input_tokens", 0),
-            "output_tokens": bf_metrics.get("output_tokens", 0),
-            "node_path":     bf_metrics.get("node_path", []),
-        },
-        "error": {
-            "code":      "UPSTREAM_FAILED",
-            "message":   bf_error,
-            "retryable": False,
-        } if bf_error else None,
-    }
-
-
-# ── DB helpers ────────────────────────────────────────────
-
-async def _save_user_msg(
-    db: AsyncSession, conv_id: uuid.UUID, content: str, msg_id: str,
-) -> None:
-    db.add(Message(
-        id=_to_uuid(msg_id),
-        conversation_id=conv_id,
-        role="user",
-        status="completed",
-        content=content,
-    ))
-    await db.commit()
-
-
-async def _save_assistant_pending(
-    db: AsyncSession, conv_id: uuid.UUID, msg_id: str,
-) -> None:
-    db.add(Message(
-        id=_to_uuid(msg_id),
-        conversation_id=conv_id,
-        role="assistant",
-        status="streaming",
-        content="",
-    ))
-    await db.commit()
-
-
-async def _update_msg(db: AsyncSession, msg_id: str, result: dict) -> None:
-    db_status = "completed" if result["status"] in ("success", "fallback", "review") else "error"
-    await db.execute(
-        update(Message)
-        .where(Message.id == _to_uuid(msg_id))
-        .values(
-            content    = result.get("text", ""),
-            status     = db_status,
-            updated_at = func.now(),
-        )
-    )
-    await db.commit()
-
-
-async def _touch(db: AsyncSession, conv_id: uuid.UUID) -> None:
-    await db.execute(
-        update(Conversation)
-        .where(Conversation.id == conv_id)
-        .values(last_message_at=func.now(), updated_at=func.now())
-    )
-    await db.commit()
-
-
-async def _history(
-    db: AsyncSession, conv_id: uuid.UUID, limit: int = 10,
-) -> list[dict]:
-    rows = await db.execute(
-        select(Message)
-        .where(
-            Message.conversation_id == conv_id,
-            Message.status == "completed",
-        )
-        .order_by(Message.created_at.desc())
-        .limit(limit)
-    )
-    return [
-        {"role": m.role, "content": m.content}
-        for m in reversed(rows.scalars().all())
-        if m.content
-    ]
-
-
-# ── Core stream ───────────────────────────────────────────
-
-async def _run_stream(
-    thread_id:        str,
-    graph_input,
-    session_id:       str,
-    msg_id:           str = "",
-    assistant_msg_id: str = "",
-    conversation_id:  str = "",
-    db:               AsyncSession | None = None,
-) -> AsyncGenerator[str, None]:
-    step           = 0
-    pipeline_error: Exception | None = None
-    config = {
-        "configurable":    {"thread_id": thread_id},
-        "recursion_limit": _RECURSION_LIMIT,
-    }
-
-    # ── EMIT agent_start ──────────────────────────────────
-    yield _sse("agent_start", {
-        "message": "Đang phân tích yêu cầu của bạn...",
-        "run_id": thread_id,
-        "timestamp": time.time(),
-    })
-
-    try:
-        async with asyncio.timeout(_TIMEOUT):
-            async for chunk in main_v7.astream(graph_input, config=config):
-
-                if "__interrupt__" in chunk:
-                    val = chunk["__interrupt__"][0].value
-                    result = {
-                        "status":        "review",
-                        "text":          val.get("draft", "") if isinstance(val, dict) else "",
-                        "answer_source": "llm",
-                        "confidence":    0.0,
-                        "sources":       [],
-                        "metrics":       {},
-                        "error":         None,
-                        "review": {
-                            "instruction": val.get("instruction", "Review nội dung."),
-                        },
-                    }
-                    if assistant_msg_id and db:
-                        await _update_msg(db, assistant_msg_id, result)
-                    yield _sse("result", result)
-                    return
-
-                for key in chunk:
-                    if not key.startswith("__"):
-                        step += 1
-
-                        # ── EMIT step_start ─────────────────────────────
-                        yield _sse("step_start", {
-                            "step_id": key,
-                            "step_label": _node_label(key),
-                            "order": step,
-                            "timestamp": time.time(),
-                        })
-
-                        # ── EMIT node (giữ nguyên) ─────────────────────
-                        yield _sse("node", {"label": _node_label(key), "step": step})
-
-                        # ── EMIT node_detail ───────────────────────────
-                        payload = None
-                        node_data = chunk[key]
-                        timestamp = time.time()
-
-                        # Thử 1: Trích từ chunk trực tiếp
-                        try:
-                            if isinstance(node_data, dict):
-                                if "payload" in node_data:
-                                    payload = node_data["payload"]
-                                    timestamp = node_data.get("timestamp", timestamp)
-                                elif "status" in node_data:
-                                    payload = node_data
-                            elif hasattr(node_data, "payload"):
-                                payload = node_data.payload
-                                timestamp = getattr(node_data, "timestamp", timestamp)
-                        except Exception:
-                            pass
-
-                        # Thử 2: Fallback aget_state
-                        if not payload:
-                            try:
-                                snapshot = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
-                                node_frame = snapshot.values.get(key) if snapshot else None
-                                if node_frame:
-                                    payload = _read(node_frame, "payload")
-                                    timestamp = getattr(node_frame, "timestamp", timestamp)
-                            except Exception:
-                                log.warning("[_run_stream] fallback aget_state failed for %s", key)
-
-                        if payload:
-                            yield _sse("node_detail", {
-                                "node_id":    key,
-                                "node_label": _node_label(key),
-                                "step":       step,
-                                "status":     _read(payload, "status",  "UNKNOWN"),
-                                "text":       _read(payload, "text",    ""),
-                                "state":      _read(payload, "state",   {}),
-                                "metrics":    _read(payload, "metrics", {}),
-                                "timestamp":  timestamp,
-                                "duration_ms": 0,
-                            })
-
-                        # ── EMIT agent_plan từ heuristic_router ─
-                        if key == "heuristic_router":
-                            try:
-                                snapshot = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
-                                hr_frame = snapshot.values.get("heuristic_router") if snapshot else None
-                                if hr_frame:
-                                    hr_payload = _read(hr_frame, "payload")
-                                    if hr_payload:
-                                        route_to = _read(hr_payload, "state", {}).get("route_to", "rag_knowledge")
-                                        plan_steps = _build_plan(route_to)
-                                        yield _sse("agent_plan", {
-                                            "message": f"Đã phân tích yêu cầu. Tôi sẽ thực hiện {len(plan_steps)} bước:",
-                                            "steps": plan_steps,
-                                            "route_to": route_to,
-                                            "timestamp": time.time(),
-                                        })
-                            except Exception:
-                                log.warning("[_run_stream] failed to emit agent_plan", exc_info=True)
-
-    except asyncio.TimeoutError:
-        log.error("[stream] timeout thread=%s", thread_id)
-        pipeline_error = TimeoutError()
-    except Exception as e:
-        log.exception("[stream] crash thread=%s", thread_id)
-        pipeline_error = e
-
-    # ── Final result ──────────────────────────────────────
-    try:
-        snapshot = await main_v7.aget_state({"configurable": {"thread_id": thread_id}})
-    except Exception:
-        log.exception("[stream] aget_state failed thread=%s", thread_id)
-        snapshot = None
-
-    result = _build_result(snapshot, pipeline_error)
-
-    if snapshot:
-        node_history = []
-        for key, value in (snapshot.values or {}).items():
-            if key in NODE_LABELS and value and key != "final_response":
-                try:
-                    payload = _read(value, "payload")
-                    if payload:
-                        node_history.append({
-                            "node_id":    key,
-                            "node_label": _node_label(key),
-                            "status":     _read(payload, "status",  "UNKNOWN"),
-                            "text":       _read(payload, "text",    ""),
-                            "state":      _read(payload, "state",   {}),
-                            "metrics":    _read(payload, "metrics", {}),
-                            "timestamp":  getattr(value, "timestamp", None),
-                        })
-                except Exception:
-                    pass
-        result["node_history"] = node_history
-
-    if assistant_msg_id and db:
-        await _update_msg(db, assistant_msg_id, result)
-
-    yield _sse("result", result)
-    yield _sse("done", {})
-
-
-# ── ChatService ───────────────────────────────────────────
 
 class ChatService:
+    def __init__(self):
+        self._stopped_convs = set()
+
+    async def mark_as_stopped(self, conversation_id: uuid.UUID):
+        self._stopped_convs.add(conversation_id)
+
+    async def check_if_stopped(self, conversation_id: uuid.UUID) -> bool:
+        return conversation_id in self._stopped_convs
+
+    async def clear_stop_flag(self, conversation_id: uuid.UUID):
+        self._stopped_convs.discard(conversation_id)
 
     async def stream_graph(
         self,
-        message:         str,
-        session_id:      str,
-        msg_id:          str = "",
-        conversation_id: str = "",
-        db:              AsyncSession | None = None,
+        message: str,
+        msg_id: uuid.UUID,
+        conversation_id: uuid.UUID,
+        db: AsyncSession,
+        brand_id: Optional[str] = None,
+        business_id: Optional[str] = None,
     ) -> AsyncGenerator[str, None]:
-        msg_id          = msg_id or str(uuid.uuid4())
-        conversation_id = conversation_id or str(uuid.uuid4())
-        assistant_msg_id, history = "", []
 
-        if db:
-            try:
-                conv = await db.get(Conversation, _to_uuid(conversation_id))
-                if conv:
-                    await _save_user_msg(db, conv.id, message, msg_id)
-                    assistant_msg_id = str(uuid.uuid4())
-                    await _save_assistant_pending(db, conv.id, assistant_msg_id)
-                    await _touch(db, conv.id)
-                    history = await _history(db, conv.id)
-            except Exception:
-                log.exception("[stream_graph] db setup failed")
+        state = {
+            "content_draft": "",
+            "instruction": message,
+            "session_id": str(conversation_id),
+            "conversation_id": str(conversation_id),
+            "msg_id": str(msg_id),
+            "brand_id": brand_id,
+            "business_id": business_id,
+            "brand_profile": {},
+            "brand_context": "",
+            "knowledge_rag": [],
+            "rag_context": "",
+            "conversation_history": [],
+            "history_context": "",
+            "rewritten_text": "",
+            "original_draft": "",
+            "saved": False,
+            "error": None,
+        }
 
-        async for chunk in _run_stream(
-            _thread_id(conversation_id, session_id),
-            {
-                "user_input":      message,
-                "language":        "vi",
-                "budget_limit":    2.0,
-                "conversation_id": conversation_id,
-                "msg_id":          msg_id,
-                "chat_history":    history,
-            },
-            session_id,
-            msg_id           = msg_id,
-            assistant_msg_id = assistant_msg_id,
-            conversation_id  = conversation_id,
-            db               = db,
-        ):
-            yield chunk
+        try:
+            # Bước 1: load brand, RAG, history song song trong 1 node
+            context_result = await load_contexts(state)
+            state.update(context_result)
+
+            # Bước 2: build prompt rồi stream Groq trực tiếp — token by token
+            prompt = _build_prompt(state)
+            full_text: list[str] = []
+
+            async for token in stream_groq(prompt, max_tokens=2000):
+                if await self.check_if_stopped(conversation_id):
+                    break
+                full_text.append(token)
+                yield f"data: {json.dumps({'type': 'token', 'text': token})}\n\n"
+
+            # Bước 3: save toàn bộ text vào DB
+            state["rewritten_text"] = "".join(full_text)
+            save_state = await save_result(state)
+
+            if not save_state.get("saved"):
+                logger.warning(f"Save failed: {save_state.get('error')}")
+
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Stream error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+        finally:
+            await self.clear_stop_flag(conversation_id)
 
     async def resume_graph(
         self,
-        session_id:      str,
-        action:          str,
-        feedback:        str = "",
-        msg_id:          str = "",
-        conversation_id: str = "",
-        db:              AsyncSession | None = None,
+        action: str,
+        feedback: str,
+        msg_id: uuid.UUID,
+        conversation_id: uuid.UUID,
+        db: AsyncSession,
     ) -> AsyncGenerator[str, None]:
-        assistant_msg_id = ""
-        if db and conversation_id:
-            try:
-                conv = await db.get(Conversation, _to_uuid(conversation_id))
-                if conv:
-                    assistant_msg_id = str(uuid.uuid4())
-                    await _save_assistant_pending(db, conv.id, assistant_msg_id)
-                    await _touch(db, conv.id)
-            except Exception:
-                log.exception("[resume_graph] db setup failed")
+        yield f"data: {json.dumps({'status': 'resumed'})}\n\n"
 
-        async for chunk in _run_stream(
-            _thread_id(conversation_id, session_id),
-            Command(resume={"action": action.strip().lower(), "feedback": feedback.strip()}),
-            session_id,
-            msg_id           = msg_id,
-            assistant_msg_id = assistant_msg_id,
-            conversation_id  = conversation_id,
-            db               = db,
-        ):
-            yield chunk
-
-    async def restore_session(
-        self,
-        session_id:      str,
-        conversation_id: str = "",
-        db:              AsyncSession | None = None,
-    ):
-        if db and conversation_id:
-            return await _history(db, _to_uuid(conversation_id), limit=50)
-
-        try:
-            snapshot = await main_v7.aget_state(
-                {"configurable": {"thread_id": _thread_id(conversation_id, session_id)}}
+    async def restore_session(self, conversation_id: uuid.UUID, db: AsyncSession) -> list[dict]:
+        stmt = (
+            select(Message)
+            .where(
+                Message.conversation_id == conversation_id,
+                Message.status == "completed",
             )
-            return _build_result(snapshot, None) if snapshot else None
-        except Exception:
-            log.exception("[restore_session] aget_state failed")
-            return None
+            .order_by(Message.created_at.asc())
+        )
+        result = await db.execute(stmt)
+        messages = result.scalars().all()
+
+        return [
+            {
+                "id": m.id,
+                "role": m.role,
+                "content": m.content,
+                "created_at": m.created_at,
+            }
+            for m in messages
+        ]

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 const API_BASE = "http://localhost:8000/api/v1";
 
@@ -7,46 +7,59 @@ export type RewriteStatus = "idle" | "streaming" | "done" | "error";
 interface UseMarketingRewriteProps {
   sessionId: string;
   draft: string;
+  onToken?: (token: string, accumulated: string) => void;
+  onDone?: (finalContent: string) => void;
 }
 
-export function useMarketingRewrite({ sessionId, draft }: UseMarketingRewriteProps) {
-  const [content, setContent] = useState("");
+export function useMarketingRewrite({
+  sessionId,
+  draft,
+  onToken,
+  onDone,
+}: UseMarketingRewriteProps) {
   const [status, setStatus] = useState<RewriteStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Always-fresh refs — never stale, never in useCallback deps
+  const onTokenRef = useRef(onToken);
+  const onDoneRef = useRef(onDone);
+  const draftRef = useRef(draft);
+  const sessionIdRef = useRef(sessionId);
+
+  useEffect(() => { onTokenRef.current = onToken; }, [onToken]);
+  useEffect(() => { onDoneRef.current = onDone; }, [onDone]);
+  useEffect(() => { draftRef.current = draft; }, [draft]);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
+
   const rewrite = useCallback(async (instruction: string) => {
+     let tokenCount = 0; 
     if (!instruction.trim()) return;
 
-    // Guard: session_id bắt buộc
-    if (!sessionId) {
-      console.error("[useMarketingRewrite] sessionId is undefined!")
-      setError("Thiếu session_id")
-      setStatus("error")
-      return
+    const currentSessionId = sessionIdRef.current;
+    const currentDraft = draftRef.current;
+
+    if (!currentSessionId) {
+      setError("Thiếu session_id");
+      setStatus("error");
+      return;
     }
 
-    setContent("");
     setError(null);
     setStatus("streaming");
 
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const requestBody = {
-      session_id: sessionId,   // ← key phải khớp với ChatEditRequest backend
-      draft,
-      instruction,
-    }
-
-    // Debug log — xóa sau khi confirm OK
-    console.log("[useMarketingRewrite] POST body:", requestBody)
-
     try {
       const response = await fetch(`${API_BASE}/marketing/chat/edit-stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          session_id: currentSessionId,
+          draft: currentDraft,
+          instruction,
+        }),
         signal: controller.signal,
       });
 
@@ -74,9 +87,14 @@ export function useMarketingRewrite({ sessionId, draft }: UseMarketingRewritePro
             const payload = JSON.parse(line.replace("data:", "").trim());
             if (payload.text) {
               fullText += payload.text;
-              setContent(fullText);
+              // Call ref directly — always fresh, no closure staleness
+               console.log(`[SSE] token #${tokenCount++} at ${Date.now()} | "${payload.text}" | total chars: ${fullText.length}`);  // 👈 thêm dòng này
+              onTokenRef.current?.(payload.text, fullText);
             }
-            if (payload.done) setStatus("done");
+            if (payload.done) {
+              setStatus("done");
+              onDoneRef.current?.(fullText);
+            }
           } catch {
             // ignore malformed frame
           }
@@ -84,6 +102,7 @@ export function useMarketingRewrite({ sessionId, draft }: UseMarketingRewritePro
       }
 
       setStatus("done");
+      onDoneRef.current?.(fullText);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") {
         setStatus("idle");
@@ -93,7 +112,7 @@ export function useMarketingRewrite({ sessionId, draft }: UseMarketingRewritePro
       setError(message);
       setStatus("error");
     }
-  }, [sessionId, draft]);
+  }, []); // stable — no deps needed, all values via refs
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -102,13 +121,11 @@ export function useMarketingRewrite({ sessionId, draft }: UseMarketingRewritePro
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
-    setContent("");
     setError(null);
     setStatus("idle");
   }, []);
 
   return {
-    content,
     status,
     error,
     rewrite,

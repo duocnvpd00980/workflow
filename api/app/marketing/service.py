@@ -401,9 +401,9 @@ class WorkflowService:
         
         # Yield từng chunk
         full_response = ""
-        for chunk in call_groq_stream(prompt, max_tokens=800):
+        async for chunk in call_groq_stream(prompt, max_tokens=800):
             full_response += chunk
-            yield chunk  # ✅ Stream về client
+            yield chunk
         
         # Lưu vào DB sau khi xong
         tokens = len(full_response.split()) * 2

@@ -3,8 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -18,8 +17,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 _chat = ChatService()
 
-
-# ── Helpers ───────────────────────────────────────────────
 
 def _sse(gen) -> StreamingResponse:
     return StreamingResponse(
@@ -39,67 +36,98 @@ def _sse_error(msg: str) -> str:
     )
 
 
-# ── Endpoints ─────────────────────────────────────────────
-
 @router.post("/stream")
 async def stream_message(
     payload: StreamRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    msg_id          = payload.msg_id.strip() or str(uuid.uuid4())
-    conversation_id = str(payload.conversation_id)
-
-    # Dùng session của request để validate conv — session này còn sống
     conv = await db.get(Conversation, payload.conversation_id)
     if not conv:
-        raise HTTPException(404, "Conversation not found.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
 
-    # Set title từ message đầu tiên
-    if not conv.title:
+    # ✅ TỰ SINH msg_id Ở SERVER — tránh trùng từ client
+    msg_id = uuid.uuid4()
+
+    # Tạo placeholder
+    try:
+        placeholder_msg = Message(
+            id=msg_id,
+            conversation_id=payload.conversation_id,
+            role="assistant",
+            content="",
+            status="pending"
+        )
+        db.add(placeholder_msg)
+        await db.commit()
+    except Exception as e:
+        logger.error(f"Placeholder failed: {e}")
+        raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Khởi tạo tin nhắn thất bại")
+
+    await _chat.clear_stop_flag(payload.conversation_id)
+
+    if not conv.title or conv.title == "New Chat":
         conv.title = _title(payload.message)
         await db.commit()
 
+    # Trả msg_id về client qua header hoặc event đầu tiên
     async def event_stream():
-        yield "event: heartbeat\ndata: {}\n\n"
-        # Tạo session MỚI độc lập — session của request đã đóng khi generator chạy
-        async with AsyncSessionLocal() as stream_db:
-            try:
-                async for chunk in _chat.stream_graph(
-                    payload.message,
-                    payload.session_id,
-                    msg_id=msg_id,
-                    conversation_id=conversation_id,
-                    db=stream_db,
-                ):
-                    yield chunk
-            except Exception:
-                logger.exception("[stream] crashed — session=%s", payload.session_id)
-                yield _sse_error("Lỗi hệ thống, vui lòng thử lại.")
+        # Gửi msg_id cho client biết
+        yield f"event: msg_id\ndata: {json.dumps({'msg_id': str(msg_id)})}\n\n"
+        
+        try:
+            async for chunk in _chat.stream_graph(
+                message=payload.message,
+                msg_id=msg_id,  # ← Dùng msg_id server sinh
+                conversation_id=payload.conversation_id,
+                db=db,
+                brand_id=payload.brand_id,
+                business_id=payload.business_id,
+            ):
+                if await _chat.check_if_stopped(payload.conversation_id):
+                    yield "event: Interrupted\ndata: {\"status\": \"stopped_by_user\"}\n\n"
+                    break
+                yield chunk
+        except Exception:
+            logger.exception("[stream] crashed")
+            yield _sse_error("Lỗi hệ thống")
+        finally:
+            await _chat.clear_stop_flag(payload.conversation_id)
 
     return _sse(event_stream())
+
+
+@router.post("/stop")
+async def stop_stream(conversation_id: uuid.UUID):
+    await _chat.mark_as_stopped(conversation_id)
+    return {"status": "success", "message": "Signal to stop stream has been sent."}
 
 
 @router.post("/resume")
 async def resume_message(
     payload: ResumeRequest,
-    db: AsyncSession = Depends(get_db),
 ):
+    await _chat.clear_stop_flag(payload.conversation_id)
+
     async def event_stream():
         yield "event: heartbeat\ndata: {}\n\n"
         async with AsyncSessionLocal() as stream_db:
             try:
                 async for chunk in _chat.resume_graph(
-                    session_id=payload.session_id,
                     action=payload.action,
                     feedback=payload.feedback,
                     msg_id=payload.msg_id,
-                    conversation_id=str(payload.conversation_id),
+                    conversation_id=payload.conversation_id,
                     db=stream_db,
                 ):
+                    if await _chat.check_if_stopped(payload.conversation_id):
+                        yield "event: Interrupted\ndata: {\"status\": \"stopped_by_user\"}\n\n"
+                        break
                     yield chunk
             except Exception:
-                logger.exception("[resume] crashed — session=%s", payload.session_id)
+                logger.exception("[resume] crashed — conv_id=%s", payload.conversation_id)
                 yield _sse_error("Lỗi hệ thống khi tiếp tục xử lý.")
+            finally:
+                await _chat.clear_stop_flag(payload.conversation_id)
 
     return _sse(event_stream())
 
@@ -109,32 +137,32 @@ async def restore_chat(
     payload: RestoreRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    session_id      = payload.session_id.strip()
-    conversation_id = str(payload.conversation_id)
-
     result = await _chat.restore_session(
-        session_id,
-        conversation_id=conversation_id,
+        conversation_id=payload.conversation_id,
         db=db,
     )
 
     if isinstance(result, list):
-        return {"type": "messages", "messages": result,
-                "conversation_id": conversation_id, "session_id": session_id}
+        return {
+            "type": "messages", 
+            "messages": result, 
+            "conversation_id": payload.conversation_id
+        }
 
-    return {"type": "html", "html": result or "",
-            "msg_id": payload.msg_id, "session_id": session_id}
+    return {
+        "type": "html", 
+        "html": result or "", 
+        "msg_id": payload.msg_id
+    }
 
 
-# ── Conversations CRUD ────────────────────────────────────
-
-@router.post("/conversations", status_code=201)
+@router.post("/conversations", status_code=status.HTTP_201_CREATED)
 async def conversation_create(db: AsyncSession = Depends(get_db)):
-    conv = Conversation(title="")
+    conv = Conversation()
     db.add(conv)
     await db.commit()
     await db.refresh(conv)
-    return {"id": str(conv.id), "title": conv.title}
+    return {"id": conv.id, "title": conv.title}
 
 
 @router.get("/conversations")
@@ -146,12 +174,12 @@ async def conversation_list(
     rows = await db.execute(
         select(Conversation)
         .where(Conversation.title != "")
-        .order_by(Conversation.last_message_at.desc())
+        .order_by(Conversation.created_at.desc())
         .limit(limit)
         .offset(offset)
     )
     return [
-        {"id": str(c.id), "title": c.title, "last_message_at": c.last_message_at}
+        {"id": c.id, "title": c.title, "created_at": c.created_at}
         for c in rows.scalars()
     ]
 
@@ -163,7 +191,7 @@ async def conversation_load(
 ):
     conv = await db.get(Conversation, conversation_id)
     if not conv:
-        raise HTTPException(404, "Không tìm thấy conversation.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy conversation.")
 
     rows = await db.execute(
         select(Message)
@@ -174,13 +202,12 @@ async def conversation_load(
         .order_by(Message.created_at)
     )
     return {
-        "conversation_id": str(conv.id),
+        "conversation_id": conv.id,
         "messages": [
             {
-                "id":         str(m.id),
-                "role":       m.role,
-                "content":    m.content,
-                "html":       m.html,
+                "id": m.id,
+                "role": m.role,
+                "content": m.content,
                 "created_at": m.created_at,
             }
             for m in rows.scalars()
@@ -188,24 +215,13 @@ async def conversation_load(
     }
 
 
-@router.delete("/conversations/{conversation_id}", status_code=204)
+@router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def conversation_delete(
     conversation_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
 ):
     conv = await db.get(Conversation, conversation_id)
     if not conv:
-        raise HTTPException(404, "Không tìm thấy conversation.")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Không tìm thấy conversation.")
     await db.delete(conv)
     await db.commit()
-
-
-@router.delete("/conversations/cleanup/empty", status_code=200)
-async def cleanup_empty_conversations(db: AsyncSession = Depends(get_db)):
-    """Xóa tất cả conversation không có title (chưa bao giờ được dùng)."""
-    from sqlalchemy import delete
-    result = await db.execute(
-        delete(Conversation).where(Conversation.title == "")
-    )
-    await db.commit()
-    return {"deleted": result.rowcount}

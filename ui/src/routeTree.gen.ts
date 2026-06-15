@@ -18,6 +18,7 @@ import { Route as Page_researchRouteImport } from './routes/page_research'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as IntegrationsRouteImport } from './routes/integrations'
 import { Route as Index_fixedRouteImport } from './routes/index_fixed'
+import { Route as DummyRouteImport } from './routes/dummy'
 import { Route as CreateaRouteImport } from './routes/createa'
 import { Route as BrandRouteImport } from './routes/brand'
 import { Route as ArtifactsRouteImport } from './routes/artifacts'
@@ -70,6 +71,11 @@ const Index_fixedRoute = Index_fixedRouteImport.update({
   path: '/index_fixed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DummyRoute = DummyRouteImport.update({
+  id: '/dummy',
+  path: '/dummy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CreateaRoute = CreateaRouteImport.update({
   id: '/createa',
   path: '/createa',
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
   '/createa': typeof CreateaRoute
+  '/dummy': typeof DummyRoute
   '/index_fixed': typeof Index_fixedRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
   '/createa': typeof CreateaRoute
+  '/dummy': typeof DummyRoute
   '/index_fixed': typeof Index_fixedRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/artifacts': typeof ArtifactsRoute
   '/brand': typeof BrandRoute
   '/createa': typeof CreateaRoute
+  '/dummy': typeof DummyRoute
   '/index_fixed': typeof Index_fixedRoute
   '/integrations': typeof IntegrationsRoute
   '/knowledge': typeof KnowledgeRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/artifacts'
     | '/brand'
     | '/createa'
+    | '/dummy'
     | '/index_fixed'
     | '/integrations'
     | '/knowledge'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/artifacts'
     | '/brand'
     | '/createa'
+    | '/dummy'
     | '/index_fixed'
     | '/integrations'
     | '/knowledge'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/artifacts'
     | '/brand'
     | '/createa'
+    | '/dummy'
     | '/index_fixed'
     | '/integrations'
     | '/knowledge'
@@ -213,6 +225,7 @@ export interface RootRouteChildren {
   ArtifactsRoute: typeof ArtifactsRoute
   BrandRoute: typeof BrandRoute
   CreateaRoute: typeof CreateaRoute
+  DummyRoute: typeof DummyRoute
   Index_fixedRoute: typeof Index_fixedRoute
   IntegrationsRoute: typeof IntegrationsRoute
   KnowledgeRoute: typeof KnowledgeRoute
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Index_fixedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dummy': {
+      id: '/dummy'
+      path: '/dummy'
+      fullPath: '/dummy'
+      preLoaderRoute: typeof DummyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/createa': {
       id: '/createa'
       path: '/createa'
@@ -341,6 +361,7 @@ const rootRouteChildren: RootRouteChildren = {
   ArtifactsRoute: ArtifactsRoute,
   BrandRoute: BrandRoute,
   CreateaRoute: CreateaRoute,
+  DummyRoute: DummyRoute,
   Index_fixedRoute: Index_fixedRoute,
   IntegrationsRoute: IntegrationsRoute,
   KnowledgeRoute: KnowledgeRoute,

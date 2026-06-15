@@ -12,6 +12,9 @@ import re
 import uuid
 from pathlib import Path
 import requests
+from groq import AsyncGroq
+
+
 
 # ── LangGraph Nodes Xử Lý ───────────────────────────────────────────────────────
 from sqlalchemy import select, desc
@@ -31,11 +34,13 @@ gemini_client = genai.Client(api_key=_s.GEMINI_API_KEY)
 GEMINI_MODEL = _s.GEMINI_MODEL
 
 groq_client = Groq(api_key=_s.GROQ_API_KEY)
+async_groq_client = AsyncGroq(api_key=_s.GROQ_API_KEY)
 GROQ_MODEL = _s.GROQ_MODEL
 
 LLM_TIMEOUT = 30
 
 MEDIA_ROOT = Path("app/media")
+
 
 
 def call_groq(prompt: str, max_tokens: int = 500) -> str:
@@ -58,27 +63,25 @@ def call_groq(prompt: str, max_tokens: int = 500) -> str:
             return "[ERROR:rate_limit]"
         return "[ERROR:fatal]"
 
-def call_groq_stream(prompt: str, max_tokens: int = 500):
-    """Stream response từ Groq — yield từng chunk."""
-    try:
-        stream = groq_client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_completion_tokens=max_tokens,
-            temperature=0.7,
-            top_p=1,
-            stop=None,
-            timeout=LLM_TIMEOUT,
-            stream=True,  # ✅ Bật streaming
-        )
-        
-        for chunk in stream:
-            content = chunk.choices[0].delta.content
-            if content:
-                yield content
+
+
+async def call_groq_stream(prompt: str, max_tokens: int = 500):
+    stream = await async_groq_client.chat.completions.create(
+        model=GROQ_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_completion_tokens=max_tokens,
+        temperature=0.7,
+        stream=True,
+    )
+    chunk_count = 0
+    async for chunk in stream:
+        content = chunk.choices[0].delta.content
+        if content:
+            chunk_count += 1
+            print(f"[GROQ] chunk #{chunk_count}: {repr(content)}")  # 👈
+            yield content
+    print(f"[GROQ] total chunks: {chunk_count}")
                 
-    except Exception as e:
-        yield f"[ERROR: {str(e)[:50]}]"
         
 def call_gemini(prompt: str, max_tokens: int = 1000) -> str:
     """Helper: Gọi trực tiếp mô hình Gemini 2.5 Flash xử lý văn bản"""

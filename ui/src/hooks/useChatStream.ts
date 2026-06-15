@@ -2,127 +2,110 @@ import { useState, useRef, useCallback } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface NodeDetail {
-  node_id: string;
-  node_label: string;
-  step: number;
-  status: string;
-  text: string;
-  state: Record<string, unknown>;
-  metrics: Record<string, unknown>;
-  timestamp: number | null;
-  duration_ms?: number;
-}
-
-export interface NodeResultData {
-  nodeId: string;
-  nodeLabel: string;
-  order: number;
-  status: "done" | "error";
-  output: {
-    text: string;
-    state: Record<string, unknown>;
-    metrics: Record<string, unknown>;
-  };
-  timestamp: number;
-}
-
-export interface ResultEvent {
-  status: "success" | "fallback" | "review" | "error";
-  text: string;
-  answer_source: string;
-  confidence: number;
-  sources: unknown[];
-  suggestions: string[];
-  metrics: {
-    latency_ms: number;
-    model: string;
-    input_tokens: number;
-    output_tokens: number;
-    node_path: string[];
-  };
-  error: {
-    code: string;
-    message: string;
-    retryable: boolean;
-  } | null;
-  node_history?: NodeDetail[];
-}
-
 export interface ChatMsg {
   id: string;
   role: "user" | "assistant";
-  type?: "user" | "node_result" | "final_result";
+  type: "user" | "final_result" | "error";
   text: string;
-  result?: ResultEvent;
-  nodeResult?: NodeResultData;
 }
 
 export type StreamStatus = "idle" | "streaming" | "done" | "error";
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
-
 interface UseChatStreamOpts {
   api: string;
-  sessionId: string;
   conversationId: string;
+  brandId?: string;
+  businessId?: string;
 }
 
-export function useChatStream({ api, sessionId, conversationId }: UseChatStreamOpts) {
-  const [messages, setMessages]       = useState<ChatMsg[]>([]);
-  const [nodeDetails, setNodeDetails] = useState<NodeDetail[]>([]);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [status, setStatus]           = useState<StreamStatus>("idle");
-  const [error, setError]             = useState<string | null>(null);
+// ─── Hook ─────────────────────────────────────────────────────────────────────
 
-  const abortRef = useRef<AbortController | null>(null);
+export function useChatStream({ api, conversationId, brandId, businessId }: UseChatStreamOpts) {
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [status, setStatus]     = useState<StreamStatus>("idle");
+  const [error, setError]       = useState<string | null>(null);
 
-  // ── Upsert node detail by node_id ─────────────────────────────────────────
-  const upsertNodeDetail = useCallback((detail: NodeDetail) => {
-    setNodeDetails((prev) => {
-      const idx = prev.findIndex((x) => x.node_id === detail.node_id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = detail;
-        return next;
+  const abortRef       = useRef<AbortController | null>(null);
+  // Buffer token trực tiếp vào ref để tránh setState flood — flush theo RAF
+  const tokenBufRef    = useRef("");
+  const assistantIdRef = useRef("");
+  const rafRef         = useRef<number | null>(null);
+
+  // Flush accumulated tokens vào message cuối cùng (assistant đang stream)
+  const flushTokens = useCallback(() => {
+    rafRef.current = null;
+    const chunk = tokenBufRef.current;
+    if (!chunk) return;
+    tokenBufRef.current = "";
+
+    setMessages((prev) => {
+      const last = prev[prev.length - 1];
+      if (last?.id === assistantIdRef.current && last.role === "assistant") {
+        return [
+          ...prev.slice(0, -1),
+          { ...last, text: last.text + chunk },
+        ];
       }
-      return [...prev, detail];
+      // Tạo mới nếu chưa có placeholder
+      return [
+        ...prev,
+        {
+          id: assistantIdRef.current,
+          role: "assistant",
+          type: "final_result",
+          text: chunk,
+        },
+      ];
     });
   }, []);
+
+  const scheduleFlush = useCallback(() => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(flushTokens);
+  }, [flushTokens]);
 
   // ── Send message ──────────────────────────────────────────────────────────
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || status === "streaming") return;
 
-      const userMsgId = crypto.randomUUID();
+      if (!conversationId) {
+        setError("Chưa có conversationId.");
+        setStatus("error");
+        return;
+      }
 
-      // Append user message
+      const userMsgId      = crypto.randomUUID();
+      const assistantMsgId = crypto.randomUUID();
+      assistantIdRef.current = assistantMsgId;
+      tokenBufRef.current    = "";
+
+      // Thêm message user + placeholder assistant ngay lập tức
       setMessages((prev) => [
         ...prev,
-        { id: userMsgId, role: "user", type: "user", text },
+        { id: userMsgId,      role: "user",      type: "user",         text },
+        { id: assistantMsgId, role: "assistant",  type: "final_result", text: "" },
       ]);
-      setNodeDetails([]);
-      setSuggestions([]);
       setError(null);
       setStatus("streaming");
 
       abortRef.current = new AbortController();
 
       try {
-        const res = await fetch(api, {
-          method:  "POST",
+        const res = await fetch(`${api}/chat/stream`, {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            message:         text,
-            session_id:      sessionId,
             conversation_id: conversationId,
-            msg_id:          "",
+            message:         text,
+            msg_id:          assistantMsgId,
+            brand_id:        brandId  ?? null,
+            business_id:     businessId ?? null,
           }),
           signal: abortRef.current.signal,
         });
 
-        if (!res.ok)   throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         if (!res.body) throw new Error("No response body");
 
         const reader  = res.body.getReader();
@@ -140,90 +123,63 @@ export function useChatStream({ api, sessionId, conversationId }: UseChatStreamO
           for (const part of parts) {
             if (!part.trim()) continue;
 
-            let eventType = "message";
-            let dataLine  = "";
-
+            let dataLine = "";
             for (const line of part.split("\n")) {
-              if (line.startsWith("event:"))      eventType = line.slice(6).trim();
-              else if (line.startsWith("data:"))  dataLine  = line.slice(5).trim();
+              if (line.startsWith("data:")) dataLine = line.slice(5).trim();
             }
-
             if (!dataLine) continue;
 
-            try {
-              const payload = JSON.parse(dataLine);
+            let payload: { type: string; text?: string; message?: string };
+            try { payload = JSON.parse(dataLine); }
+            catch { continue; }
 
-              switch (eventType) {
-                case "node_detail": {
-                  const detail = payload as NodeDetail;
-                  upsertNodeDetail(detail);
-
-                  // Tạo message NODE RESULT riêng
-                  const nodeResult: NodeResultData = {
-                    nodeId: payload.node_id,
-                    nodeLabel: payload.node_label,
-                    order: payload.step,
-                    status: payload.status === "SUCCESS" ? "done" : "error",
-                    output: {
-                      text: payload.text,
-                      state: payload.state,
-                      metrics: payload.metrics,
-                    },
-                    timestamp: payload.timestamp,
-                  };
-                  setMessages((prev) => [
-                    ...prev,
-                    {
-                      id: `node-${payload.node_id}-${Date.now()}`,
-                      role: "assistant",
-                      type: "node_result",
-                      text: payload.text || "",
-                      nodeResult,
-                    },
-                  ]);
-                  break;
-                }
-
-                case "result": {
-                  const result = payload as ResultEvent;
-
-                  // Tạo message FINAL RESULT riêng
-                  setMessages((prev) => [
-                    ...prev,
-                    {
-                      id: `final-${Date.now()}`,
-                      role: "assistant",
-                      type: "final_result",
-                      text: result.text,
-                      result,
-                    },
-                  ]);
-
-                  if (result.node_history?.length) {
-                    setNodeDetails(result.node_history);
-                  }
-                  if (result.suggestions?.length) {
-                    setSuggestions(result.suggestions);
-                  }
-                  if (result.status === "error") {
-                    setError(result.error?.message ?? "Unknown error");
-                    setStatus("error");
-                  }
-                  break;
-                }
-
-                case "done":
-                  setStatus("done");
-                  break;
+            if (payload.type === "token" && payload.text) {
+              // Gom token, flush qua RAF để tránh quá nhiều re-render
+              tokenBufRef.current += payload.text;
+              scheduleFlush();
+            } else if (payload.type === "done") {
+              // Flush phần còn lại ngay lập tức
+              if (rafRef.current !== null) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
               }
-            } catch {
-              // malformed SSE frame — skip
+              flushTokens();
+              setStatus("done");
+            } else if (payload.type === "error") {
+              const msg = payload.message ?? "Lỗi không xác định";
+              if (rafRef.current !== null) {
+                cancelAnimationFrame(rafRef.current);
+                rafRef.current = null;
+              }
+              // Xóa placeholder rỗng nếu chưa có nội dung, thêm error bubble
+              setMessages((prev) => {
+                const withoutEmpty = prev.filter(
+                  (m) => !(m.id === assistantMsgId && m.text === "")
+                );
+                return [
+                  ...withoutEmpty,
+                  { id: `error-${Date.now()}`, role: "assistant", type: "error", text: `⚠ ${msg}` },
+                ];
+              });
+              setError(msg);
+              setStatus("error");
             }
           }
         }
 
-        setStatus((s) => s === "streaming" ? "done" : s);
+        // Reader closed mà chưa nhận "done" (e.g. connection drop)
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+        flushTokens();
+        setStatus((s) => (s === "streaming" ? "done" : s));
+
       } catch (e: unknown) {
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
         if (e instanceof Error && e.name === "AbortError") {
           setStatus("idle");
           return;
@@ -231,61 +187,61 @@ export function useChatStream({ api, sessionId, conversationId }: UseChatStreamO
         const msg = e instanceof Error ? e.message : "Stream failed";
         setError(msg);
         setStatus("error");
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: `error-${Date.now()}`,
-            role: "assistant",
-            type: "final_result",
-            text: `⚠ ${msg}`,
-          },
-        ]);
+        setMessages((prev) => {
+          const withoutEmpty = prev.filter(
+            (m) => !(m.id === assistantMsgId && m.text === "")
+          );
+          return [
+            ...withoutEmpty,
+            { id: `error-${Date.now()}`, role: "assistant", type: "error", text: `⚠ ${msg}` },
+          ];
+        });
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [api, sessionId, conversationId, status, upsertNodeDetail]
+    [api, conversationId, brandId, businessId, status, scheduleFlush, flushTokens]
   );
 
-  // ── Stop stream ───────────────────────────────────────────────────────────
-  const stop = useCallback(() => {
+  // ── Stop ─────────────────────────────────────────────────────────────────
+  const stop = useCallback(async () => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     abortRef.current?.abort();
     setStatus("idle");
-  }, []);
 
-  // ── Reset all state ───────────────────────────────────────────────────────
+    if (conversationId) {
+      try {
+        await fetch(`${api}/chat/stop?conversation_id=${conversationId}`, { method: "POST" });
+      } catch { /* best-effort */ }
+    }
+  }, [api, conversationId]);
+
+  // ── Reset ─────────────────────────────────────────────────────────────────
   const reset = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     abortRef.current?.abort();
+    tokenBufRef.current = "";
     setMessages([]);
-    setNodeDetails([]);
-    setSuggestions([]);
     setStatus("idle");
     setError(null);
   }, []);
 
-  // ── Hydrate from DB history ──────────────────────────────────────────────
-  const hydrate = useCallback((raw: any[]) => {
+  // ── Hydrate từ DB history ─────────────────────────────────────────────────
+  const hydrate = useCallback((raw: { id: string; role: string; content: string }[]) => {
     const normalized: ChatMsg[] = raw.map((m) => ({
-      id:   m.id   ?? crypto.randomUUID(),
+      id:   m.id ?? crypto.randomUUID(),
       role: m.role === "user" ? "user" : "assistant",
       type: m.role === "user" ? "user" : "final_result",
-      text: m.text ?? m.content ?? "",
+      text: m.content ?? "",
     }));
     setMessages(normalized);
-    setNodeDetails([]);
-    setSuggestions([]);
     setStatus("idle");
     setError(null);
   }, []);
 
-  return {
-    messages,
-    nodeDetails,
-    suggestions,
-    status,
-    error,
-    sendMessage,
-    stop,
-    reset,
-    hydrate,
-  };
+  return { messages, status, error, sendMessage, stop, reset, hydrate };
 }

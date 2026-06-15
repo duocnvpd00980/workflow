@@ -25,8 +25,8 @@ import {
   TYPE_ICONS,
   STATUS_STYLES,
   ICON_BG,
-} from "./home/types"
-import { DetailView } from "./home/detail-view"
+} from "./types"
+import { DetailView } from "./detailpage"
 import { Badge } from "@/components/ui/badge"
 
 
@@ -257,7 +257,7 @@ function ListView({
 }
 
 // ─── ROUTE ───
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/home/")({
   validateSearch: (search: Record<string, unknown>) => ({
     contentId: (search.contentId as string) || undefined,
   }),

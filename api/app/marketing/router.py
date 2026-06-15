@@ -15,6 +15,23 @@ from typing import Optional
 router = APIRouter(prefix="/marketing", tags=["marketing"])
 service = WorkflowService()
 
+
+
+# ── Helpers ───────────────────────────────────────────────
+
+def _sse(gen) -> StreamingResponse:
+    return StreamingResponse(
+        gen,
+        media_type="text/event-stream; charset=utf-8",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+def _sse_error(msg: str) -> str:
+    return (
+        f"event: error\ndata: {json.dumps({'message': msg})}\n\n"
+        "event: done\ndata: {}\n\n"
+    )
+
 # ══════════════════════════════════════════════════════════════
 # CORE WORKFLOW API
 # ══════════════════════════════════════════════════════════════
@@ -90,15 +107,17 @@ async def chat_edit(body: ChatEditRequest):
 
 @router.post("/chat/edit-stream")
 async def chat_edit_stream(body: ChatEditRequest):
-    async def event_generator():
-        async for chunk in service.chat_edit_stream(body.session_id, body.instruction):
-            yield f"data: {json.dumps({'text': chunk})}\n\n"
-        yield f"data: {json.dumps({'done': True})}\n\n"
-    
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-    )
+    async def event_stream():
+        try:
+            async for chunk in service.chat_edit_stream(body.session_id, body.instruction):
+                yield f"data: {json.dumps({'text': chunk})}\n\n"
+            yield f"data: {json.dumps({'done': True})}\n\n"
+        except Exception:
+            yield _sse_error("Lỗi hệ thống, vui lòng thử lại.")
+
+    return _sse(event_stream())
+
+
 
 @router.post("/chat/inline", response_model=ChatInlineResponse) 
 async def chat_inline(body: ChatInlineRequest):
