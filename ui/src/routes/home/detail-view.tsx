@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useSyncExternalStore } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useSearch, useNavigate } from "@tanstack/react-router"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
@@ -16,6 +17,7 @@ import { Message, MessageContent, MessageResponse } from "@/components/ai-elemen
 import { Badge } from "@/components/ui/badge"
 import {
   api,
+  API_BASE,
   type ContentItem,
   type VersionHistoryResponse,
   type ChatEditResponse,
@@ -134,8 +136,17 @@ export function DetailView({
   const [editContent, setEditContent] = useState(item.content || "")
   const [isStreaming, setIsStreaming] = useState(false)
 
-  // 🌟 1. BỔ SUNG: State để lưu ID cuộc trò chuyện từ Backend trả về
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
+  // Lưu conversationId vào URL search params — survive F5, deep link, tab switch
+  const search = useSearch({ strict: false }) as { convId?: string }
+  const navigate = useNavigate()
+  const activeConversationId = (search.convId as string) || null
+
+  const setActiveConversationId = useCallback((id: string | null) => {
+    navigate({
+      search: (prev: Record<string, unknown>) => ({ ...prev, convId: id ?? undefined }),
+      replace: true,
+    })
+  }, [navigate])
 
   // External store — bypasses React batching, updates UI on every token
   const streamStoreRef = useRef({
@@ -167,8 +178,7 @@ export function DetailView({
       prevItemIdRef.current = item.id
       hasLocalEditRef.current = false
       setEditContent(item.content || "")
-      setStreamingContent(null)
-      setActiveConversationId(null) // Reset conversation id khi chuyển bài viết khác
+      setActiveConversationId(null) // Xóa convId khỏi URL khi chuyển bài viết khác
     } else if (!hasLocalEditRef.current) {
       // Same item, no local edits yet — safe to sync from server (e.g. initial load)
       setEditContent(item.content || "")
@@ -214,22 +224,33 @@ export function DetailView({
     },
   })
 
-  // 🌟 2. BỔ SUNG: Mutation gọi API POST sinh ID cuộc trò chuyện mới
+  // Tạo conversation mới — lưu id vào URL
   const createConversationMutation = useMutation({
     mutationFn: async () => {
-      // Đi thẳng tới endpoint FastAPI dựa trên Curl của bạn
-      const res = await fetch("http://localhost:8000/api/v1/chat/conversations", {
+      const res = await fetch(`${API_BASE}/chat/conversations`, {
         method: "POST",
         headers: { "accept": "application/json" },
-        body: ""
+        body: "",
       })
       if (!res.ok) throw new Error("Không thể khởi tạo cuộc hội thoại AI")
       return res.json() as Promise<{ id: string; title: string }>
     },
     onSuccess: (data) => {
       setActiveConversationId(data.id)
-      setChatOpen(true) // Tạo thành công thì mở sidebar chat luôn
+      setChatOpen(true)
     },
+  })
+
+  // Fetch lịch sử chat khi đã có convId trong URL (F5, quay lại tab...)
+  useQuery({
+    queryKey: ["chat-history", activeConversationId],
+    queryFn: () =>
+      api<{ conversation_id: string; messages: { id: string; role: string; content: string }[] }>(
+        `/chat/conversations/${activeConversationId}`
+      ),
+    enabled: !!activeConversationId,
+    staleTime: Infinity, // không refetch tự động — chỉ fetch 1 lần khi mount
+    select: (data) => data.messages,
   })
 
   const isPaused = item.backendStatus === "paused"

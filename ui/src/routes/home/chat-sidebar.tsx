@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect, useRef } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -154,7 +155,7 @@ export function ChatSidebar({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const api = API_BASE
 
-  const { messages, status, error, sendMessage, stop, reset } = useChatStream({
+  const { messages, status, error, sendMessage, stop, reset, hydrate } = useChatStream({
     api,
     conversationId,
     brandId,
@@ -162,10 +163,33 @@ export function ChatSidebar({
   })
 
   const isStreaming = status === "streaming"
+  const hydratedRef = useRef(false)
 
-  // Chỉ hiển thị node_result cuối cùng + ẩn các node_result trung gian khi đang chạy,
-  // để tránh spam UI với từng bước của graph — chỉ giữ message user + final/error.
-  // Hook mới chỉ emit "user" | "final_result" | "error" — không còn node_result
+  // Fetch lịch sử chat từ DB khi mount (conversationId thay đổi = item mới)
+  const { data: historyData } = useQuery({
+    queryKey: ["chat-history", conversationId],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/chat/conversations/${conversationId}`)
+      if (!res.ok) throw new Error("Không load được lịch sử chat")
+      return res.json() as Promise<{ messages: { id: string; role: string; content: string }[] }>
+    },
+    enabled: !!conversationId,
+    staleTime: Infinity,
+  })
+
+  // Hydrate messages từ DB vào hook — chỉ 1 lần khi data về lần đầu
+  useEffect(() => {
+    if (historyData?.messages && !hydratedRef.current && messages.length === 0) {
+      hydratedRef.current = true
+      hydrate(historyData.messages)
+    }
+  }, [historyData, hydrate, messages.length])
+
+  // Reset hydrate flag khi chuyển conversation
+  useEffect(() => {
+    hydratedRef.current = false
+  }, [conversationId])
+
   const visibleMessages = messages
 
   // Notify parent of streaming state
