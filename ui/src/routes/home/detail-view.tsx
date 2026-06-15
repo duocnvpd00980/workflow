@@ -143,9 +143,9 @@ export function DetailView({
 
   const setActiveConversationId = useCallback((id: string | null) => {
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, convId: id ?? undefined }),
+      search: (prev: Record<string, unknown>) => ({ ...prev, convId: id ?? undefined } ),
       replace: true,
-    })
+    }  as any)
   }, [navigate])
 
   // External store — bypasses React batching, updates UI on every token

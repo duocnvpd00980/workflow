@@ -89,7 +89,7 @@ export default function SimpleChatTester() {
       }
 
     } catch (error) {
-      setLogs((prev) => prev + `\n❌ Lỗi hệ thống: ${error.message}`);
+      setLogs((prev) => prev + `\n❌ Lỗi hệ thống: `);
     } finally {
       setIsStreaming(false);
     }

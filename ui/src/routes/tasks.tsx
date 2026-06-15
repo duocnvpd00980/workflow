@@ -159,7 +159,7 @@ function ContentTypeIcon({ task, className }: { task: Task; className?: string }
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: string, progress?: string }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.stopped;
   const Icon = cfg.icon;
   return (
