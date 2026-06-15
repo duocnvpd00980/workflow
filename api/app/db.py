@@ -38,10 +38,10 @@ AsyncSessionLocal = async_sessionmaker(
 # ── Init tất cả bảng ─────────────────────────────────────────────
 async def init_db() -> None:
     import app.business.models
+    import app.brand.models
     import app.chat.models
     import app.rag.models
     import app.marketing.models
-    import app.brand.models
     import app.research.models
     import app.tasks.models
 

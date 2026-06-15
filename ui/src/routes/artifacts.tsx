@@ -12,9 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { API_BASE } from '@/config';
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-const API_BASE = "http://localhost:8000/api/v1";
+
 
 // ─── Types từ API ─────────────────────────────────────────────────────────────
 interface DraftContent {

@@ -1,4 +1,0 @@
-A) Refactor lại thành React Hook Form + Zod (phổ biến nhất)
-   → Sẽ đơn giản hơn, follow industry standard
-
-B) Giữ TanStack Form (cái tôi đã làm)

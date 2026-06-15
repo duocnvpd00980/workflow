@@ -20,6 +20,14 @@ class WorkflowSession(Base):
     business_id = mapped_column(String(36), ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True)
     brand_id = mapped_column(String(36), ForeignKey("brands.id", ondelete="SET NULL"), nullable=True)
 
+    # ── Link về Conversation (Chat) ─────────────────────────────────
+    conversation_id = mapped_column(
+        String(36), 
+        ForeignKey("conversation.id", ondelete="SET NULL"), 
+        nullable=True,
+        index=True
+    )
+
     draft = mapped_column(JSON)               # {content, metadata, version, versions: []}
     usage = mapped_column(JSON)               # {total_tokens, total_cost, calls: []}
     publish_status = mapped_column(String(20))  # pending, published, failed, dead_letter
@@ -31,3 +39,4 @@ class WorkflowSession(Base):
     # Relationships
     business = relationship("Business", back_populates="workflow_sessions")
     brand = relationship("Brand")
+    conversation = relationship("Conversation", foreign_keys=[conversation_id])  # ← THÊM

@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/accordion";
 import { Switch } from "@/components/ui/switch";
 import { type Template } from "./types";
+import { API_BASE } from "@/config";
 
 // ─── API CONFIG ───
-const API_BASE = "http://localhost:8000/api/v1";
+
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

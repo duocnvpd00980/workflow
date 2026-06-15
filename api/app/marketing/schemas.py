@@ -12,14 +12,6 @@ class ResumeRequest(BaseModel):
     action: Literal["approve", "edit", "reject"]
     content: Optional[str] = None
 
-class WorkflowResponse(BaseModel):
-    session_id: str
-    status: Literal["running", "paused", "completed", "error", "queued"]
-    draft: Optional[Dict[str, Any]] = None
-    publish_status: Optional[str] = None
-    approved: Optional[bool] = None
-    usage: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
 
 class SessionResponse(BaseModel):
     session_id: str
@@ -62,17 +54,31 @@ class VersionHistoryResponse(BaseModel):
     current_version: int
 
 
+
 class SessionListItem(BaseModel):
     session_id: str
     status: Literal["running", "paused", "completed", "error", "queued"]
     request: Optional[str] = None
     draft: Optional[Dict[str, Any]] = None
+    conversation_id: Optional[str] = None  # ← THÊM
     publish_status: Optional[str] = None
     approved: Optional[bool] = None
     usage: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+
+class WorkflowResponse(BaseModel):
+    session_id: str
+    status: Literal["running", "paused", "completed", "error", "queued"]
+    draft: Optional[Dict[str, Any]] = None
+    conversation_id: Optional[str] = None  # ← THÊM
+    publish_status: Optional[str] = None
+    approved: Optional[bool] = None
+    usage: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
 
 class SessionListResponse(BaseModel):
     items: List[SessionListItem]

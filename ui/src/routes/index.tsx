@@ -207,47 +207,115 @@ function ListView({
             const isChecked = selected.has(item.id)
             const isItemDeleting = deletingIds.has(item.id)
             return (
-              <div
-                key={item.id}
-                onClick={() => !isItemDeleting && onSelect(item.id)}
-                className={cn(
-                  "group flex items-center gap-3.5 px-4 h-14 cursor-pointer hover:bg-muted/40 transition-colors select-none",
-                  isChecked && "bg-muted/30",
-                  (isItemDeleting || isDeleting) && "opacity-50 pointer-events-none"
-                )}
-              >
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-5 h-5 flex items-center justify-center"
-                >
-                  <Checkbox
-                    className={cn(
-                      "h-3.5 w-3.5 rounded-[4px] transition-all duration-150",
-                      "opacity-100 sm:opacity-0 sm:group-hover:opacity-100",
-                      isChecked && "sm:opacity-100"
-                    )}
-                    checked={isChecked}
-                    onCheckedChange={(c) => toggleOne(item.id, !!c)}
-                    disabled={isItemDeleting}
-                  />
-                </div>
+ <div
+  key={item.id}
+  onClick={() => !isItemDeleting && onSelect(item.id)}
+  role="listitem"
+  aria-label={`${item.title}, ${item.status}, ${item.time}`}
+  className={cn(
+    "group relative flex items-center h-12 px-3 cursor-pointer select-none",
+    "border-b border-border/10 hover:bg-muted/15",
+    "transition-[background-color] duration-75",
+    "contain-layout-paint",
+    isChecked && "bg-muted/25",
+    (isItemDeleting || isDeleting) && "opacity-50 pointer-events-none"
+  )}
+>
+  {/* Status indicator - Linear style: instant scan */}
+  <div 
+    className={cn(
+      "absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full",
+      "transition-transform duration-150",
+      item.status === "completed" && "bg-emerald-400",
+      item.status === "paused" && "bg-amber-400",
+      item.status === "running" && "bg-violet-400",
+      item.status === "error" && "bg-red-400",
+      isChecked ? "scale-y-100" : "scale-y-0 group-hover:scale-y-100"
+    )} 
+    role="status" 
+    aria-label={`Trạng thái: ${item.status}`}
+  />
 
-                <TypeIcon icon={item.icon} />
+  {/* Checkbox - Gmail style */}
+  <div 
+    onClick={(e) => e.stopPropagation()}
+    className="flex items-center justify-center w-8 h-8 -ml-1 mr-1"
+    aria-label={`Chọn ${item.title}`}
+  >
+    <div className={cn(
+      "transition-opacity duration-100",
+      !isChecked && "opacity-0 group-hover:opacity-100"
+    )}>
+      <Checkbox
+        className="h-4 w-4 rounded-[3px] border-border/40"
+        checked={isChecked}
+        onCheckedChange={(c) => toggleOne(item.id, !!c)}
+        disabled={isItemDeleting}
+      />
+    </div>
+  </div>
 
-                <div className="flex-1 min-w-0 flex items-baseline gap-2.5">
-                  <span className="text-[13.5px] font-medium text-foreground truncate max-w-[240px] sm:max-w-none">
-                    {item.title}
-                  </span>
-                  <StatusBadge status={item.status} />
-                  <span className="text-xs text-muted-foreground truncate hidden md:block font-normal max-w-sm">
-                    {item.preview}
-                  </span>
-                </div>
+  {/* Icon - Notion style: subtle */}
+  <div className="flex items-center justify-center w-7 h-7 mr-2 shrink-0">
+    <TypeIcon icon={item.icon} />
+  </div>
 
-                <span className="text-[11px] text-muted-foreground/80 font-medium whitespace-nowrap shrink-0">
-                  {item.time}
-                </span>
-              </div>
+  {/* Content: Title + Badge + Preview - Apple Mail hierarchy */}
+  <div className="flex-1 min-w-0 flex items-center gap-2 mr-3">
+    {/* Title: primary, bold, flexible width */}
+    <span className="text-sm font-semibold text-foreground truncate shrink-0 max-w-[45%]">
+      {item.title}
+    </span>
+    
+    {/* Badge: inline, compact, high contrast */}
+    <span className="shrink-0">
+      <StatusBadge status={item.status} />
+    </span>
+    
+    {/* Preview: secondary, only when space available */}
+    <span className="hidden lg:block text-sm text-muted-foreground/70 truncate">
+      {item.preview}
+    </span>
+  </div>
+
+  {/* Right: Time + Actions - Gmail pattern */}
+  <div className="flex items-center gap-1 shrink-0">
+    {/* Actions: hover reveal */}
+    <div className={cn(
+      "flex items-center gap-0.5",
+      "opacity-0 group-hover:opacity-100 transition-opacity duration-100",
+      isChecked && "opacity-100"
+    )}>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8 text-muted-foreground/50 hover:text-foreground" 
+        onClick={(e) => { e.stopPropagation(); onArchive([item.id]); }}
+        aria-label="Lưu trữ"
+      >
+        <Archive className="h-3.5 w-3.5" />
+      </Button>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8 text-muted-foreground/50 hover:text-destructive" 
+        onClick={(e) => { e.stopPropagation(); onDelete([item.id]); }}
+        aria-label="Xóa"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+
+    {/* Time: tabular, right align, hide on hover */}
+    <span className={cn(
+      "text-xs text-muted-foreground/50 whitespace-nowrap w-16 text-right tabular-nums",
+      "group-hover:hidden",
+      isChecked && "hidden"
+    )}>
+      {item.time}
+    </span>
+  </div>
+</div>
             )
           })
         )}
@@ -260,6 +328,7 @@ function ListView({
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => ({
     contentId: (search.contentId as string) || undefined,
+    convId: (search.convId as string) || undefined,  // ← Thêm
   }),
   component: ContentPage,
 })
@@ -278,7 +347,7 @@ function ContentPage() {
   } = useQuery<SessionListResponse>({
     queryKey: ["marketing-sessions"],
     queryFn: () => api("/marketing/sessions?limit=50&offset=0"),
-    refetchInterval: 10000,
+    refetchInterval: 5000,
     retry: 2,
   })
 
@@ -291,10 +360,39 @@ function ContentPage() {
   const activeItem = items.find((i) => i.id === search.contentId)
 
   const setId = useCallback(
-    (id: string | undefined) => {
-      navigate({ search: (prev) => ({ ...prev, contentId: id }) } as any)
+    async (id: string | undefined) => {
+      if (id) {
+        // Tìm session để lấy conversation_id
+        const session = sessionsData?.items?.find(s => s.session_id === id)
+        const convId = session?.conversation_id  // ← Lấy từ API response
+
+        await queryClient.invalidateQueries({ queryKey: ["marketing-sessions"] })
+        await queryClient.prefetchQuery({
+          queryKey: ["marketing-detail", id],
+          queryFn: () => api(`/marketing/${id}`),
+        })
+
+        // Truyền cả contentId và convId
+        navigate({
+          search: (prev) => ({
+            ...prev,
+            contentId: id,
+            ...(convId && { convId })  // ← Thêm convId nếu có
+          })
+        } as any)
+      } else {
+        // Đóng detail - xóa cả 2
+        navigate({
+          search: (prev) => {
+            const next = { ...prev }
+            delete next.convId
+            delete next.contentId
+            return next
+          }
+        } as any)
+      }
     },
-    [navigate]
+    [navigate, queryClient, sessionsData]
   )
 
   const deleteMutation = useMutation({
@@ -344,7 +442,18 @@ function ContentPage() {
       ...prev,
       [updatedItem.id]: { content: updatedItem.content },
     }))
-    queryClient.invalidateQueries({ queryKey: ["marketing-sessions"] })
+    // Cập nhật cache list luôn để không bị override
+    queryClient.setQueryData(["marketing-sessions"], (old: SessionListResponse | undefined) => {
+      if (!old) return old
+      return {
+        ...old,
+        items: old.items.map((s) =>
+          s.session_id === updatedItem.id
+            ? { ...s, draft: { ...s.draft, content: updatedItem.content } }
+            : s
+        ),
+      }
+    })
   }, [queryClient])
 
   if (isLoading) {

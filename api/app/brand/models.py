@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Index, String, Integer, DateTime, func, Text, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 from app.db import Base
+from app.business.models import Business
 
 class Brand(Base):
     __tablename__ = "brands"
@@ -83,3 +84,5 @@ class BrandContentExample(Base):
     )
     
     brand = relationship("Brand", back_populates="examples")
+
+

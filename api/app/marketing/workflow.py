@@ -21,29 +21,27 @@ from app.marketing.nodes import (
 
 class WorkflowState(TypedDict):
     session_id: str
-    request: str  # ✅ Đảm bảo luôn có trong state
+    request: str
     brand_id: str
     template: Optional[Literal["social", "blog", "image", "research"]]
-    context: dict              
+    context: dict 
     draft: Optional[dict]
     approved: bool
     publish_status: Optional[Literal["pending", "published", "failed", "dead_letter"]]
     usage: Annotated[dict, operator.or_]
     error: Optional[Literal["timeout", "rate_limit", "invalid", "fatal"]]
-    visual_intent: dict        
-    memory_history: List[dict] 
-    brand_profile: Optional[dict]  # ✅ Thêm
-    research_data: Optional[dict]  # ✅ Thêm
-    knowledge_rag: Optional[list]  # ✅ Thêm
-    status_action: Optional[str]  # ✅ Thêm
+    visual_intent: dict 
+    memory_history: List[dict]
    
+
 
 workflow = StateGraph(WorkflowState)
     
+# Định nghĩa hàm phụ trợ để fork ngay tại đây
 def fork_blog_node(state):
     return {}
 
-
+# Đăng ký toàn bộ các Node
 workflow.add_node("prepare",                prepare)
 workflow.add_node("fork_blog",              fork_blog_node)         
 workflow.add_node("visual_intent_analyzer", visual_intent_analyzer) 
@@ -58,7 +56,6 @@ workflow.add_node("publish",                publish)
 workflow.add_node("save",                   save)
 
 workflow.add_edge(START, "prepare")
-
 workflow.add_conditional_edges("prepare", select_template, {
     "execute_social":   "execute_social",
     "execute_blog":     "fork_blog",        
@@ -75,12 +72,12 @@ workflow.add_edge("visual_asset_selector",    "review_pause")
 workflow.add_edge("execute_social",   "review_pause")
 workflow.add_edge("execute_image",    "review_pause")
 workflow.add_edge("execute_research", "save")
-
 workflow.add_conditional_edges("review_pause", route_after_review, {
-    "publish": "publish",             
+    "publish": "publish",              
     "save":    "save",
     "revise":  "context_synthesizer",   
 })
+
 workflow.add_conditional_edges(
     "context_synthesizer", 
     lambda state: state.get("template", "blog"), 
@@ -93,4 +90,4 @@ workflow.add_conditional_edges(
 workflow.add_edge("publish", "save")
 workflow.add_edge("save", END)
 
-graph = workflow.compile(checkpointer=MemorySaver())
+marketing_graph = workflow.compile(checkpointer=MemorySaver())

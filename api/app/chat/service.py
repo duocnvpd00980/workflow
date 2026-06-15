@@ -15,22 +15,22 @@ logger = logging.getLogger(__name__)
 
 class ChatService:
     def __init__(self):
-        self._stopped_convs = set()
+        self._stopped_convs: set[str] = set()  # ← set[str]
 
-    async def mark_as_stopped(self, conversation_id: uuid.UUID):
+    async def mark_as_stopped(self, conversation_id: str):  # ← str
         self._stopped_convs.add(conversation_id)
 
-    async def check_if_stopped(self, conversation_id: uuid.UUID) -> bool:
+    async def check_if_stopped(self, conversation_id: str) -> bool:  # ← str
         return conversation_id in self._stopped_convs
 
-    async def clear_stop_flag(self, conversation_id: uuid.UUID):
+    async def clear_stop_flag(self, conversation_id: str):  # ← str
         self._stopped_convs.discard(conversation_id)
 
     async def stream_graph(
         self,
         message: str,
-        msg_id: uuid.UUID,
-        conversation_id: uuid.UUID,
+        msg_id: str,           # ← str
+        conversation_id: str,  # ← str
         db: AsyncSession,
         brand_id: Optional[str] = None,
         business_id: Optional[str] = None,
@@ -39,9 +39,9 @@ class ChatService:
         state = {
             "content_draft": "",
             "instruction": message,
-            "session_id": str(conversation_id),
-            "conversation_id": str(conversation_id),
-            "msg_id": str(msg_id),
+            "session_id": conversation_id,      # ← đã là str
+            "conversation_id": conversation_id, # ← đã là str
+            "msg_id": msg_id,                   # ← đã là str
             "brand_id": brand_id,
             "business_id": business_id,
             "brand_profile": {},
@@ -66,7 +66,7 @@ class ChatService:
             full_text: list[str] = []
 
             async for token in stream_groq(prompt, max_tokens=2000):
-                if await self.check_if_stopped(conversation_id):
+                if await self.check_if_stopped(conversation_id):  # ← đã là str
                     break
                 full_text.append(token)
                 yield f"data: {json.dumps({'type': 'token', 'text': token})}\n\n"
@@ -85,23 +85,23 @@ class ChatService:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
         finally:
-            await self.clear_stop_flag(conversation_id)
+            await self.clear_stop_flag(conversation_id)  # ← đã là str
 
     async def resume_graph(
         self,
         action: str,
         feedback: str,
-        msg_id: uuid.UUID,
-        conversation_id: uuid.UUID,
+        msg_id: str,              # ← str
+        conversation_id: str,     # ← str
         db: AsyncSession,
     ) -> AsyncGenerator[str, None]:
         yield f"data: {json.dumps({'status': 'resumed'})}\n\n"
 
-    async def restore_session(self, conversation_id: uuid.UUID, db: AsyncSession) -> list[dict]:
+    async def restore_session(self, conversation_id: str, db: AsyncSession) -> list[dict]:  # ← str
         stmt = (
             select(Message)
             .where(
-                Message.conversation_id == conversation_id,
+                Message.conversation_id == conversation_id,  # ← đã là str
                 Message.status == "completed",
             )
             .order_by(Message.created_at.asc())

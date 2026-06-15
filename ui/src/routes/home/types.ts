@@ -1,12 +1,11 @@
 "use client"
 
 
+import { API_BASE } from "@/config"
 import {
   Mail, Smartphone, Target, FileText
 } from "lucide-react"
 
-// ─── API CONFIG ───
-export const API_BASE = "http://localhost:8000/api/v1"
 
 
 export async function api<T>(path: string, options?: RequestInit): Promise<T> {
@@ -31,6 +30,7 @@ export interface SessionListItem {
   session_id: string
   status: BackendStatus
   request: string
+  conversation_id: string
   draft: { content?: string; metadata?: Record<string, unknown> } | null
   publish_status: PublishStatus | null
   approved: boolean | null
@@ -92,7 +92,7 @@ export type ContentItem = {
   icon: "email" | "social" | "ads" | "blog"
   title: string
   type: string
-  status: "draft" | "published" | "scheduled"
+  status: "running"|  "paused" | "completed" | "error" | "queued"
   preview: string
   time: string
   author?: string
@@ -100,7 +100,9 @@ export type ContentItem = {
   content?: string
   backendStatus?: BackendStatus
   approved?: boolean
+  conversation_id?: string
   publishStatus?: PublishStatus | null
+  taskStatus?: "running" | "paused" | "completed" | "failed" | "stopped"  // ← THÊM
 }
 
 export interface ChatSidebarProps {
@@ -116,13 +118,30 @@ export interface ChatSidebarProps {
 }
 
 // ─── CONSTANTS ───
-export const STATUS_STYLES = {
-  draft: "bg-amber-50/60 text-amber-700 border-amber-200/60 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50",
-  published: "bg-emerald-50/60 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
-  scheduled: "bg-blue-50/60 text-blue-700 border-blue-200/60 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50",
-} as const
+// export const STATUS_STYLES = {
+//   draft: "bg-amber-50/60 text-amber-700 border-amber-200/60 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50",
+//   published: "bg-emerald-50/60 text-emerald-700 border-emerald-200/60 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50",
+//   scheduled: "bg-blue-50/60 text-blue-700 border-blue-200/60 dark:bg-blue-950/20 dark:text-blue-400 dark:border-blue-900/50",
+// } as const
 
-export const STATUS_LABELS = { draft: "Bản nháp", published: "Đã đăng", scheduled: "Lên lịch" } as const
+// export const STATUS_LABELS = { draft: "Bản nháp", published: "Đã đăng", scheduled: "Lên lịch" } as const
+
+export const STATUS_LABELS: Record<ContentItem["status"], string> = {
+  running: "Đang tạo",
+  paused: "Chờ duyệt",
+  completed: "Hoàn thành",
+  error: "Lỗi",
+  queued: "Xếp hàng",
+}
+
+export const STATUS_STYLES: Record<ContentItem["status"], string> = {
+  running: "bg-violet-50 text-violet-700 border-violet-200",
+  paused: "bg-amber-50 text-amber-700 border-amber-200",
+  completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  error: "bg-destructive/10 text-destructive",
+  queued: "bg-muted text-muted-foreground",
+}
+
 
 export const ICON_BG = {
   email: "bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400",
@@ -159,12 +178,12 @@ export function detectType(request: string): ContentItem["icon"] {
   return "blog"
 }
 
-export function mapStatus(status: BackendStatus, publishStatus: PublishStatus | null, approved: boolean | null): ContentItem["status"] {
-  if (status === "error" || status === "running") return "draft"
-  if (publishStatus === "published") return "published"
-  if (publishStatus === "pending" && approved) return "scheduled"
-  return "draft"
-}
+// export function mapStatus(status: BackendStatus, publishStatus: PublishStatus | null, approved: boolean | null): ContentItem["status"] {
+//   if (status === "error" || status === "running") return "draft"
+//   if (publishStatus === "published") return "published"
+//   if (publishStatus === "pending" && approved) return "scheduled"
+//   return "draft"
+// }
 
 export function formatTime(dateStr: string): string {
   const date = new Date(dateStr)
@@ -193,7 +212,8 @@ export function mapSessionToContentItem(session: SessionListItem): ContentItem {
     icon,
     title: session.request.slice(0, 80) || "Không có tiêu đề",
     type: typeMap[icon],
-    status: mapStatus(session.status, session.publish_status, session.approved),
+    // status: mapStatus(session.status, session.publish_status, session.approved),
+    status: session.status,
     preview: generatePreview(session.draft?.content),
     time: formatTime(session.created_at),
     author: session.draft?.metadata?.author as string || "AI Assistant",
@@ -202,6 +222,8 @@ export function mapSessionToContentItem(session: SessionListItem): ContentItem {
     backendStatus: session.status,
     approved: session.approved || false,
     publishStatus: session.publish_status,
+    taskStatus: session.status as any,
+    conversation_id: session.conversation_id,
   }
 }
 

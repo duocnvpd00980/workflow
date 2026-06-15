@@ -7,8 +7,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { API_BASE } from "@/config";
 
-const API_BASE = "http://localhost:8000/api/v1";
+
 
 interface Task {
   id: number;

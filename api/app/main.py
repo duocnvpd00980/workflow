@@ -48,7 +48,7 @@ static_dir = os.path.join(current_dir, "static")
 os.makedirs(static_dir, exist_ok=True)
 
 # 5. Mount thư mục static bằng biến static_dir chuẩn hóa
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/media", StaticFiles(directory="app/media"), name="media")
 
 # 6. Middleware
 app.add_middleware(

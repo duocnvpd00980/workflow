@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from typing import Optional
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -41,18 +42,19 @@ async def stream_message(
     payload: StreamRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    conv = await db.get(Conversation, payload.conversation_id)
+    conv_id_str = str(payload.conversation_id)
+    conv = await db.get(Conversation, conv_id_str)
     if not conv:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found.")
 
-    # ✅ TỰ SINH msg_id Ở SERVER — tránh trùng từ client
     msg_id = uuid.uuid4()
+    msg_id_str = str(msg_id)
 
     # Tạo placeholder
     try:
         placeholder_msg = Message(
-            id=msg_id,
-            conversation_id=payload.conversation_id,
+            id=msg_id_str,
+            conversation_id=conv_id_str,
             role="assistant",
             content="",
             status="pending"
@@ -63,27 +65,25 @@ async def stream_message(
         logger.error(f"Placeholder failed: {e}")
         raise HTTPException(status.HTTP_500_INTERNAL_SERVER_ERROR, "Khởi tạo tin nhắn thất bại")
 
-    await _chat.clear_stop_flag(payload.conversation_id)
+    await _chat.clear_stop_flag(conv_id_str)
 
     if not conv.title or conv.title == "New Chat":
         conv.title = _title(payload.message)
         await db.commit()
 
-    # Trả msg_id về client qua header hoặc event đầu tiên
     async def event_stream():
-        # Gửi msg_id cho client biết
-        yield f"event: msg_id\ndata: {json.dumps({'msg_id': str(msg_id)})}\n\n"
+        yield f"event: msg_id\ndata: {json.dumps({'msg_id': msg_id_str})}\n\n"
         
         try:
             async for chunk in _chat.stream_graph(
                 message=payload.message,
-                msg_id=msg_id,  # ← Dùng msg_id server sinh
-                conversation_id=payload.conversation_id,
+                msg_id=msg_id_str,
+                conversation_id=conv_id_str,
                 db=db,
                 brand_id=payload.brand_id,
                 business_id=payload.business_id,
             ):
-                if await _chat.check_if_stopped(payload.conversation_id):
+                if await _chat.check_if_stopped(conv_id_str):
                     yield "event: Interrupted\ndata: {\"status\": \"stopped_by_user\"}\n\n"
                     break
                 yield chunk
@@ -91,13 +91,13 @@ async def stream_message(
             logger.exception("[stream] crashed")
             yield _sse_error("Lỗi hệ thống")
         finally:
-            await _chat.clear_stop_flag(payload.conversation_id)
+            await _chat.clear_stop_flag(conv_id_str)
 
     return _sse(event_stream())
 
 
 @router.post("/stop")
-async def stop_stream(conversation_id: uuid.UUID):
+async def stop_stream(conversation_id: str):
     await _chat.mark_as_stopped(conversation_id)
     return {"status": "success", "message": "Signal to stop stream has been sent."}
 
@@ -106,7 +106,8 @@ async def stop_stream(conversation_id: uuid.UUID):
 async def resume_message(
     payload: ResumeRequest,
 ):
-    await _chat.clear_stop_flag(payload.conversation_id)
+    conv_id_str = str(payload.conversation_id)
+    await _chat.clear_stop_flag(conv_id_str)
 
     async def event_stream():
         yield "event: heartbeat\ndata: {}\n\n"
@@ -115,19 +116,19 @@ async def resume_message(
                 async for chunk in _chat.resume_graph(
                     action=payload.action,
                     feedback=payload.feedback,
-                    msg_id=payload.msg_id,
-                    conversation_id=payload.conversation_id,
+                    msg_id=str(payload.msg_id),
+                    conversation_id=conv_id_str,
                     db=stream_db,
                 ):
-                    if await _chat.check_if_stopped(payload.conversation_id):
+                    if await _chat.check_if_stopped(conv_id_str):
                         yield "event: Interrupted\ndata: {\"status\": \"stopped_by_user\"}\n\n"
                         break
                     yield chunk
             except Exception:
-                logger.exception("[resume] crashed — conv_id=%s", payload.conversation_id)
+                logger.exception("[resume] crashed — conv_id=%s", conv_id_str)
                 yield _sse_error("Lỗi hệ thống khi tiếp tục xử lý.")
             finally:
-                await _chat.clear_stop_flag(payload.conversation_id)
+                await _chat.clear_stop_flag(conv_id_str)
 
     return _sse(event_stream())
 
@@ -137,8 +138,9 @@ async def restore_chat(
     payload: RestoreRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    conv_id_str = str(payload.conversation_id)
     result = await _chat.restore_session(
-        conversation_id=payload.conversation_id,
+        conversation_id=conv_id_str,
         db=db,
     )
 
@@ -146,21 +148,35 @@ async def restore_chat(
         return {
             "type": "messages", 
             "messages": result, 
-            "conversation_id": payload.conversation_id
+            "conversation_id": conv_id_str
         }
 
     return {
         "type": "html", 
         "html": result or "", 
-        "msg_id": payload.msg_id
+        "msg_id": str(payload.msg_id)
     }
 
 
 @router.post("/conversations", status_code=status.HTTP_201_CREATED)
-async def conversation_create(db: AsyncSession = Depends(get_db)):
+async def conversation_create(
+    session_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+):
     conv = Conversation()
     db.add(conv)
-    await db.commit()
+    await db.flush()
+    
+    if session_id:
+        from app.marketing.models import WorkflowSession
+        result = await db.execute(
+            select(WorkflowSession).where(WorkflowSession.id == session_id)
+        )
+        session = result.scalar_one_or_none()
+        if session:
+            session.conversation_id = str(conv.id)
+            await db.commit()
+    
     await db.refresh(conv)
     return {"id": conv.id, "title": conv.title}
 
@@ -186,7 +202,7 @@ async def conversation_list(
 
 @router.get("/conversations/{conversation_id}")
 async def conversation_load(
-    conversation_id: uuid.UUID,
+    conversation_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     conv = await db.get(Conversation, conversation_id)
@@ -217,7 +233,7 @@ async def conversation_load(
 
 @router.delete("/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def conversation_delete(
-    conversation_id: uuid.UUID,
+    conversation_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     conv = await db.get(Conversation, conversation_id)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import uuid
 
 from sqlalchemy import select, update
 
@@ -219,29 +218,26 @@ async def rewrite_content(state: dict) -> dict:
 
 async def load_history(state: dict) -> dict:
     """Đọc lịch sử chat gần nhất của conversation để AI hiểu ngữ cảnh các lượt trước."""
-    raw_conv_id = state.get("conversation_id")
+    conversation_id = state.get("conversation_id")  # ← Đã là str từ state
     history_items: list[dict] = []
 
-    if raw_conv_id:
+    if conversation_id:
         try:
-            conversation_id = uuid.UUID(str(raw_conv_id))
+            # ✅ KHÔNG cần uuid.UUID() nữa, giữ str
             async with AsyncSessionLocal() as db:
                 rows = await db.execute(
                     select(Message)
                     .where(
-                        Message.conversation_id == conversation_id,
+                        Message.conversation_id == conversation_id,  # ← str
                         Message.status == "completed",
                     )
                     .order_by(Message.created_at.desc())
                     .limit(10)
                 )
-                # Đảo lại theo thứ tự thời gian tăng dần (cũ -> mới)
                 history_items = [
                     {"role": m.role, "content": m.content}
                     for m in reversed(rows.scalars().all())
                 ]
-        except (ValueError, AttributeError) as e:
-            logger.warning(f"History load skipped (invalid conversation_id): {e}")
         except Exception as e:
             logger.warning(f"History load failed: {e}")
 
@@ -277,8 +273,8 @@ async def save_result(state: dict) -> dict:
         return {"saved": False, "error": "Thiếu conversation_id hoặc msg_id."}
 
     try:
-        conversation_id = uuid.UUID(str(raw_conv_id))
-        msg_id = uuid.UUID(str(raw_msg_id))
+        conversation_id = str(raw_conv_id)
+        msg_id = str(raw_msg_id)
     except (ValueError, AttributeError):
         return {"saved": False, "error": "conversation_id hoặc msg_id không phải UUID hợp lệ."}
 

@@ -19,11 +19,8 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { API_BASE } from "@/config";
 
-// ─────────────────────────────────────────────
-// API CONFIG
-// ─────────────────────────────────────────────
-const API_BASE = "http://localhost:8000/api/v1";
 
 // ─────────────────────────────────────────────
 // TYPES — khớp với API hiện tại + field mới optional
@@ -492,7 +489,7 @@ function TaskRow({ task, onStop, onRetry, onDelete, isStopping, isRetrying, isDe
 
           {/* Status + progress mini */}
           <div className="hidden sm:block w-28 shrink-0">
-            <StatusBadge status={task.status} progress={progress} />
+            <StatusBadge status={task.status} progress={progress as any} />
             {task.status === "running" && (
               <Progress value={progress} className="h-0.5 mt-1.5 bg-muted" />
             )}

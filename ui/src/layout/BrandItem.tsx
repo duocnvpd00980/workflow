@@ -30,16 +30,23 @@ export function BrandItem({
 
   return (
     <div className={cn(
-      "group w-full flex items-center gap-2.5 h-9 px-3 rounded-md text-[13px] font-medium",
-      "transition-all duration-150 select-none",
+      "group relative w-full flex items-center gap-2.5 h-9 px-3 rounded-md text-[13px]",
+      "transition-colors duration-100 select-none",
       active
-        ? "bg-zinc-900 text-white"
-        : "text-zinc-500 hover:bg-zinc-200/60 hover:text-zinc-900"
+        ? "bg-zinc-100/80 text-zinc-900 font-semibold"
+        : "text-zinc-500 font-medium hover:bg-zinc-200/50 hover:text-zinc-700"
     )}>
+      {/* Left accent indicator - Linear style */}
+      {active && (
+        <div className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-full bg-zinc-900" />
+      )}
+
       {/* Avatar */}
       <span className={cn(
         "h-5 w-5 rounded-[4px] flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors",
-        active ? "bg-white/20 text-white" : "bg-zinc-200 text-zinc-600 group-hover:bg-zinc-300"
+        active 
+          ? "bg-zinc-900 text-white" 
+          : "bg-zinc-200 text-zinc-600 group-hover:bg-zinc-300"
       )}>
         {name.charAt(0).toUpperCase()}
       </span>
@@ -51,7 +58,7 @@ export function BrandItem({
       {researching && (
         <span className={cn(
           "h-1.5 w-1.5 rounded-full shrink-0 animate-pulse",
-          active ? "bg-white/60" : "bg-amber-400"
+          active ? "bg-zinc-900/40" : "bg-amber-400"
         )} />
       )}
 
@@ -62,9 +69,9 @@ export function BrandItem({
             onClick={(e) => e.stopPropagation()}
             className={cn(
               "h-5 w-5 flex items-center justify-center rounded",
-              "opacity-0 group-hover:opacity-100 transition-all duration-150",
+              "opacity-0 group-hover:opacity-100 transition-opacity duration-100",
               active
-                ? "hover:bg-white/20 text-white/70 hover:text-white opacity-100"
+                ? "hover:bg-zinc-200/60 text-zinc-500 hover:text-zinc-900 opacity-100"
                 : "hover:bg-zinc-300/60 text-zinc-400 hover:text-zinc-700"
             )}
           >

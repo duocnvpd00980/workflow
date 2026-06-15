@@ -9,7 +9,7 @@ from langgraph.types import Command
 from app.marketing.nodes import call_groq, call_groq_stream
 from app.db import AsyncSessionLocal
 from .models import WorkflowSession
-from .workflow import graph
+from .workflow import marketing_graph
 from app.tasks import create_task, finish_task, fail_task, update_task
 
 logger = logging.getLogger(__name__)
@@ -35,11 +35,19 @@ class WorkflowService:
 
         # Lưu DB ngay với status 'queued' — trả về ngay lập tức
         async with AsyncSessionLocal() as db:
+            from app.chat.models import Conversation
+            
+            conv = Conversation(title=f"Chat: {request[:50] if request else 'New'}")
+            db.add(conv)
+            await db.flush()
+            await db.refresh(conv)
+            
             session = WorkflowSession(
                 id=session_id,
                 thread_id=thread_id,
                 request=request,
                 status="queued",
+                conversation_id=str(conv.id),
                 draft=None,
                 usage={"total_tokens": 0, "total_cost": 0.0},
                 publish_status=None,
@@ -147,11 +155,11 @@ class WorkflowService:
             bg_task_id = bg_task.id
 
         try:
-            async for event in graph.astream(initial_state, config=config):
+            async for event in marketing_graph.astream(initial_state, config=config):
                 if "__interrupt__" in event:
                     if auto_mode:
                         status = "running"
-                        result_auto = await graph.ainvoke(
+                        result_auto = await marketing_graph.ainvoke(
                             Command(resume={"action": "approve"}),
                             config=config
                         )
@@ -219,8 +227,8 @@ class WorkflowService:
             except asyncio.TimeoutError:
                 pass
         return await self.get_status(session_id)
-
-    async def get_status(self, session_id: str) -> dict:
+    
+    async def get_status(self, session_id, db=None) -> dict:
         async with AsyncSessionLocal() as db:
             stmt = select(WorkflowSession).filter_by(id=session_id)
             result = await db.execute(stmt)
@@ -230,6 +238,7 @@ class WorkflowService:
             return {
                 "session_id": session_id,
                 "status": s.status,
+                "conversation_id": s.conversation_id,
                 "draft": s.draft,
                 "publish_status": s.publish_status,
                 "approved": bool(s.approved),
@@ -248,7 +257,7 @@ class WorkflowService:
             config = {"configurable": {"thread_id": s.thread_id}}
 
             if s.draft:
-                graph.update_state(
+                marketing_graph.update_state(
                     config,
                     {
                         "draft": s.draft,
@@ -260,7 +269,7 @@ class WorkflowService:
             if action == "edit" and content:
                 resume_cmd["content"] = content
 
-            result_graph = await graph.ainvoke(Command(resume=resume_cmd), config=config)
+            result_graph = await marketing_graph.ainvoke(Command(resume=resume_cmd), config=config)
 
             current_draft = result_graph.get("draft") or s.draft
             if current_draft:
@@ -514,7 +523,7 @@ class WorkflowService:
                 return True
             return False
 
-    async def list_sessions(self, status: str = None, limit: int = 20, offset: int = 0) -> dict:
+    async def list_sessions(self, status=None, limit=20, offset=0, db=None):
         async with AsyncSessionLocal() as db:
             count_stmt = select(func.count()).select_from(WorkflowSession)
             if status:
@@ -535,6 +544,7 @@ class WorkflowService:
                         "status": s.status,
                         "request": s.request,
                         "draft": s.draft,
+                        "conversation_id": s.conversation_id,
                         "publish_status": s.publish_status,
                         "approved": bool(s.approved),
                         "usage": s.usage,

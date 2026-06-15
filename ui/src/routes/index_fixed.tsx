@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils"
 import { createFileRoute } from "@tanstack/react-router"
 import { useStream } from "@/hooks/useStream";
+import { API_BASE } from "@/config"
 
 
 interface ChatEditResponse {
@@ -37,8 +38,6 @@ interface ChatSidebarProps {
 
 
 
-// ─── API CONFIG ───
-const API_BASE = "http://localhost:8000/api/v1"
 
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {

@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useChatStream } from "@/hooks/useChatStream"
 import type { ChatMsg } from "@/hooks/useChatStream"
-import { API_BASE, QUICK_PROMPTS } from "./types"
+import { QUICK_PROMPTS } from "./types"
 
 // ─── AI ELEMENTS IMPORTS ─────────────────────────────────────────────────────
 import {
@@ -34,6 +34,54 @@ import {
   CodeBlockActions,
   CodeBlockCopyButton,
 } from "@/components/ai-elements/code-block"
+
+// ─── MARKDOWN RENDERER ─────────────────────────────────────────────────────────
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import { API_BASE } from "@/config"
+
+/** Component render markdown với style đẹp cho chat bubble */
+function MarkdownContent({ content, className }: { content: string; className?: string }) {
+  return (
+    <div className={cn("prose prose-sm dark:prose-invert max-w-none text-left", className)}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          // Override để style phù hợp với chat bubble nhỏ
+          h1: ({ children }) => <h1 className="text-base font-bold mt-3 mb-2">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-sm font-bold mt-2 mb-1.5">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-[13px] font-bold mt-2 mb-1">{children}</h3>,
+          p: ({ children }) => <p className="mb-1.5 last:mb-0 leading-relaxed">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc pl-4 mb-1.5 space-y-0.5">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-4 mb-1.5 space-y-0.5">{children}</ol>,
+          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+          code: ({ children, className }) => {
+            const isInline = !className
+            if (isInline) {
+              return <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono">{children}</code>
+            }
+            // Code block sẽ được xử lý riêng bởi ChatMessage
+            return <>{children}</>
+          },
+          strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          a: ({ children, href }) => (
+            <a href={href} className="text-violet-600 underline hover:text-violet-700" target="_blank" rel="noopener noreferrer">
+              {children}
+            </a>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-violet-300 pl-3 italic text-muted-foreground my-1.5">
+              {children}
+            </blockquote>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
+}
 
 // ─── PROPS ───────────────────────────────────────────────────────────────────
 
@@ -102,8 +150,57 @@ function ChatMessage({
   const isFinal = message.type === "final_result"
   const isError = message.type === "error"
 
-  // Nếu là code block (detect markdown ```)
-  const hasCodeBlock = !isUser && message.text?.includes("```")
+  // Detect code block trong markdown
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/
+  const hasCodeBlock = !isUser && codeBlockRegex.test(message.text || "")
+
+  // Extract code blocks nếu có
+  const renderContent = () => {
+    if (!message.text) return null
+
+    // Nếu là user hoặc error → hiển thị plain text
+    if (isUser || isError) {
+      return <div className="whitespace-pre-wrap text-left">{message.text}</div>
+    }
+
+    // Nếu có code block → tách riêng
+    if (hasCodeBlock) {
+      const parts = message.text.split(/(```(?:\w+)?\n[\s\S]*?```)/)
+      return (
+        <div className="space-y-2">
+          {parts.map((part, i) => {
+            const match = part.match(/```(\w+)?\n([\s\S]*?)```/)
+            if (match) {
+              const lang = match[1] || "typescript"
+              const code = match[2].trim()
+              return (
+                <div key={i} className="-mx-1">
+                  <CodeBlock code={code} language="typescript">
+                    <CodeBlockHeader>
+                      <CodeBlockTitle>
+                        <CodeBlockFilename>generated.{lang}</CodeBlockFilename>
+                      </CodeBlockTitle>
+                      <CodeBlockActions>
+                        <CodeBlockCopyButton />
+                      </CodeBlockActions>
+                    </CodeBlockHeader>
+                  </CodeBlock>
+                </div>
+              )
+            }
+            // Render phần text còn lại bằng Markdown
+            if (part.trim()) {
+              return <MarkdownContent key={i} content={part} />
+            }
+            return null
+          })}
+        </div>
+      )
+    }
+
+    // Mặc định: render Markdown
+    return <MarkdownContent content={message.text} />
+  }
 
   return (
     <div className={cn("flex gap-2.5", !isUser ? "items-start" : "items-start flex-row-reverse")}>
@@ -128,27 +225,14 @@ function ChatMessage({
               ? "bg-muted/60 dark:bg-muted/40 text-foreground rounded-tl-sm"
               : "bg-primary text-primary-foreground rounded-tr-sm"
         )}>
-          {/* Text content hoặc CodeBlock */}
-          {hasCodeBlock ? (
-            <div className="-mx-1.5 -my-1">
-              <CodeBlock code={message.text} language="typescript">
-                <CodeBlockHeader>
-                  <CodeBlockTitle>
-                    <CodeBlockFilename>generated.tsx</CodeBlockFilename>
-                  </CodeBlockTitle>
-                  <CodeBlockActions>
-                    <CodeBlockCopyButton />
-                  </CodeBlockActions>
-                </CodeBlockHeader>
-              </CodeBlock>
-            </div>
-          ) : (
-            <div className="whitespace-pre-wrap">
-              {message.text || (isStreaming && isLast && (
-                <span className="text-muted-foreground/50 text-[12px]">Đang viết...</span>
-              ))}
-              {isStreaming && isLast && !isUser && <StreamingIndicator />}
-            </div>
+          {renderContent()}
+
+          {/* Streaming indicator */}
+          {isStreaming && isLast && !isUser && !message.text && (
+            <StreamingIndicator />
+          )}
+          {isStreaming && isLast && !isUser && message.text && (
+            <span className="inline-block w-[2px] h-[1em] bg-foreground/60 ml-[1px] align-middle animate-[blink_0.9s_step-end_infinite]" />
           )}
         </div>
 
@@ -173,6 +257,7 @@ export function ChatSidebar({
   onStreamingChange,
 }: ChatSidebarProps) {
   const [input, setInput] = useState("")
+  const [hasHydrated, setHasHydrated] = useState(false)
   const api = API_BASE
   const queryClient = useQueryClient()
 
@@ -191,7 +276,9 @@ export function ChatSidebar({
     queryFn: async () => {
       const res = await fetch(`${API_BASE}/chat/conversations/${conversationId}`)
       if (!res.ok) throw new Error("Không load được lịch sử chat")
-      return res.json() as Promise<{ messages: { id: string; role: string; content: string }[] }>
+      return res.json() as Promise<{ 
+        messages: { id: string; role: string; content: string }[] 
+      }>
     },
     staleTime: 0,
     enabled: !!conversationId && isOpen,
@@ -199,24 +286,24 @@ export function ChatSidebar({
     refetchOnWindowFocus: true,
   })
 
+  // HYDRATE: Chạy khi có dữ liệu từ BE
   useEffect(() => {
-    if (!isOpen) return
-    if (historyData?.messages) {
+    if (!isOpen || !conversationId) return
+    
+    if (historyData?.messages && historyData.messages.length > 0) {
       hydrate(historyData.messages)
+      setHasHydrated(true)
     }
-  }, [historyData?.messages, isOpen, hydrate])
+  }, [historyData?.messages, conversationId, isOpen, hydrate])
 
+  // Invalidate query khi conversationId thay đổi - KHÔNG reset
   useEffect(() => {
-    reset()
     if (isOpen && conversationId) {
       queryClient.invalidateQueries({ queryKey: ["chat-history", conversationId] })
     }
-  }, [conversationId, isOpen, reset, queryClient])
+  }, [conversationId, isOpen, queryClient])
 
-  useEffect(() => {
-    onStreamingChange?.(isStreaming)
-  }, [isStreaming, onStreamingChange])
-
+  // Reset CHỈ khi đóng sidebar
   useEffect(() => {
     if (!isOpen) {
       stop()
@@ -224,6 +311,10 @@ export function ChatSidebar({
       setInput("")
     }
   }, [isOpen, stop, reset])
+
+  useEffect(() => {
+    onStreamingChange?.(isStreaming)
+  }, [isStreaming, onStreamingChange])
 
   // Handle submit qua PromptInput
   const handleSubmit = useCallback((message: PromptInputMessage) => {
@@ -290,10 +381,9 @@ export function ChatSidebar({
         </div>
       </div>
 
-      {/* ── CONVERSATION (Thay thế div scroll tự chế) ── */}
+      {/* ── CONVERSATION ── */}
       <Conversation className="flex-1 min-h-0">
         <ConversationContent className="px-4 py-4 space-y-4">
-          {/* Empty state */}
           {messages.length === 0 && (
             <ConversationEmptyState
               icon={
@@ -306,7 +396,6 @@ export function ChatSidebar({
             />
           )}
 
-          {/* Message list */}
           {messages.map((msg, idx) => {
             const isLast = idx === messages.length - 1
             return (
@@ -321,19 +410,17 @@ export function ChatSidebar({
           })}
 
           {error && (
-            <div className="text-[11px] text-destructive text-center">
+            <div className="text-[11px] text-destructive text-left">
               ⚠ {error}
             </div>
           )}
         </ConversationContent>
         
-        {/* Nút cuộn xuống tự động của AI Elements */}
         <ConversationScrollButton />
       </Conversation>
 
-      {/* ── PROMPT INPUT (Thay thế Textarea tự chế) ── */}
+      {/* ── PROMPT INPUT ── */}
       <div className="shrink-0 border-t border-border/60 p-3">
-        {/* Suggestions - Quick Prompts dạng chip ngang */}
         {messages.length === 0 && !isStreaming && (
           <Suggestions className="mb-2">
             {QUICK_PROMPTS.map((p) => (

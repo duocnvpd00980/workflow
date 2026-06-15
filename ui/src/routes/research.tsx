@@ -1,3 +1,4 @@
+import { API_BASE } from '@/config'
 import { createFileRoute, useSearch, useNavigate } from '@tanstack/react-router'
 import React from 'react'
 import { useState, useRef, useEffect, useCallback, useReducer } from 'react'
@@ -10,7 +11,7 @@ export const Route = createFileRoute('/research')({
   }),
 })
 
-const BASE_API_URL = 'http://localhost:8000/api/v1/hotel-research'
+const BASE_API_URL = `${API_BASE}/hotel-research`
 
 // ── Types ─────────────────────────────────────────────────────────
 interface ProgressEvent {

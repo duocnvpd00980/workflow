@@ -1,7 +1,10 @@
 import json
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import StreamingResponse
+
+from app.marketing.models import WorkflowSession
 from .schemas import (
     StartRequest, ResumeRequest, WorkflowResponse, SessionResponse,
     ChatEditRequest, ChatInlineRequest, ChatEditResponse, ChatInlineResponse,
@@ -10,6 +13,9 @@ from .schemas import (
 )
 from .service import WorkflowService
 from typing import Optional
+from app.chat.models import Conversation
+from sqlalchemy import select
+from app.db import get_db
 
 
 router = APIRouter(prefix="/marketing", tags=["marketing"])
@@ -31,6 +37,57 @@ def _sse_error(msg: str) -> str:
         f"event: error\ndata: {json.dumps({'message': msg})}\n\n"
         "event: done\ndata: {}\n\n"
     )
+
+# ══════════════════════════════════════════════════════════════
+# CONVERSATION LINK API
+# ══════════════════════════════════════════════════════════════
+
+@router.get("/{session_id}/conversation")
+async def get_or_create_conversation(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Lấy hoặc tạo conversation cho session. Mỗi session có 1 conversation riêng."""
+    # 1. Tìm session
+    result = await db.execute(
+        select(WorkflowSession).where(WorkflowSession.id == session_id)
+    )
+    session = result.scalar_one_or_none()
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # 2. Nếu đã có conversation → trả về
+    if session.conversation_id:
+        conv_result = await db.execute(
+            select(Conversation).where(Conversation.id == str(session.conversation_id))
+        )
+        conv = conv_result.scalar_one_or_none()
+        
+        if conv:
+            return {
+                "conversation_id": str(conv.id),
+                "title": conv.title,
+                "created_at": conv.created_at,
+                "exists": True
+            }
+    
+    # 3. Tạo conversation mới
+    new_conv = Conversation(title=f"Chat: {session.request[:50] if session.request else 'New'}")
+    db.add(new_conv)
+    await db.flush()
+    
+    # 4. Gán vào session
+    session.conversation_id = str(new_conv.id)
+    await db.commit()
+    
+    return {
+        "conversation_id": str(new_conv.id),
+        "title": new_conv.title,
+        "created_at": new_conv.created_at,
+        "exists": False
+    }
+
 
 # ══════════════════════════════════════════════════════════════
 # CORE WORKFLOW API
@@ -63,15 +120,16 @@ async def start(body: StartRequest):
 async def list_sessions(
     status: Optional[str] = None,
     limit: int = 20,
-    offset: int = 0
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),  # ← THÊM db
 ):
     """Lấy danh sách tất cả bài viết trong kho."""
-    result = await service.list_sessions(status=status, limit=limit, offset=offset)
+    result = await service.list_sessions(status=status, limit=limit, offset=offset, db=db)
     return SessionListResponse(**result)
 
 @router.get("/{session_id}", response_model=WorkflowResponse)
-async def get_status(session_id: str):
-    result = await service.get_status(session_id)
+async def get_status(session_id: str):  # ← Bỏ db dependency
+    result = await service.get_status(session_id)  # ← Bỏ db=db
     if not result:
         raise HTTPException(status_code=404, detail="Session not found")
     return WorkflowResponse(**result)

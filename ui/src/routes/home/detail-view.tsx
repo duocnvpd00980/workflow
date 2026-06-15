@@ -13,11 +13,9 @@ import {
   RotateCcw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message"
 import { Badge } from "@/components/ui/badge"
 import {
   api,
-  API_BASE,
   type ContentItem,
   type VersionHistoryResponse,
   type ChatEditResponse,
@@ -27,6 +25,64 @@ import {
   STATUS_STYLES,
 } from "./types"
 import { ChatSidebar } from "./chat-sidebar"
+
+// ─── MARKDOWN RENDERER cho Detail View ─────────────────────────────────────────
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+
+function ArticleContent({ content }: { content: string }) {
+  return (
+    <div className="prose dark:prose-invert max-w-none text-left">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => <h1 className="text-2xl font-bold mt-6 mb-4">{children}</h1>,
+          h2: ({ children }) => <h2 className="text-xl font-bold mt-5 mb-3">{children}</h2>,
+          h3: ({ children }) => <h3 className="text-lg font-bold mt-4 mb-2">{children}</h3>,
+          p: ({ children }) => <p className="mb-3 leading-relaxed text-sm">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1">{children}</ol>,
+          li: ({ children }) => <li className="leading-relaxed text-sm">{children}</li>,
+          code: ({ children, className }) => {
+            const isInline = !className
+            if (isInline) {
+              return <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>
+            }
+            return (
+              <pre className="bg-muted rounded-lg p-3 overflow-x-auto my-3">
+                <code className="text-xs font-mono">{children}</code>
+              </pre>
+            )
+          },
+          strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          a: ({ children, href }) => (
+            <a href={href} className="text-violet-600 underline hover:text-violet-700" target="_blank" rel="noopener noreferrer">
+              {children}
+            </a>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-violet-300 pl-4 italic text-muted-foreground my-3">
+              {children}
+            </blockquote>
+          ),
+          hr: () => <hr className="my-4 border-border/60" />,
+          table: ({ children }) => (
+            <table className="w-full text-sm border-collapse my-3">{children}</table>
+          ),
+          th: ({ children }) => (
+            <th className="border border-border/60 px-3 py-2 bg-muted font-medium text-left">{children}</th>
+          ),
+          td: ({ children }) => (
+            <td className="border border-border/60 px-3 py-2 text-left">{children}</td>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  )
+}
 
 // ─── SHARED COMPONENTS ───
 export function StatusBadge({ status }: { status: ContentItem["status"] }) {
@@ -135,6 +191,7 @@ export function DetailView({
   const [editMode, setEditMode] = useState(false)
   const [editContent, setEditContent] = useState(item.content || "")
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
 
   // Lưu conversationId vào URL search params — survive F5, deep link, tab switch
   const search = useSearch({ strict: false }) as { convId?: string }
@@ -143,9 +200,17 @@ export function DetailView({
 
   const setActiveConversationId = useCallback((id: string | null) => {
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, convId: id ?? undefined } ),
+      search: (prev: Record<string, unknown>) => {
+        const next = { ...prev }
+        if (id) {
+          next.convId = id
+        } else {
+          delete next.convId
+        }
+        return next
+      },
       replace: true,
-    }  as any)
+    } as any)
   }, [navigate])
 
   // External store — bypasses React batching, updates UI on every token
@@ -178,12 +243,19 @@ export function DetailView({
       prevItemIdRef.current = item.id
       hasLocalEditRef.current = false
       setEditContent(item.content || "")
-      setActiveConversationId(null) // Xóa convId khỏi URL khi chuyển bài viết khác
+      setChatOpen(false)
+      
+      // ✅ Set conversation_id từ item mới
+      if (item.conversation_id) {
+        setActiveConversationId(item.conversation_id)
+      } else {
+        setActiveConversationId(null)
+      }
     } else if (!hasLocalEditRef.current) {
-      // Same item, no local edits yet — safe to sync from server (e.g. initial load)
+      // Same item, no local edits yet — safe to sync from server
       setEditContent(item.content || "")
     }
-  }, [item.id, item.content])
+  }, [item.id, item.content, item.conversation_id])
 
   // Resume mutation (approve/reject)
   const resumeMutation = useMutation({
@@ -224,41 +296,22 @@ export function DetailView({
     },
   })
 
-  // Tạo conversation mới — lưu id vào URL
-  const createConversationMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`${API_BASE}/chat/conversations`, {
-        method: "POST",
-        headers: { "accept": "application/json" },
-        body: "",
-      })
-      if (!res.ok) throw new Error("Không thể khởi tạo cuộc hội thoại AI")
-      return res.json() as Promise<{ id: string; title: string }>
-    },
-    onSuccess: (data) => {
-      setActiveConversationId(data.id)
+  // ✅ Mở chat với conversation_id từ item (không tạo mới)
+  const handleOpenChat = useCallback(() => {
+    if (chatOpen) {
+      setChatOpen(false)
+    } else if (item.conversation_id) {
+      setActiveConversationId(item.conversation_id)
       setChatOpen(true)
-    },
-  })
-
-  // Fetch lịch sử chat khi đã có convId trong URL (F5, quay lại tab...)
-  useQuery({
-    queryKey: ["chat-history", activeConversationId],
-    queryFn: () =>
-      api<{ conversation_id: string; messages: { id: string; role: string; content: string }[] }>(
-        `/chat/conversations/${activeConversationId}`
-      ),
-    enabled: !!activeConversationId,
-    staleTime: Infinity, // không refetch tự động — chỉ fetch 1 lần khi mount
-    select: (data) => data.messages,
-  })
+    }
+  }, [chatOpen, item.conversation_id, setActiveConversationId])
 
   const isPaused = item.backendStatus === "paused"
   const isCompleted = item.backendStatus === "completed"
   const isApproved = item.approved
 
   const handleContentUpdate = useCallback((newContent: string) => {
-    hasLocalEditRef.current = true  // prevent server refetch from overwriting local state
+    hasLocalEditRef.current = true
     setEditContent(newContent)
     onUpdate?.({ ...item, content: newContent })
   }, [item, onUpdate])
@@ -314,19 +367,46 @@ export function DetailView({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 text-xs gap-1.5"
-                disabled={createConversationMutation.isPending}
+                className={cn(
+                  "h-8 text-xs gap-1.5",
+                  isEditing && "bg-violet-100 text-violet-700 border-violet-300 dark:bg-violet-900/30 dark:text-violet-400"
+                )}
                 onClick={() => {
-                  if (activeConversationId) {
-                    setChatOpen(true)
-                  } else {
-                    createConversationMutation.mutate()
+                  if (isEditing) {
+                    setIsEditing(false)
+                    return
                   }
+                  if (chatOpen) {
+                    setChatOpen(false)
+                  }
+                  setIsEditing(true)
                 }}
               >
-                <MessageSquare className="h-3.5 w-3.5" />
-                Sửa bài
+                {isEditing ? (
+                  <>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Xem trước
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Sửa bài
+                  </>
+                )}
               </Button>
+              {isEditing && (
+                <Button
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={() => {
+                    onUpdate?.({ ...item, content: editContent })
+                    setIsEditing(false)
+                  }}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Lưu
+                </Button>
+              )}
               <Button
                 size="sm"
                 className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -359,29 +439,15 @@ export function DetailView({
             </Button>
           )}
 
-          {/* 🌟 3. SỬA ĐỔI: Logic Click của nút mở Chat AI ở Toolbar */}
+          {/* ✅ Nút Chat AI — dùng handleOpenChat */}
           <Button
             variant="ghost"
             size="icon"
             className={cn("h-8 w-8", chatOpen && "bg-muted")}
-            disabled={createConversationMutation.isPending}
-            onClick={() => {
-              if (chatOpen) {
-                setChatOpen(false)
-              } else if (activeConversationId) {
-                setChatOpen(true)
-              } else {
-                // Nếu chưa có ID hội thoại AI, kích hoạt gọi API POST tạo mới
-                createConversationMutation.mutate()
-              }
-            }}
+            onClick={handleOpenChat}
             title="Chat AI"
           >
-            {createConversationMutation.isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
-            ) : (
-              <MessageSquare className="h-4 w-4" />
-            )}
+            <MessageSquare className="h-4 w-4" />
           </Button>
 
           <Button
@@ -431,7 +497,6 @@ export function DetailView({
 
       {/* MAIN BODY WITH SIDE PANELS */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Content */}
         <div className="flex-1 overflow-y-auto bg-background">
           <div className="max-w-2xl mx-auto px-6 sm:px-8 py-8">
             {isLoading ? (
@@ -440,27 +505,58 @@ export function DetailView({
               </div>
             ) : (
               <div className="relative">
-                {/* Streaming indicator — subtle, doesn't block content */}
+                {/* Streaming indicator */}
                 {isStreaming && (
                   <div className="flex items-center gap-1.5 mb-3 text-violet-500 text-[11px] font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
                     AI đang viết...
                   </div>
                 )}
-                <div className="prose dark:prose-invert max-w-none">
-                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {streamingContent ?? editContent}
-                    {isStreaming && (
-                      <span className="inline-block w-[2px] h-[1em] bg-foreground/60 ml-[1px] align-middle animate-[blink_0.9s_step-end_infinite]" />
-                    )}
-                  </p>
-                </div>
+
+                {/* Loading state khi backend đang running hoặc paused nhưng chưa có content */}
+                {!isEditing && !streamingContent && !item.content && (item.backendStatus === "running" || item.backendStatus === "paused") && (
+                  <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <div className="relative mb-4">
+                      <div className="w-12 h-12 rounded-full border-2 border-violet-200 dark:border-violet-800" />
+                      <div className="absolute inset-0 w-12 h-12 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+                      <Sparkles className="absolute inset-0 m-auto h-5 w-5 text-violet-500" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">AI đang tạo bài viết...</p>
+                    <p className="text-xs mt-1.5 text-muted-foreground">Vui lòng đợi trong giây lát, nội dung sẽ hiển thị tự động</p>
+                    <div className="flex items-center gap-1.5 mt-3 text-[10px] text-muted-foreground">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
+                      Đang xử lý
+                    </div>
+                  </div>
+                )}
+
+                {/* Chỉ hiển thị ArticleContent khi có content */}
+                {!isEditing && (streamingContent || item.content) && (
+                  <ArticleContent content={streamingContent ?? editContent} />
+                )}
+
+                {isEditing && (
+                  <Textarea
+                    value={editContent}
+                    onChange={(e) => {
+                      setEditContent(e.target.value)
+                      hasLocalEditRef.current = true
+                    }}
+                    className="min-h-[500px] text-sm leading-relaxed resize-y font-mono"
+                    placeholder="Nội dung bài viết..."
+                  />
+                )}
+
+                {/* Cursor nhấp nháy khi streaming */}
+                {isStreaming && !isEditing && (
+                  <span className="inline-block w-[2px] h-[1em] bg-foreground/60 ml-[1px] align-middle animate-[blink_0.9s_step-end_infinite]" />
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* 🌟 4. SỬA ĐỔI: Chỉ render ChatSidebar khi ĐÃ CÓ activeConversationId */}
+        {/* ChatSidebar */}
         {activeConversationId && (
           <ChatSidebar
             conversationId={activeConversationId}

@@ -69,7 +69,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
     return (
         <TooltipProvider delayDuration={100}>
-            <div className="h-dvh flex bg-[#fafafa] font-sans text-zinc-900 antialiased overflow-hidden selection:bg-zinc-200">
+            <div className="h-dvh flex bg-zinc-100 font-sans text-zinc-900 antialiased overflow-hidden selection:bg-zinc-200">
 
                 {/* ── Desktop Sidebar ── */}
                 <Sidebar />

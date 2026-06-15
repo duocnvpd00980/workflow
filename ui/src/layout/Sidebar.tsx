@@ -43,17 +43,25 @@ function NavLink({
             to={to}
             onClick={onClick}
             search={true}
+            aria-current={isActive ? "page" : undefined}
             className={cn(
-                "group flex items-center gap-2.5 h-9 px-3 rounded-md text-[13px] font-medium",
-                "transition-all duration-150 select-none w-full",
+                "group relative flex items-center gap-2.5 h-9 px-3 rounded-md text-[13px]",
+                "transition-colors duration-100 select-none w-full",
                 isActive
-                    ? "bg-zinc-900 text-white"
-                    : "text-zinc-500 hover:bg-zinc-200/60 hover:text-zinc-900"
+                    ? "bg-zinc-100/80 text-zinc-900 font-semibold"
+                    : "text-zinc-500 font-medium hover:bg-zinc-200/50 hover:text-zinc-700"
             )}
         >
+            {/* Left accent indicator - Linear style */}
+            {isActive && (
+                <div className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-full bg-zinc-900" />
+            )}
+            
             <Icon className={cn(
-                "h-4 w-4 shrink-0 transition-colors duration-150",
-                isActive ? "text-white stroke-[2px]" : "text-zinc-400 group-hover:text-zinc-700 stroke-[1.5px]"
+                "h-4 w-4 shrink-0 transition-colors duration-100",
+                isActive 
+                    ? "text-zinc-900 stroke-[2.5px]" 
+                    : "text-zinc-400 group-hover:text-zinc-600 stroke-[1.5px]"
             )} />
             <span className="truncate">{label}</span>
         </Link>
@@ -208,7 +216,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar() {
     return (
-        <aside className="hidden md:flex w-[240px] flex-col shrink-0 bg-[#f7f7f8] border-r border-zinc-200/70 h-full">
+        <aside className="hidden md:flex w-[240px] flex-col shrink-0 bg-zinc-100 border-r border-zinc-200/70 h-full">
             <SidebarContent />
         </aside>
     );

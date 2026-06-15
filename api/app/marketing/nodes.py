@@ -14,15 +14,23 @@ from pathlib import Path
 import requests
 from groq import AsyncGroq
 
+# ── IMPORT TẤT CẢ MODELS TRƯỚC KHI DÙNG ──────────────────────────
+import app.business.models
+import app.brand.models
+import app.chat.models
+import app.rag.models
+import app.marketing.models
+import app.research.models
+import app.tasks.models
+from app.brand.models import Brand, BrandProfile, BrandVoiceRule, BrandMessaging
+from app.research.models import ResearchResult
+from app.rag.models import DocumentSource, DocumentPage, HotelRoom
+# ──────────────────────────────────────────────────────────────────
 
 
 # ── LangGraph Nodes Xử Lý ───────────────────────────────────────────────────────
 from sqlalchemy import select, desc
 from sqlalchemy.orm import joinedload
-
-from app.brand.models import Brand, BrandProfile, BrandVoiceRule, BrandMessaging
-from app.research.models import ResearchResult
-from app.rag.models import DocumentSource, DocumentPage, HotelRoom
 
 import requests
 
@@ -413,7 +421,7 @@ def visual_intent_analyzer(state: dict) -> dict:
         f"tags: [Các từ khóa tìm kiếm ảnh viết cách nhau dấu phẩy]"
     )
     
-    res = call_gemini(prompt, max_tokens=150)
+    res = call_groq(prompt, max_tokens=150)
     
     image_count = 3
     style = "bright_luxury"
@@ -449,7 +457,7 @@ def execute_social(state: dict) -> dict:
         f"=== History Memory ===\n{_build_memory_block(state.get('memory_history', []))}"
     )
     
-    caption = call_gemini(prompt, max_tokens=300)
+    caption = call_groq(prompt, max_tokens=300)
     if caption.startswith("[ERROR:"):
         return {**state, "error": caption[7:-1]}
         
@@ -504,7 +512,7 @@ def execute_image(state: dict) -> dict:
         f"=== Brand Context ===\n{_build_brand_block(brand_profile)}"
     )
     
-    img_prompt = call_gemini(prompt, max_tokens=300)
+    img_prompt = call_groq(prompt, max_tokens=300)
     if img_prompt.startswith("[ERROR:"):
         return {**state, "error": img_prompt[7:-1]}
         
@@ -525,7 +533,7 @@ def execute_research(state: dict) -> dict:
         f"=== Brand Context ===\n{_build_brand_block(brand_profile)}"
     )
     
-    report = call_gemini(prompt, max_tokens=1500)
+    report = call_groq(prompt, max_tokens=1500)
     if report.startswith("[ERROR:"):
         return {**state, "error": report[7:-1]}
         
@@ -591,7 +599,7 @@ def visual_asset_selector(state: dict) -> dict:
             with open(file_full_path, "wb") as f:
                 f.write(img_bytes)
                 
-            return f"![{desc}](/static/media/{session_id}/{file_name})"
+            return f"![{desc}](/media/{session_id}/{file_name})"  # bỏ /static
         except Exception as e:
             return f"![Ảnh lỗi: {desc}](https://via.placeholder.com/150?text=Error)"
 

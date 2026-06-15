@@ -12,11 +12,12 @@ import {
   ChevronRight, AlignLeft, Eye, EyeOff, Play, Pause,
   Smartphone, Monitor, ThumbsUp, Trash2, Loader2, AlertCircle, X
 } from 'lucide-react';
+import { API_BASE } from "@/config";
 
 // ==========================================
 // CONSTANTS & TYPES
 // ==========================================
-const BASE_URL = "http://localhost:8000/api/v1/marketing";
+const BASE_URL =  `${API_BASE}/marketing`;
 const PRIMARY_COLOR = "bg-slate-900 text-white hover:bg-slate-800";
 
 type WorkflowStatus = "running" | "paused" | "completed" | "error";

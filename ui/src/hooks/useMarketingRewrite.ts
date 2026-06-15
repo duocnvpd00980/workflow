@@ -1,6 +1,7 @@
+import { API_BASE } from "@/config";
 import { useState, useRef, useCallback, useEffect } from "react";
 
-const API_BASE = "http://localhost:8000/api/v1";
+
 
 export type RewriteStatus = "idle" | "streaming" | "done" | "error";
 
