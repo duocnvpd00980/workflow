@@ -22,7 +22,7 @@ import app.rag.models
 import app.marketing.models
 import app.research.models
 import app.tasks.models
-from app.brand.models import Brand, BrandProfile, BrandVoiceRule, BrandMessaging
+from app.brand.models import Brand
 from app.research.models import ResearchResult
 from app.rag.models import DocumentSource, DocumentPage, HotelRoom
 # ──────────────────────────────────────────────────────────────────
@@ -248,37 +248,37 @@ async def prepare(state: dict) -> dict:
     try:
         async with AsyncSessionLocal() as db:
 
-            if brand_id:
-                brand = (await db.execute(
-                    select(Brand)
-                    .where(Brand.id == brand_id, Brand.business_id == business_id)
-                    .options(
-                        joinedload(Brand.profile),
-                        joinedload(Brand.voice_rules),
-                        joinedload(Brand.messaging),
-                    )
-                )).scalars().one_or_none()
+          if brand_id:
+            bv = (await db.execute(
+                select(Brand)
+                .where(
+                    Brand.business_id == business_id,
+                    Brand.deleted_at.is_(None),
+                )
+                # Ưu tiên: lấy default trước, nếu không có thì lấy mới nhất
+                .order_by(Brand.is_default.desc(), Brand.created_at.desc())
+                .limit(1)
+            )).scalars().one_or_none()
 
-                if brand:
-                    p    = brand.profile
-                    rules = lambda t: [x.value for x in brand.voice_rules if x.rule_type == t]
-                    msgs  = lambda t: [x.value for x in brand.messaging   if x.message_type == t]
+            if bv:
+                tone_obj = bv.tone or {}
+                cta_obj  = bv.cta_style or {}
+                vocab    = bv.vocabulary or {}
 
-                    brand_profile = {
-                        "brand_name":      brand.name,
-                        "positioning":     p.positioning     if p else "Chuyên nghiệp",
-                        "target_audience": p.audience        if p else "Đại chúng",
-                        "visual_identity": p.visual_identity if p else {},
-                        "tone_patterns":   rules("tone_pattern")  or ["Thân thiện"],
-                        "forbidden_words": rules("forbidden_word"),
-                        "cta_samples":     rules("cta_pattern")   or ["Khám phá ngay"],
-                        "pain_points":     msgs("pain_point"),
-                        "proof_points":    msgs("proof_point"),
-                        "objections": [
-                            {"objection": x.objection, "counter": x.counter}
-                            for x in brand.messaging if x.message_type == "objection"
-                        ],
-                    }
+                brand_profile = {
+                    "brand_name":      bv.name,
+                    "positioning":     bv.purpose,
+                    "target_audience": bv.target_audience,
+                    "visual_identity": {},
+                    # map sang format mà _build_brand_block() đang expect
+                    "tone_patterns":   tone_obj.get("base", ["Thân thiện"]),
+                    "forbidden_words": vocab.get("wordsToAvoid", []),
+                    "cta_samples":     cta_obj.get("phrases", ["Khám phá ngay"]),
+                    "pain_points":     [],
+                    "proof_points":    [],
+                    "objections":      [],
+                }
+                            
 
             if business_id:
                 rs = (await db.execute(

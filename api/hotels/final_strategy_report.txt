@@ -1,58 +1,58 @@
 **A. CUSTOMER PERSONAS**
 
-Dưới đây là 3-5 customer personas cho Sontra Sea Hotel:
+Dưới đây là 3-5 personas khách hàng tiềm năng của Sontra Sea Hotel:
 
-* **Persona 1: Du khách trẻ**
- + Tên: Linh
- + Tuổi: 25-30
- + Nghề nghiệp: Sinh viên, nhân viên văn phòng
- + Sở thích: Du lịch, khám phá, ẩm thực
- + Mục tiêu: Tìm kiếm khách sạn giá cả phải chăng, vị trí thuận tiện, tiện ích và dịch vụ tốt
- + Hành vi: Tìm kiếm thông tin trên mạng xã hội, trang web du lịch
-* **Persona 2: Doanh nhân**
- + Tên: Anh Tuấn
- + Tuổi: 35-45
- + Nghề nghiệp: Doanh nhân, quản lý
- + Sở thích: Công việc, du lịch, nghỉ dưỡng
- + Mục tiêu: Tìm kiếm khách sạn cao cấp, tiện ích và dịch vụ tốt, vị trí thuận tiện
- + Hành vi: Tìm kiếm thông tin trên mạng xã hội, trang web du lịch, liên hệ trực tiếp với khách sạn
-* **Persona 3: Gia đình**
- + Tên: Chị Mai
- + Tuổi: 30-40
- + Nghề nghiệp: Nhân viên văn phòng, giáo viên
- + Sở thích: Du lịch, nghỉ dưỡng, gia đình
- + Mục tiêu: Tìm kiếm khách sạn gia đình, tiện ích và dịch vụ tốt, vị trí thuận tiện
- + Hành vi: Tìm kiếm thông tin trên mạng xã hội, trang web du lịch, liên hệ trực tiếp với khách sạn
+* **Persona 1: Du khách gia đình**
+ + Tên: Nguyễn Thị Mai
+ + Tuổi: 35
+ + Nghề nghiệp: Nhân viên văn phòng
+ + Mức thu nhập: 20 triệu đồng/tháng
+ + Sở thích: Du lịch cùng gia đình, khám phá ẩm thực địa phương
+ + Mục tiêu: Tìm kiếm khách sạn gia đình thân thiện, gần biển, có tiện nghi cho trẻ em
+* **Persona 2: Cặp đôi honeymoon**
+ + Tên: Lê Văn Minh và Nguyễn Thị Hoa
+ + Tuổi: 28-30
+ + Nghề nghiệp: Doanh nhân, nhân viên văn phòng
+ + Mức thu nhập: 30 triệu đồng/tháng
+ + Sở thích: Du lịch lãng mạn, khám phá thành phố
+ + Mục tiêu: Tìm kiếm khách sạn lãng mạn, có view biển đẹp, dịch vụ tốt
+* **Persona 3: Du khách solo**
+ + Tên: Trần Văn Nam
+ + Tuổi: 25
+ + Nghề nghiệp: Sinh viên, freelancer
+ + Mức thu nhập: 10 triệu đồng/tháng
+ + Sở thích: Du lịch một mình, khám phá văn hóa địa phương
+ + Mục tiêu: Tìm kiếm khách sạn giá cả phải chăng, có vị trí thuận lợi, dễ dàng di chuyển
 
 **B. CHIẾN LƯỢC TIẾP CẬN TỪNG PERSONA**
 
-Dưới đây là chiến lược tiếp cận từng persona:
-
-* **Persona 1: Du khách trẻ**
- + Chiến lược: Quảng cáo trên mạng xã hội (Facebook, Instagram), trang web du lịch (Booking.com, Agoda.com)
- + Nội dung: Giá cả phải chăng, vị trí thuận tiện, tiện ích và dịch vụ tốt
- + Ưu đãi: Khuyến mãi, giảm giá phòng
-* **Persona 2: Doanh nhân**
- + Chiến lược: Quảng cáo trên mạng xã hội (LinkedIn), trang web du lịch (Expedia.com)
- + Nội dung: Tiện ích và dịch vụ cao cấp, vị trí thuận tiện, dịch vụ đa dạng
- + Ưu đãi: Phòng suite, dịch vụ thư ký, khuyến mãi
-* **Persona 3: Gia đình**
- + Chiến lược: Quảng cáo trên mạng xã hội (Facebook), trang web du lịch (TripAdvisor.com)
- + Nội dung: Tiện ích và dịch vụ gia đình, vị trí thuận tiện, dịch vụ đa dạng
- + Ưu đãi: Phòng gia đình, dịch vụ trông trẻ, khuyến mãi
+* **Persona 1: Du khách gia đình**
+ + Tiếp cận qua: Facebook, Google Ads
+ + Nội dung: Giới thiệu tiện nghi cho trẻ em, dịch vụ gia đình thân thiện, giá cả phải chăng
+ + Ưu đãi: Giảm giá phòng cho gia đình có trẻ em, tặng kèm dịch vụ babysitting
+* **Persona 2: Cặp đôi honeymoon**
+ + Tiếp cận qua: Instagram, TikTok
+ + Nội dung: Giới thiệu view biển lãng mạn, dịch vụ tốt, hoạt động dành cho cặp đôi
+ + Ưu đãi: Tặng kèm dịch vụ lãng mạn (bữa tối trên bãi biển, hoa hồng trong phòng)
+* **Persona 3: Du khách solo**
+ + Tiếp cận qua: Google Ads, Facebook
+ + Nội dung: Giới thiệu vị trí thuận lợi, giá cả phải chăng, dịch vụ thân thiện
+ + Ưu đãi: Giảm giá phòng cho du khách solo, tặng kèm dịch vụ hướng dẫn du lịch
 
 **C. CHIẾN DỊCH 30 NGÀY**
 
 Dưới đây là chiến dịch 30 ngày cho Sontra Sea Hotel:
 
 * **Tuần 1: Tạo nhận thức**
- + Ngày 1-3: Quảng cáo trên mạng xã hội (Facebook, Instagram)
- + Ngày 4-7: Tạo nội dung trên trang web (blog, hình ảnh, video)
-* **Tuần 2: Tăng cường quảng cáo**
- + Ngày 8-14: Quảng cáo trên trang web du lịch (Booking.com, Agoda.com)
- + Ngày 15-17: Tạo nội dung trên mạng xã hội (Facebook, Instagram)
+ + Ngày 1-3: Tạo nội dung trên Facebook, Instagram, TikTok giới thiệu về Sontra Sea Hotel
+ + Ngày 4-7: Chạy quảng cáo Google Ads, Facebook Ads để tăng nhận thức về thương hiệu
+* **Tuần 2: Tăng cường tương tác**
+ + Ngày 8-14: Tạo nội dung tương tác trên Facebook, Instagram, TikTok (hỏi đáp, bình chọn, v.v.)
+ + Ngày 15-17: Tổ chức minigame trên Facebook để tăng cường tương tác
 * **Tuần 3: Ưu đãi và khuyến mãi**
- + Ngày 18-24: Ưu đãi và khuyến mãi cho khách hàng (giảm giá phòng, phòng suite)
- + Ngày 25-27: Tạo nội dung trên mạng xã hội (Facebook, Instagram)
-* **Tuần 4: Đánh giá và điều chỉnh**
- + Ngày 28-30: Đánh giá kết quả chiến dịch, điều chỉnh chiến lược cho tương lai.
+ + Ngày 18-24: Cung cấp ưu đãi và khuyến mãi cho khách hàng (giảm giá phòng, tặng kèm dịch vụ)
+ + Ngày 25-27: Gửi email và tin nhắn về ưu đãi và khuyến mãi cho khách hàng
+* **Tuần 4: Đánh giá và tối ưu**
+ + Ngày 28-30: Đánh giá kết quả chiến dịch và tối ưu hóa quảng cáo cho tương lai
+
+Kế hoạch trên sẽ giúp Sontra Sea Hotel tăng cường nhận thức về thương hiệu, tăng cường tương tác với khách hàng và tăng doanh số.
