@@ -209,33 +209,18 @@ export function CreateBrandModal({
 
   try {
     // ── Step 1: Tạo Business nếu chưa có ──
-    if (showNewForm && newName.trim()) {
-      const businessRes = await fetch(`${API_BASE}/businesses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: newName.trim(),
-          address: newAddress.trim(),      // ← thêm field này
-          industry: newIndustry,           // ← thêm field này
-          website: newWebsite.trim() || undefined,
-          owner_id: "string",
-          description: "string"
-        }),
-      });
-      
-      if (!businessRes.ok) throw new Error('Tạo business thất bại');
-      
-      const businessData = await businessRes.json();
-      businessId = businessData.id;
-      businessName = businessData.name;
-    }
+
 
     // ── Step 2: Tạo Brand Voice ──
     const voiceRes = await fetch(`${API_BASE}/brand-voices`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        business_id: businessId,
+        business_id:businessId, 
+        business_name: businessName,
+        address: "string",
+        industry: "string",
+        owner_id: "string",
         voice_config: {
           name: voiceName.trim(),
           purpose: purpose.trim(),

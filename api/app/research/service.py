@@ -2,9 +2,11 @@ from pathlib import Path
 from typing import AsyncGenerator, Dict, Any
 import json
 import asyncio
+import uuid
 
 from sqlalchemy import select
 
+from app.business.models import Business
 from app.db import AsyncSessionLocal
 from app.research.models import HotelResearchState, PipelineTask, PipelineEvent, ResearchResult
 from app.research.workflow import build_graph
@@ -143,14 +145,70 @@ def _make_config(business_name: str) -> dict:
 
 # ── Đồng bộ ──────────────────────────────────────────────────────
 
-async def run_pipeline(business_name: str, address: str, industry: str) -> HotelResearchState:
+async def run_pipeline(
+    business_name: str,
+    address: str,
+    industry: str,
+    business_id: str | None = None,
+    owner_id: str | None = None,
+) -> HotelResearchState:
+    """
+    Chạy pipeline research. Chạy xong tự lưu kết quả vào research_results.
+    - Nếu không có business_id: tự tạo business từ owner_id
+    """
+    # ── 1. Ensure business exists ─────────────────────────────
+    if not business_id:
+        from app.business import service as business_service
+        from app.business.schemas import BusinessCreate
+        
+        async with AsyncSessionLocal() as db:
+            if owner_id:
+                existing = (await db.execute(
+                    select(Business).where(
+                        Business.name == business_name,
+                        Business.owner_id == owner_id,
+                        Business.deleted_at.is_(None),
+                    )
+                )).scalars().one_or_none()
+                
+                if existing:
+                    business_id = existing.id
+            
+            if not business_id:
+                new_biz = await business_service.create_business(
+                    db,
+                    BusinessCreate(
+                        name=business_name,
+                        owner_id=owner_id or "default",
+                        industry=industry,
+                        address=address,
+                    ),
+                )
+                business_id = new_biz.id
+    
+    # ── 2. Run pipeline ────────────────────────────────────────
     hotel_dir = "hotels"
     Path(hotel_dir).mkdir(parents=True, exist_ok=True)
     graph  = build_graph()
-    state  = create_initial_state(hotel_dir=hotel_dir, business_name=business_name, address=address, industry=industry)
+    state  = create_initial_state(
+        hotel_dir=hotel_dir,
+        business_name=business_name,
+        address=address,
+        industry=industry,
+        business_id=business_id,
+    )
     config = _make_config(business_name)
-    return await graph.ainvoke(state, config=config)
-
+    
+    final = await graph.ainvoke(state, config=config)
+    
+    # ── 3. Lưu kết quả vào research_results ───────────────────
+    await _db_save_result(
+        task_id=None,  # Không liên kết task
+        data=final,
+        business_id=business_id,
+    )
+    
+    return final
 
 # ── Stream generator ──────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, JSON, DateTime, ForeignKey, Index, event, func
+from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, ForeignKey, Index, event, func
 from sqlalchemy.orm import relationship
 from sqlalchemy.engine import Connection
 from datetime import datetime, timezone
@@ -47,6 +47,14 @@ class Brand(Base):
     uploaded_files = Column(JSON,         default=list)  # list of file paths / S3 keys
     pasted_text    = Column(Text,         nullable=True)
 
+
+    # ── 4 Trục khẩu khí định lượng (0 -> 100) phục vụ Radar & Sliders ──
+    tone_funny_serious               = Column(Integer, default=50, nullable=False)
+    tone_formal_casual               = Column(Integer, default=50, nullable=False)
+    tone_respectful_irreverent       = Column(Integer, default=50, nullable=False)
+    tone_enthusiastic_matter_of_fact = Column(Integer, default=50, nullable=False)
+
+    
     # ── Meta ──────────────────────────────────────────────────────
     is_default = Column(String(1), default="0")       # "1" = default voice for business
 

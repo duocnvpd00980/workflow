@@ -98,6 +98,42 @@ def _normalize_brand_voice(brand_voice: Dict[str, Any]) -> Dict[str, Any]:
     bv.setdefault("examples", [])
     bv.setdefault("personality", "")
 
+    # ═══════════════════════════════════════════════════════════════════
+    # TẦNG DỊCH THUẬT (TRANSLATION LAYER) — Trả ra mảng string cho Jinja2
+    # ═══════════════════════════════════════════════════════════════════
+    slider_directives = []
+
+    # 1. Trục Hài hước vs Nghiêm túc
+    funny_serious_val = bv.get("tone_funny_serious", 50)
+    if funny_serious_val <= 35:
+        slider_directives.append("Hành văn hài hước, dí dỏm, sử dụng câu đùa và từ lóng bắt trend để tạo không khí vui vẻ.")
+    elif funny_serious_val >= 65:
+        slider_directives.append("Hành văn cực kỳ nghiêm túc, trang trọng, chuẩn mực chuyên gia. Tuyệt đối không dùng câu đùa hay từ cảm thán.")
+
+    # 2. Trục Trang trọng vs Bình dân
+    formal_casual_val = bv.get("tone_formal_casual", 50)
+    if formal_casual_val <= 35:
+        slider_directives.append("Phong cách diễn đạt trang trọng, chính thống, sử dụng thuật ngữ chuyên môn chính xác.")
+    elif formal_casual_val >= 65:
+        slider_directives.append("Phong cách diễn đạt bình dân, giản dị, tự nhiên như cuộc trò chuyện đời thường.")
+
+    # 3. Trục Tôn trọng vs Phá cách
+    respectful_irreverent_val = bv.get("tone_respectful_irreverent", 50)
+    if respectful_irreverent_val <= 35:
+        slider_directives.append("Thể hiện sự tôn trọng tối đa đối với người đọc, lịch sự, sử dụng kính ngữ đầy đủ.")
+    elif respectful_irreverent_val >= 65:
+        slider_directives.append("Phong cách phá cách, táo bạo, nổi loạn nhẹ hoặc hóm hỉnh châm biếm để gây ấn tượng mạnh.")
+
+    # 4. Trục Nhiệt huyết vs Thực tế
+    enthusiastic_matter_val = bv.get("tone_enthusiastic_matter_of_fact", 50)
+    if enthusiastic_matter_val <= 35:
+        slider_directives.append("Giọng điệu tràn đầy năng lượng, nhiệt huyết, sử dụng văn phong sôi nổi kích thích hành động.")
+    elif enthusiastic_matter_val >= 65:
+        slider_directives.append("Giọng điệu khách quan tuyệt đối, chỉ tập trung vào sự thật và số liệu (matter-of-fact), không thổi phồng cảm xúc.")
+
+    # Gán mảng này vào dictionary để Jinja2 bốc dỡ ra render
+    bv["slider_directives"] = slider_directives
+
     return bv
 
 

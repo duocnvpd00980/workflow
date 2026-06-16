@@ -138,6 +138,12 @@ def _sanitize_raw(raw: Dict[str, Any]) -> Dict[str, Any]:
     if isinstance(raw.get("examples"), list):
         raw["examples"] = raw["examples"][:3]
 
+    for field in ("tone_funny_serious", "tone_formal_casual", "tone_respectful_irreverent", "tone_enthusiastic_matter_of_fact"):
+        try:
+            raw[field] = max(0, min(100, int(raw.get(field, 50))))
+        except (ValueError, TypeError):
+            raw[field] = 50
+            
     return raw
 
 

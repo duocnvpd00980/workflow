@@ -226,12 +226,13 @@ async def get_result(task_id: str):
 
 @router.post("/run", response_model=PipelineResponse)
 async def run(request: PipelineRequest):
-    """Endpoint đồng bộ, đợi pipeline chạy xong mới trả kết quả."""
+    """Endpoint đồng bộ. run_pipeline tự lo toàn bộ DB."""
     try:
         final = await run_pipeline(
             business_name=request.business_name,
             address=request.address,
             industry=request.industry,
+            owner_id=request.owner_id,  
         )
         return PipelineResponse(
             success=True,

@@ -61,7 +61,7 @@ class ResearchResult(Base):
     )
 
     id                   = mapped_column(Integer, primary_key=True, autoincrement=True)
-    task_id              = mapped_column(String(36), ForeignKey("pipeline_tasks.task_id"), unique=True, nullable=False)
+    task_id              = mapped_column(String(36), ForeignKey("pipeline_tasks.task_id"), unique=True, nullable=True)
 
     # ── Link về Business ─────────────────────────────────────────
     business_id          = mapped_column(String(36), ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True)

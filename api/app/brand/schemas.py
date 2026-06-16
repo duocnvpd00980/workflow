@@ -20,6 +20,9 @@ class StyleConfig(BaseModel):
     sentenceLength: Literal["short", "medium", "long", "mixed"]
     voice: Literal["active", "passive"]
     perspective: Literal["first", "second", "third"]
+    pronouns: Optional[Dict[str, str]] = Field(
+        default_factory=lambda: {"ai": "Chúng tôi", "reader": "Quý khách"}
+    )
 
 
 class VocabularyRules(BaseModel):
@@ -27,6 +30,7 @@ class VocabularyRules(BaseModel):
     wordsToAvoid: List[str] = Field(default_factory=list)
     phrasesToUse: List[str] = Field(default_factory=list)
     phrasesToAvoid: List[str] = Field(default_factory=list)
+    topicsToAvoid: Optional[List[str]] = Field(default_factory=list)
 
 
 class FormatRules(BaseModel):
@@ -55,6 +59,10 @@ class BrandEightFields(BaseModel):
     format_rules: FormatRules
     cta_style: CtaStyle
     examples: List[VoiceExample] = Field(default_factory=list)
+    tone_funny_serious: int = Field(default=50, ge=0, le=100)
+    tone_formal_casual: int = Field(default=50, ge=0, le=100)
+    tone_respectful_irreverent: int = Field(default=50, ge=0, le=100)
+    tone_enthusiastic_matter_of_fact: int = Field(default=50, ge=0, le=100)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -91,27 +99,57 @@ class RagSource(BaseModel):
     uploaded_files: List[str] = Field(default_factory=list)
     pasted_text: Optional[str] = None
 
-    # @model_validator(mode="after")
-    # def at_least_one_source(self) -> RagSource:
-    #     has_url = bool(self.website_url)
-    #     has_files = bool(self.uploaded_files)
-    #     has_text = bool(self.pasted_text and self.pasted_text.strip())
-    #     if not (has_url or has_files or has_text):
-    #         raise ValueError(
-    #             "Cần ít nhất một RAG source: website_url, uploaded_files, hoặc pasted_text."
-    #         )
-    #     return self
-
 
 # ═══════════════════════════════════════════════════════════════════
 # REQUEST SCHEMAS
 # ═══════════════════════════════════════════════════════════════════
 
 class BrandCreate(BaseModel):
-    """POST /brand-voices — tạo mới, LLM sẽ extract 8 fields từ rag_source."""
-    business_id: str = Field(..., min_length=1)
+    """
+    POST /brand-voices — tạo mới, LLM sẽ extract 8 fields từ rag_source.
+    
+    Case 1: business_id đã có → skip research, dùng thẳng
+    Case 2: business_id = None → tạo business mới + run pipeline research + extract voice
+    """
+    # Case 1: Existing business
+    business_id: Optional[str] = Field(None, min_length=1)
+    
+    # Case 2: Create new business + research
+    business_name: Optional[str] = Field(None, min_length=1, max_length=255)
+    address: Optional[str] = Field(None, max_length=500)
+    industry: Optional[str] = Field(None, max_length=100)
+    owner_id: Optional[str] = Field(None, min_length=1)  # Required for Case 2
+    
+    # Common
     voice_config: VoiceConfigIn
     rag_source: Optional[RagSource] = None
+
+    tone_funny_serious: int = Field(default=50, ge=0, le=100)
+    tone_formal_casual: int = Field(default=50, ge=0, le=100)
+    tone_respectful_irreverent: int = Field(default=50, ge=0, le=100)
+    tone_enthusiastic_matter_of_fact: int = Field(default=50, ge=0, le=100)
+    
+    @model_validator(mode="after")
+    def validate_business_input(self) -> BrandCreate:
+        """Ensure either business_id OR (business_name + owner_id) is provided."""
+        has_business_id = bool(self.business_id and self.business_id.strip())
+        has_new_business = bool(self.business_name and self.business_name.strip())
+        
+        if not has_business_id and not has_new_business:
+            raise ValueError(
+                "Phải cung cấp business_id hoặc business_name + owner_id"
+            )
+        
+        if has_business_id and has_new_business:
+            raise ValueError(
+                "Không thể cung cấp cả business_id và business_name cùng lúc"
+            )
+        
+        # Nếu tạo mới, owner_id bắt buộc
+        if has_new_business and not self.owner_id:
+            raise ValueError("owner_id bắt buộc khi tạo business mới")
+        
+        return self
 
 
 class BrandUpdate(BaseModel):
@@ -133,6 +171,11 @@ class BrandUpdate(BaseModel):
     examples: Optional[List[VoiceExample]] = None
 
     is_default: Optional[Literal["0", "1"]] = None
+
+    tone_funny_serious: Optional[int] = Field(None, ge=0, le=100)
+    tone_formal_casual: Optional[int] = Field(None, ge=0, le=100)
+    tone_respectful_irreverent: Optional[int] = Field(None, ge=0, le=100)
+    tone_enthusiastic_matter_of_fact: Optional[int] = Field(None, ge=0, le=100)
 
     @field_validator("channels")
     @classmethod
@@ -172,6 +215,11 @@ class BrandOut(BaseModel):
     # RAG source (trả về để user biết nguồn đã dùng)
     website_url: Optional[str] = None
     uploaded_files: List[str] = Field(default_factory=list)
+
+    tone_funny_serious: int
+    tone_formal_casual: int
+    tone_respectful_irreverent: int
+    tone_enthusiastic_matter_of_fact: int
 
     is_default: str
     created_at: datetime
