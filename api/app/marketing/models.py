@@ -22,11 +22,15 @@ class WorkflowSession(Base):
 
     # ── Link về Conversation (Chat) ─────────────────────────────────
     conversation_id = mapped_column(
-        String(36), 
-        ForeignKey("conversation.id", ondelete="SET NULL"), 
+        String(36),
+        ForeignKey("conversation.id", ondelete="SET NULL"),
         nullable=True,
         index=True
     )
+
+    # ── Group + Function để chọn graph ─────────────────────────────────
+    group = mapped_column(String(20), default="blog_web")  # blog_web, email_sale, social_media
+    function = mapped_column(String(30), default="blog_post")  # blog_post, product_description, etc.
 
     draft = mapped_column(JSON)               # {content, metadata, version, versions: []}
     usage = mapped_column(JSON)               # {total_tokens, total_cost, calls: []}
@@ -39,4 +43,4 @@ class WorkflowSession(Base):
     # Relationships
     business = relationship("Business", back_populates="workflow_sessions")
     brand = relationship("Brand")
-    conversation = relationship("Conversation", foreign_keys=[conversation_id])  # ← THÊM
+    conversation = relationship("Conversation", foreign_keys=[conversation_id])

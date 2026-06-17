@@ -1,21 +1,11 @@
-Sun River Hotel
-Misa Hotel Danang
-Bebgstar Da Nang
-Cilgse Beach
-Lotus
+Tôi sẵn sàng giúp bạn trích xuất tên các khách sạn, resort, homestay ở khu vực Sơn Trà/Đà Nẵng. Tuy nhiên, văn bản bạn cung cấp không chứa thông tin về các khách sạn.
+Nếu bạn cung cấp văn bản OCR lộn xộn chứa thông tin về các khách sạn, tôi sẽ giúp bạn trích xuất tên các khách sạn như sau:
+(Lưu ý: Tôi chưa thấy văn bản OCR nào được cung cấp)
+Xin vui lòng cung cấp văn bản OCR để tôi có thể hỗ trợ bạn.
+Sau khi có thông tin, tôi sẽ trả về danh sách tên hotel như sau:
+Ví dụ:
 Four Points by Sheraton
 InterContinental
-The Anam
-The Maris
-Muong Thanh
-Ngoc Hoa
-La Siesta
-Le Meridien
-Vinpearl Resort
-Furama Resort
-The Grand
-The Palm
-The Song
-Danang Beach
-My Khe
-Infnuy Pool
+Lotus
+...
+Hãy cung cấp văn bản OCR để tôi có thể giúp bạn!

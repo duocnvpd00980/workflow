@@ -38,6 +38,7 @@ export interface SessionListItem {
   error: string | null
   created_at: string
   updated_at: string
+  group?: "blog_web" | "email_sale" | "social_media";
 }
 
 export interface SessionListResponse {
@@ -74,8 +75,9 @@ export interface VersionHistoryResponse {
 }
 
 export interface ResumeRequest {
-  action: "approve" | "reject" | "edit"
-  content?: string
+  action: "approve" | "edit" | "reject";
+  content?: string;
+  group?: "blog_web" | "email_sale" | "social_media";  // ✅ Thêm
 }
 
 export interface ResumeResponse {
@@ -98,6 +100,7 @@ export type ContentItem = {
   author?: string
   channel?: string
   content?: string
+  group?: "blog_web" | "email_sale" | "social_media";
   backendStatus?: BackendStatus
   approved?: boolean
   conversation_id?: string
@@ -206,6 +209,9 @@ export function generatePreview(content: string | undefined): string {
 export function mapSessionToContentItem(session: SessionListItem): ContentItem {
   const icon = detectType(session.request)
   const typeMap: Record<string, string> = { email: "Email", social: "Social", ads: "Ads", blog: "Blog" }
+  const group = session.group || 
+                (session.draft?.metadata?.group as ContentItem["group"]) || 
+                "blog_web";
 
   return {
     id: session.session_id,
@@ -219,6 +225,7 @@ export function mapSessionToContentItem(session: SessionListItem): ContentItem {
     author: session.draft?.metadata?.author as string || "AI Assistant",
     channel: session.draft?.metadata?.channel as string || "Auto-generated",
     content: session.draft?.content || undefined,
+    group,
     backendStatus: session.status,
     approved: session.approved || false,
     publishStatus: session.publish_status,

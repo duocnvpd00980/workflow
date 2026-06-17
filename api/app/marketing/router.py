@@ -1,15 +1,15 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from app.marketing.models import WorkflowSession
 from .schemas import (
     StartRequest, ResumeRequest, WorkflowResponse, SessionResponse,
     ChatEditRequest, ChatInlineRequest, ChatEditResponse, ChatInlineResponse,
     VersionHistoryResponse,
-    SessionListResponse, StartQueuedResponse
+    SessionListResponse, StartQueuedResponse, ClarificationResponse
 )
 from .service import WorkflowService
 from typing import Optional
@@ -97,24 +97,59 @@ async def get_or_create_conversation(
 async def create_session():
     return {"session_id": service.create_session()}
 
-@router.post("/start", response_model=StartQueuedResponse, status_code=202)
-async def start(body: StartRequest):
+
+@router.post(
+    "/start",
+    responses={
+        202: {"model": StartQueuedResponse, "description": "Hợp lệ, chạy ngầm thành công."},
+        200: {"model": ClarificationResponse, "description": "Mơ hồ, trả về các gợi ý."},
+    }
+)
+async def start(body: StartRequest, service: WorkflowService = Depends()):
     """
-    Nhận yêu cầu tạo content, trả về 202 ngay lập tức.
-    Workflow chạy ngầm trong thread pool riêng biệt.
+    Nhận yêu cầu tạo content và điều hướng luồng xử lý thông qua Service.
     """
-    # Tạo session và queue task chạy ngầm, trả về ngay lập tức
+    user_request = body.request.strip()
+    
+    # BƯỚC 1: Gọi Service kiểm tra tính mơ hồ (chỉ chạy ở Lượt 1 khi chưa có option chọn trước)
+    if not body.selected_option_text:
+        is_vague, suggestion_data = await service.check_request_ambiguity(user_request)
+        
+        if is_vague and suggestion_data:
+            options = suggestion_data.get("options") or []
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "status": "requires_clarification",
+                    "clarification_type": (
+                        "options"
+                        if len(options) > 0
+                        else "rewrite"
+                    ),
+                    "message": suggestion_data["message"],
+                    "options": options if options else None,
+                }
+            )
+
+    # BƯỚC 2: Đẩy vào hàng đợi chạy ngầm chính thức
     session_id = await service.start_queued(
-        request=body.request,
+        request=user_request,
         brand_id=body.brand_id,
+        group=body.group,
+        function=body.function,
         auto_mode=body.auto_mode,
+        selected_option_text=body.selected_option_text,
     )
     
-    return StartQueuedResponse(
-        session_id=session_id,
-        status="queued",
-        message="Workflow đã được thêm vào hàng đợi. Kiểm tra trạng thái qua GET /marketing/{session_id}"
+    return JSONResponse(
+        status_code=status.HTTP_202_ACCEPTED,
+        content={
+            "session_id": session_id,
+            "status": "queued",
+            "message": "Workflow đã được thêm vào hàng đợi. Kiểm tra trạng thái qua GET /marketing/{session_id}"
+        }
     )
+
 
 @router.get("/sessions", response_model=SessionListResponse)
 async def list_sessions(
@@ -136,7 +171,12 @@ async def get_status(session_id: str):  # ← Bỏ db dependency
 
 @router.post("/{session_id}/resume", response_model=WorkflowResponse)
 async def resume(session_id: str, body: ResumeRequest):
-    result = await service.resume(session_id, body.action, body.content)
+    result = await service.resume(
+        session_id,
+        body.action,
+        body.content,
+        body.group,
+    )
     if not result:
         raise HTTPException(status_code=404, detail="Session not found")
     return WorkflowResponse(**result)
@@ -177,10 +217,14 @@ async def chat_edit_stream(body: ChatEditRequest):
 
 
 
-@router.post("/chat/inline", response_model=ChatInlineResponse) 
+@router.post("/chat/inline", response_model=ChatInlineResponse)
 async def chat_inline(body: ChatInlineRequest):
-    result = await service.chat_inline(body.paragraph, body.instruction, body.context)
-    return ChatInlineResponse(**result) 
+    result = await service.chat_inline(
+        body.session_id,
+        body.paragraph,
+        body.instruction,
+    )
+    return ChatInlineResponse(**result)
 
 # ══════════════════════════════════════════════════════════════
 # VERSION HISTORY

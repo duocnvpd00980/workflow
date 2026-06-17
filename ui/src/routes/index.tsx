@@ -207,115 +207,115 @@ function ListView({
             const isChecked = selected.has(item.id)
             const isItemDeleting = deletingIds.has(item.id)
             return (
- <div
-  key={item.id}
-  onClick={() => !isItemDeleting && onSelect(item.id)}
-  role="listitem"
-  aria-label={`${item.title}, ${item.status}, ${item.time}`}
-  className={cn(
-    "group relative flex items-center h-12 px-3 cursor-pointer select-none",
-    "border-b border-border/10 hover:bg-muted/15",
-    "transition-[background-color] duration-75",
-    "contain-layout-paint",
-    isChecked && "bg-muted/25",
-    (isItemDeleting || isDeleting) && "opacity-50 pointer-events-none"
-  )}
->
-  {/* Status indicator - Linear style: instant scan */}
-  <div 
-    className={cn(
-      "absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full",
-      "transition-transform duration-150",
-      item.status === "completed" && "bg-emerald-400",
-      item.status === "paused" && "bg-amber-400",
-      item.status === "running" && "bg-violet-400",
-      item.status === "error" && "bg-red-400",
-      isChecked ? "scale-y-100" : "scale-y-0 group-hover:scale-y-100"
-    )} 
-    role="status" 
-    aria-label={`Trạng thái: ${item.status}`}
-  />
+              <div
+                key={item.id}
+                onClick={() => !isItemDeleting && onSelect(item.id)}
+                role="listitem"
+                aria-label={`${item.title}, ${item.status}, ${item.time}`}
+                className={cn(
+                  "group relative flex items-center h-12 px-3 cursor-pointer select-none",
+                  "border-b border-border/10 hover:bg-muted/15",
+                  "transition-[background-color] duration-75",
+                  "contain-layout-paint",
+                  isChecked && "bg-muted/25",
+                  (isItemDeleting || isDeleting) && "opacity-50 pointer-events-none"
+                )}
+              >
+                {/* Status indicator - Linear style: instant scan */}
+                <div
+                  className={cn(
+                    "absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full",
+                    "transition-transform duration-150",
+                    item.status === "completed" && "bg-emerald-400",
+                    item.status === "paused" && "bg-amber-400",
+                    item.status === "running" && "bg-violet-400",
+                    item.status === "error" && "bg-red-400",
+                    isChecked ? "scale-y-100" : "scale-y-0 group-hover:scale-y-100"
+                  )}
+                  role="status"
+                  aria-label={`Trạng thái: ${item.status}`}
+                />
 
-  {/* Checkbox - Gmail style */}
-  <div 
-    onClick={(e) => e.stopPropagation()}
-    className="flex items-center justify-center w-8 h-8 -ml-1 mr-1"
-    aria-label={`Chọn ${item.title}`}
-  >
-    <div className={cn(
-      "transition-opacity duration-100",
-      !isChecked && "opacity-0 group-hover:opacity-100"
-    )}>
-      <Checkbox
-        className="h-4 w-4 rounded-[3px] border-border/40"
-        checked={isChecked}
-        onCheckedChange={(c) => toggleOne(item.id, !!c)}
-        disabled={isItemDeleting}
-      />
-    </div>
-  </div>
+                {/* Checkbox - Gmail style */}
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center justify-center w-8 h-8 -ml-1 mr-1"
+                  aria-label={`Chọn ${item.title}`}
+                >
+                  <div className={cn(
+                    "transition-opacity duration-100",
+                    !isChecked && "opacity-0 group-hover:opacity-100"
+                  )}>
+                    <Checkbox
+                      className="h-4 w-4 rounded-[3px] border-border/40"
+                      checked={isChecked}
+                      onCheckedChange={(c) => toggleOne(item.id, !!c)}
+                      disabled={isItemDeleting}
+                    />
+                  </div>
+                </div>
 
-  {/* Icon - Notion style: subtle */}
-  <div className="flex items-center justify-center w-7 h-7 mr-2 shrink-0">
-    <TypeIcon icon={item.icon} />
-  </div>
+                {/* Icon - Notion style: subtle */}
+                <div className="flex items-center justify-center w-7 h-7 mr-2 shrink-0">
+                  <TypeIcon icon={item.icon} />
+                </div>
 
-  {/* Content: Title + Badge + Preview - Apple Mail hierarchy */}
-  <div className="flex-1 min-w-0 flex items-center gap-2 mr-3">
-    {/* Title: primary, bold, flexible width */}
-    <span className="text-sm font-semibold text-foreground truncate shrink-0 max-w-[45%]">
-      {item.title}
-    </span>
-    
-    {/* Badge: inline, compact, high contrast */}
-    <span className="shrink-0">
-      <StatusBadge status={item.status} />
-    </span>
-    
-    {/* Preview: secondary, only when space available */}
-    <span className="hidden lg:block text-sm text-muted-foreground/70 truncate">
-      {item.preview}
-    </span>
-  </div>
+                {/* Content: Title + Badge + Preview - Apple Mail hierarchy */}
+                <div className="flex-1 min-w-0 flex items-center gap-2 mr-3">
+                  {/* Title: primary, bold, flexible width */}
+                  <span className="text-sm font-semibold text-foreground truncate shrink-0 max-w-[45%]">
+                    {item.title}
+                  </span>
 
-  {/* Right: Time + Actions - Gmail pattern */}
-  <div className="flex items-center gap-1 shrink-0">
-    {/* Actions: hover reveal */}
-    <div className={cn(
-      "flex items-center gap-0.5",
-      "opacity-0 group-hover:opacity-100 transition-opacity duration-100",
-      isChecked && "opacity-100"
-    )}>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8 text-muted-foreground/50 hover:text-foreground" 
-        onClick={(e) => { e.stopPropagation(); onArchive([item.id]); }}
-        aria-label="Lưu trữ"
-      >
-        <Archive className="h-3.5 w-3.5" />
-      </Button>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8 text-muted-foreground/50 hover:text-destructive" 
-        onClick={(e) => { e.stopPropagation(); onDelete([item.id]); }}
-        aria-label="Xóa"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
-    </div>
+                  {/* Badge: inline, compact, high contrast */}
+                  <span className="shrink-0">
+                    <StatusBadge status={item.status} />
+                  </span>
 
-    {/* Time: tabular, right align, hide on hover */}
-    <span className={cn(
-      "text-xs text-muted-foreground/50 whitespace-nowrap w-16 text-right tabular-nums",
-      "group-hover:hidden",
-      isChecked && "hidden"
-    )}>
-      {item.time}
-    </span>
-  </div>
-</div>
+                  {/* Preview: secondary, only when space available */}
+                  <span className="hidden lg:block text-sm text-muted-foreground/70 truncate">
+                    {item.preview}
+                  </span>
+                </div>
+
+                {/* Right: Time + Actions - Gmail pattern */}
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Actions: hover reveal */}
+                  <div className={cn(
+                    "flex items-center gap-0.5",
+                    "opacity-0 group-hover:opacity-100 transition-opacity duration-100",
+                    isChecked && "opacity-100"
+                  )}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground/50 hover:text-foreground"
+                      onClick={(e) => { e.stopPropagation(); onArchive([item.id]); }}
+                      aria-label="Lưu trữ"
+                    >
+                      <Archive className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground/50 hover:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); onDelete([item.id]); }}
+                      aria-label="Xóa"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+
+                  {/* Time: tabular, right align, hide on hover */}
+                  <span className={cn(
+                    "text-xs text-muted-foreground/50 whitespace-nowrap w-16 text-right tabular-nums",
+                    "group-hover:hidden",
+                    isChecked && "hidden"
+                  )}>
+                    {item.time}
+                  </span>
+                </div>
+              </div>
             )
           })
         )}
@@ -404,15 +404,22 @@ function ContentPage() {
   })
 
   const archiveMutation = useMutation({
-    mutationFn: (sessionId: string) =>
-      api(`/marketing/${sessionId}/resume`, {
+    mutationFn: (sessionId: string) => {
+      const item = items.find(i => i.id === sessionId);
+      const group = item?.group || "blog_web";
+      
+      return api(`/marketing/${sessionId}/resume`, {
         method: "POST",
-        body: JSON.stringify({ action: "reject" }),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["marketing-sessions"] })
+        body: JSON.stringify({ 
+          action: "reject",
+          group,  // ✅ Thêm group
+        }),
+      });
     },
-  })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marketing-sessions"] });
+    },
+  });
 
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set())
 

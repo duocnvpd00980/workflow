@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import os
 from functools import lru_cache
+from sqlalchemy import select
 from typing import Any, Dict, Literal
 
 from jinja2 import Environment, FileSystemLoader, Template, select_autoescape
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 # TEMPLATE LOADER — cache Environment (thread-safe, load once)
 # ═══════════════════════════════════════════════════════════════════
 
-_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
+_TEMPLATE_DIR = os.path.join(os.path.dirname(__file__))
 _TEMPLATE_FILE = "brand_voice_prompt.j2"
 
 ContentType = Literal["blog", "email", "social", "ad", "landing_page", "other"]
@@ -180,3 +181,96 @@ async def build_system_prompt(
         content_type, len(prompt),
     )
     return prompt.strip()
+
+
+async def get_brand_context_summary(brand_id: str, db: AsyncSession) -> str:
+    """
+    Tóm tắt brand SIÊU NGẮN — chỉ phần "là ai / bán gì / cho ai", dùng cho
+    các tác vụ phân loại/làm rõ ý định (ambiguity check), KHÔNG dùng cho
+    sinh content thật (đã có build_system_prompt/get_brand_prompt_by_id
+    riêng cho việc đó, chứa đủ tone/style/vocab/format/cta).
+    """
+    from app.brand.models import Brand
+
+    bv = (await db.execute(
+        select(Brand)
+        .where(Brand.id == brand_id, Brand.deleted_at.is_(None))
+        .limit(1)
+    )).scalars().one_or_none()
+
+    if not bv:
+        return ""
+
+    parts = []
+    if bv.name:
+        parts.append(f"Thương hiệu: {bv.name}")
+    if bv.purpose:
+        parts.append(f"Lĩnh vực/mục đích kinh doanh: {bv.purpose}")
+    if bv.target_audience:
+        parts.append(f"Đối tượng khách hàng mục tiêu: {bv.target_audience}")
+    if bv.desired_tone:
+        parts.append(f"Tông giọng mong muốn: {bv.desired_tone}")
+    if bv.personality:
+        parts.append(f"Tính cách thương hiệu: {bv.personality}")
+
+    return " | ".join(parts)
+
+
+async def get_brand_prompt_by_id(
+    brand_id: str,
+    content_type: ContentType,
+    user_input: Dict[str, Any],
+    db: AsyncSession,
+) -> str:
+    """
+    Hàm Service tích hợp cho LangGraph Workflow:
+    Truy vấn Brand từ ID, bóc tách dữ liệu và render thẳng ra System Prompt.
+    """
+    # 1. Query DB kiểm tra bản ghi active
+    from app.brand.models import Brand 
+    
+    bv = (await db.execute(
+        select(Brand)
+        .where(
+            Brand.id == brand_id,
+            Brand.deleted_at.is_(None),
+        )
+        .limit(1)
+    )).scalars().one_or_none()
+
+    # 2. Fallback hoặc Raise lỗi nếu không tìm thấy Brand
+    if not bv or not bv.personality:
+        logger.warning("Brand voice ID=%s chưa hoàn tất extraction hoặc không tồn tại. Dùng fallback default.", brand_id)
+        # Tạo bản dict mặc định an toàn để hệ thống không bị crash
+        brand_voice_dict = {
+            "personality": "Chuyên gia nội dung",
+            "tone": {"base": ["Chuyên nghiệp"], "overrides": {}},
+            "style": {"sentenceLength": "medium", "voice": "active", "perspective": "second"},
+            "vocabulary": {"wordsToUse": [], "wordsToAvoid": [], "phrasesToUse": [], "phrasesToAvoid": []},
+            "format_rules": {"paragraphMaxSentences": 4, "useEmoji": True, "useHashtags": True, "bulletPointStyle": "dot"},
+            "cta_style": {"style": "soft", "phrases": ["Khám phá ngay"]},
+            "examples": [],
+        }
+    else:
+        # 3. Gom đúng cụm dict như hàm generate_content gốc của bạn
+        brand_voice_dict = {
+            "personality":                      bv.personality,
+            "tone":                             bv.tone,
+            "style":                            bv.style,
+            "vocabulary":                       bv.vocabulary,
+            "format_rules":                     bv.format_rules,
+            "cta_style":                        bv.cta_style,
+            "examples":                         bv.examples or [],
+            # Đẩy kèm slider để tầng dịch thuật _normalize_brand_voice bốc dỡ
+            "tone_funny_serious":               bv.tone_funny_serious,
+            "tone_formal_casual":               bv.tone_formal_casual,
+            "tone_respectful_irreverent":       bv.tone_respectful_irreverent,
+            "tone_enthusiastic_matter_of_fact": bv.tone_enthusiastic_matter_of_fact,
+        }
+
+    # 4. Gọi hàm build có sẵn Jinja2 để sinh ra chuỗi prompt hoàn chỉnh
+    return await build_system_prompt(
+        brand_voice=brand_voice_dict,
+        content_type=content_type,
+        user_input=user_input,
+    )

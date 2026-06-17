@@ -259,11 +259,18 @@ export function DetailView({
 
   // Resume mutation (approve/reject)
   const resumeMutation = useMutation({
-    mutationFn: (params: ResumeRequest) =>
-      api<ResumeResponse>(`/marketing/${item.id}/resume`, {
+    mutationFn: (params: ResumeRequest) => {
+      const body = {
+        action: params.action,
+        content: params.content ?? null,
+        group: item.group ?? "blog_web",
+      };
+      
+      return api<ResumeResponse>(`/marketing/${item.id}/resume`, {
         method: "POST",
-        body: JSON.stringify(params),
-      }),
+        body: JSON.stringify(body),
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["marketing-sessions"] })
     },
@@ -358,7 +365,10 @@ export function DetailView({
                 variant="outline"
                 size="sm"
                 className="h-8 text-xs gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
-                onClick={() => resumeMutation.mutate({ action: "reject" })}
+                onClick={() => resumeMutation.mutate({ 
+                  action: "reject",
+                  group: item.group,
+                })}
                 disabled={resumeMutation.isPending}
               >
                 <XCircle className="h-3.5 w-3.5" />
@@ -410,7 +420,10 @@ export function DetailView({
               <Button
                 size="sm"
                 className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={() => resumeMutation.mutate({ action: "approve" })}
+                onClick={() => resumeMutation.mutate({ 
+                  action: "approve",
+                  group: item.group,
+                })}
                 disabled={resumeMutation.isPending}
               >
                 {resumeMutation.isPending ? (

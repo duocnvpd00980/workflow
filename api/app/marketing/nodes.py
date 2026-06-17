@@ -1,8 +1,12 @@
+import json
+import time
+
 from langgraph.types import interrupt
 from google import genai
 from google.genai import types
 import uuid
 import logging
+from app.brand.brand_voice_prompt import get_brand_prompt_by_id
 from app.db import AsyncSessionLocal
 from app.config import get_settings
 from groq import Groq
@@ -226,185 +230,96 @@ def _build_memory_block(memory_history: list) -> str:
     return block
 
 
+def build_intent_expansion_prompt(user_request: str, content_type: str, selected_length: str, selected_tone: str) -> str:
+    return f"""Bạn là một Giám đốc Sáng tạo và Chuyên gia Content Strategy xuất sắc.
+Người dùng đang sử dụng một Form công cụ để tạo nội dung mới với các thông số:
+- Loại nội dung (Template): {content_type}
+- Độ dài mong muốn từ UI: {selected_length}
+- Tone tùy chọn từ UI: {selected_tone}
+
+Yêu cầu gốc từ người dùng rất ngắn gọn, thiếu ý tưởng hoặc sơ sài: "{user_request}"
+
+Nhiệm vụ của bạn là đóng vai trò biên tập viên ngầm: suy luận thông minh, mở rộng chủ đề thô đó thành một định hướng bài viết có chiều sâu, hấp dẫn, đồng thời gợi ý các từ khóa cốt lõi liên quan đến chủ đề đó.
+
+BẠN PHẢI TRẢ VỀ MỘT ĐỐI TƯỢNG JSON SẠCH 100%, KHÔNG CHỨA VĂN BẢN DẪN GIẢI, CÓ CẤU TRÚC SAU:
+{{
+  "topic": "Chuỗi văn bản đã được bạn làm mịn, mở rộng góc tiếp cận sâu sắc và đầy đủ bối cảnh từ ý tưởng gốc của user",
+  "keywords": ["mảng gồm 3 đến 5 từ khóa chuyên sâu quan trọng nhất liên quan trực tiếp đến chủ đề này"],
+  "length": "Độ dài chi tiết kết hợp giữa lựa chọn UI '{selected_length}' và tiêu chuẩn của kênh '{content_type}'"
+}}"""
 
 async def prepare(state: dict) -> dict:
-    import json, time
-
     started = time.time()
-    r = state.get("request", "").lower()
-    business_id = state.get("business_id")
-    brand_id    = state.get("brand_id")
 
-    template = (
-        "social"   if any(x in r for x in ["tweet","caption","post","social","instagram","fb"]) else
-        "blog"     if any(x in r for x in ["article","blog","write","bài viết"]) else
-        "image"    if any(x in r for x in ["image","visual","design","ảnh","hình"]) else
-        "research" if any(x in r for x in ["research","report","analyze","nghiên cứu"]) else
-        "social"
-    )
+    # 1. Thu thập dữ liệu thô từ Form UI gửi lên State
+    user_request = state.get("request", "")
+    content_type = state.get("content_type", "blog")  # Lấy trực tiếp từ UI form (e.g., "blog", "social", "email")
+    selected_length = state.get("length", "vừa")       # UI: "ngắn", "vừa", "dài"
+    selected_tone = state.get("tone", "chuyên nghiệp") # UI: "chuyên nghiệp", "vui vẻ"...
+    brand_id = state.get("brand_id")
 
-    brand_profile, research_data, knowledge_rag = {}, {}, []
-
-    try:
-        async with AsyncSessionLocal() as db:
-
-          if brand_id:
-            bv = (await db.execute(
-                select(Brand)
-                .where(
-                    Brand.business_id == business_id,
-                    Brand.deleted_at.is_(None),
-                )
-                # Ưu tiên: lấy default trước, nếu không có thì lấy mới nhất
-                .order_by(Brand.is_default.desc(), Brand.created_at.desc())
-                .limit(1)
-            )).scalars().one_or_none()
-
-            if bv:
-                tone_obj = bv.tone or {}
-                cta_obj  = bv.cta_style or {}
-                vocab    = bv.vocabulary or {}
-
-                brand_profile = {
-                    "brand_name":      bv.name,
-                    "positioning":     bv.purpose,
-                    "target_audience": bv.target_audience,
-                    "visual_identity": {},
-                    # map sang format mà _build_brand_block() đang expect
-                    "tone_patterns":   tone_obj.get("base", ["Thân thiện"]),
-                    "forbidden_words": vocab.get("wordsToAvoid", []),
-                    "cta_samples":     cta_obj.get("phrases", ["Khám phá ngay"]),
-                    "pain_points":     [],
-                    "proof_points":    [],
-                    "objections":      [],
-                }
-                            
-
-            if business_id:
-                rs = (await db.execute(
-                    select(ResearchResult)
-                    .where(ResearchResult.business_id == business_id)
-                    .order_by(desc(ResearchResult.created_at))
-                    .limit(1)
-                )).scalars().one_or_none()
-
-                research_data = (
-                    {
-                        "has_research":       True,
-                        "competitor_analysis": rs.competitor_analysis,
-                        "competitors_scraped": rs.competitors_scraped or [],
-                        "tiktok_comments":     rs.tiktok_comments     or [],
-                        "researched_at":       rs.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-                    }
-                    if rs else
-                    {"has_research": False, "competitor_analysis": "Chưa có dữ liệu"}
-                )
-
-                pages = (await db.execute(
-                    select(DocumentPage)
-                    .join(DocumentPage.source)
-                    .where(DocumentSource.business_id == business_id)
-                    .order_by(desc(DocumentPage.created_at))
-                    .limit(5)
-                )).scalars().all()
-
-                rooms = (await db.execute(
-                    select(HotelRoom)
-                    .where(
-                        HotelRoom.business_id == business_id,
-                        HotelRoom.status == "active",
-                    )
-                )).scalars().all()
-
-                knowledge_rag += (
-                    [
-                        {
-                            "rag_type":    "document_page",
-                            "title":       x.title,
-                            "source_url":  x.url,
-                            "text_content": x.content,
-                        }
-                        for x in pages
-                    ] + [
-                        {
-                            "rag_type":          "hotel_room",
-                            "room_name":         x.name,
-                            "room_type":         x.room_type,
-                            "price":             f"{x.price_per_night:,.0f} {x.currency}" if x.price_per_night else "Liên hệ",
-                            "amenities":         x.amenities  or [],
-                            "image_urls":        x.image_urls or [],
-                            "embedded_snapshot": x.embed_text(),
-                        }
-                        for x in rooms
-                    ]
-                )
-
-    except Exception as e:
-        logger.exception(f"[PREPARE] {e}")
-
-    brand_profile = brand_profile or {
-        "brand_name":      "Default",
-        "positioning":     "Chuyên nghiệp",
-        "tone_patterns":   ["Thân thiện"],
-        "forbidden_words": [],
+    # 2. Cơ chế mở rộng ý định: Dựng prompt và tái sử dụng hàm call_groq của hệ thống
+    # expansion_prompt = build_intent_expansion_prompt(
+    #     user_request=user_request,
+    #     content_type=content_type,
+    #     selected_length=selected_length,
+    #     selected_tone=selected_tone
+    # )
+    # groq_raw_response = call_groq(prompt=expansion_prompt, max_tokens=800)
+    
+    # Khởi tạo object fallback mặc định phòng trường hợp call_groq dính lỗi [ERROR:...]
+    enriched_input = {
+        "topic": user_request,
+        "keywords": [],
+        "length": f"Độ dài {selected_length}. Tối ưu theo định dạng {content_type}."
     }
 
-    knowledge_rag = knowledge_rag or [{
-        "rag_type":          "hotel_room",
-        "room_name":         "Default",
-        "embedded_snapshot": "Phòng tiêu chuẩn",
-    }]
+    # if not groq_raw_response.startswith("[ERROR:"):
+    #     try:
+    #         clean_json_str = groq_raw_response.strip()
+    #         if clean_json_str.startswith("```json"):
+    #             clean_json_str = clean_json_str.split("```json")[1].split("```")[0].strip()
+    #         elif clean_json_str.startswith("```"):
+    #             clean_json_str = clean_json_str.split("```")[1].split("```")[0].strip()
+                
+    #         enriched_input = json.loads(clean_json_str)
+    #         logger.info(f"[PREPARE] Mở rộng ý định thành công cho request: '{user_request[:30]}...'")
+    #     except Exception as json_err:
+    #         logger.error(f"[PREPARE JSON ERROR] Không thể parse JSON từ Groq: {groq_raw_response}. Lỗi: {json_err}")
+    # else:
+    #     logger.warning(f"[PREPARE WARNING] call_groq dính mã lỗi: {groq_raw_response}. Sử dụng dữ liệu thô.")
 
+    system_prompt = ""
+
+    # 3. Gọi Service tập trung của Brand để tạo System Prompt hoàn chỉnh cho đồ thị
     try:
-        full_context = {
-            "brand_profile": brand_profile,
-            "research_data": research_data,
-            "knowledge_rag": knowledge_rag,
-        }
-
-        raw = json.dumps(full_context, ensure_ascii=False)
-        logger.info(
-            f"[CTX BEFORE] all={len(raw)} "
-            f"brand={len(json.dumps(brand_profile, ensure_ascii=False))} "
-            f"research={len(json.dumps(research_data, ensure_ascii=False))} "
-            f"rag={len(json.dumps(knowledge_rag, ensure_ascii=False))}"
-        )
-
-        filtered = filter_knowledge_with_groq(
-            user_request=state.get("request", ""),
-            raw_knowledge=full_context,
-        )
-
-        if filtered:
-            try:
-                ctx          = json.loads(filtered)
-                brand_profile = ctx.get("brand_profile", brand_profile)
-                research_data = ctx.get("research_data", research_data)
-                knowledge_rag = ctx.get("knowledge_rag", knowledge_rag)
-            except Exception:
-                logger.warning("[FILTER INVALID JSON]")
-
-        final = json.dumps(
-            {"brand_profile": brand_profile, "research_data": research_data, "knowledge_rag": knowledge_rag},
-            ensure_ascii=False,
-        )
-        logger.info(f"[CTX AFTER] all={len(final)} saved={len(raw)-len(final)}")
-
+        async with AsyncSessionLocal() as db:
+            if brand_id:
+                # Truyền object user_input đã được làm giàu (gồm topic, keywords, length đã tối ưu)
+                system_prompt = await get_brand_prompt_by_id(
+                    brand_id=brand_id,
+                    content_type=content_type,
+                    user_input=enriched_input,
+                    db=db
+                )
     except Exception as e:
-        logger.exception(f"[CTX FILTER] {e}")
+        logger.exception(f"[LANGGRAPH PREPARE ERROR] Thất bại tại bước tạo brand prompt cho brand_id={brand_id}: {e}")
 
-    logger.info(f"[PREPARE DONE] {round(time.time()-started, 2)}s")
+    # Fallback tối cao nếu toàn bộ các bước DB lỗi để đồ thị không bị sập giữa chừng
+    if not system_prompt:
+        system_prompt = "Bạn là trợ lý ảo viết bài chuyên nghiệp. Hãy tạo nội dung phù hợp."
 
+    logger.info(f"[PREPARE DONE] Tuyến Form: {content_type} | Xử lý: {round(time.time() - started, 3)}s")
+
+    # 4. Trả về State sạch sẽ, đồng bộ
     return {
         **state,
-        "template":      template,
-        "brand_profile": brand_profile,
-        "research_data": research_data,
-        "knowledge_rag": knowledge_rag,
-        "memory_history": state.get("memory_history", []),
-        "usage":   {"total_tokens": 0, "total_cost": 0.0, "calls": []},
-        "approved": False,
-        "error":    None,
+        "template":       content_type,     # Đồng bộ hóa trường content_type làm template điều hướng
+        "system_prompt":  system_prompt,    # System Prompt tối ưu nhất kết hợp giữa Brand Voice + Ý tưởng đã làm giàu
+        "enriched_topic": enriched_input.get("topic"), # Lưu lại đề bài xịn để node thực thi bốc ra làm đề bài viết bài chính thức
+        "usage":          state.get("usage") or {"total_tokens": 0, "total_cost": 0.0, "calls": []},
+        "approved":       False,
+        "error":          None,
     }
 
 def visual_intent_analyzer(state: dict) -> dict:

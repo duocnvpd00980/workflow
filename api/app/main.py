@@ -2,6 +2,9 @@ from contextlib import asynccontextmanager
 import logging
 import os
 import psutil
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -16,8 +19,9 @@ from app.rag.hotel_router import router as hotel_router
 from app.tasks.router import router as tasks_router
 from app.business.router import router as business_router
 
-
 from app.db import init_db
+
+
 
 # 1. Setup Logging
 logging.basicConfig(
@@ -26,10 +30,15 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 # 2. Lifespan
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("🚀 Khởi động server...")
+    logger.info(f"LANGSMITH_TRACING={os.getenv('LANGSMITH_TRACING')}")
+    logger.info(f"LANGSMITH_PROJECT={os.getenv('LANGSMITH_PROJECT')}")
+    logger.info(f"HAS_API_KEY={bool(os.getenv('LANGSMITH_API_KEY'))}")
+
     await init_db()
     logger.info("✅ Database ready.")
     yield

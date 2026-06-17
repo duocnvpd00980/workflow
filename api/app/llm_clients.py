@@ -6,6 +6,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 from groq import Groq, AsyncGroq
+import requests
 
 from app.config import get_settings
 
@@ -104,22 +105,23 @@ def call_gemini(prompt: str, max_tokens: int = 1000) -> str:
 
 
 def call_gemini_imagen(prompt_desc: str) -> bytes:
-    """Gọi Pollinations API để sinh ảnh."""
-    import requests
+    """Gọi Pollinations API bằng cách xác thực qua Header"""
     try:
         safe_prompt = prompt_desc.replace(" ", "%20")
         url = f"https://gen.pollinations.ai/image/{safe_prompt}?model=flux&width=1024&height=576&nologo=true"
-
-        headers = {"Authorization": "Bearer sk_J68kYhDowZ8FTDPupSlolhNEcnqsWZ1P"}
-
+        
+        headers = {
+            "Authorization": "Bearer sk_J68kYhDowZ8FTDPupSlolhNEcnqsWZ1P"
+        }
+        
         response = requests.get(url, headers=headers, timeout=30)
-
+        
         if response.status_code == 200:
             return response.content
         else:
-            logger.error(f"Pollinations Error: {response.status_code}")
+            logger.error(f"Pollinations Error: {response.status_code} - {response.text}")
             raise Exception("Auth Failed")
-
+            
     except Exception as e:
-        logger.error(f"Image gen error: {e}")
+        logger.error(f"Lỗi hệ thống tạo ảnh: {str(e)}")
         return requests.get("https://via.placeholder.com/1024x576?text=Image+Unavailable").content

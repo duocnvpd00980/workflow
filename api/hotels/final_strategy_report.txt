@@ -1,69 +1,65 @@
-### A. Customer Personas
+Tôi sẵn sàng giúp bạn với yêu cầu của mình. Dưới đây là các thông tin cần thiết:
 
-Dưới đây là 3-5 customer personas có thể đại diện cho khách hàng tiềm năng của Sontra Sea Hotel:
+**A. CUSTOMER PERSONAS (3-5 personas)**
 
-- **Persona 1: Du khách gia đình**
-  - Tên: Nguyễn Thị Mai
-  - Độ tuổi: 35-45
-  - Nghề nghiệp: Nhân viên văn phòng
-  - Mục tiêu: Tìm kiếm nơi nghỉ dưỡng thư giãn, gần biển, có phòng gia đình và dịch vụ tốt cho con trẻ.
-  - Hành vi: Tìm kiếm thông tin trên mạng xã hội, đánh giá cao các khuyến mãi và dịch vụ cho gia đình.
+Dưới đây là 3 customer personas của Sontra Sea Hotel:
 
-- **Persona 2: Cặp đôi mới cưới**
-  - Tên: Trần Văn Minh và Lê Thị Hoa
-  - Độ tuổi: 25-35
-  - Nghề nghiệp: Doanh nhân/Công chức
-  - Mục tiêu: Tổ chức honeymoon lãng mạn, gần biển, có view đẹp và dịch vụ cao cấp.
-  - Hành vi: Tìm kiếm trên Instagram, TikTok và các trang du lịch.
+* **Persona 1: Du khách trẻ tuổi**
+ + Tên: Linh
+ + Tuổi: 25-35
+ + Giới tính: Nữ
+ + Nghề nghiệp: Nhân viên văn phòng
+ + Mức thu nhập: 15-25 triệu đồng/tháng
+ + Sở thích: Du lịch, khám phá, chụp ảnh
+ + Mục tiêu: Tìm kiếm một nơi nghỉ dưỡng thư giãn và giá cả phải chăng
+* **Persona 2: Khách doanh nhân**
+ + Tên: Anh Tuấn
+ + Tuổi: 35-50
+ + Giới tính: Nam
+ + Nghề nghiệp: Doanh nhân
+ + Mức thu nhập: 50-100 triệu đồng/tháng
+ + Sở thích: Làm việc, gặp gỡ đối tác, nghỉ dưỡng
+ + Mục tiêu: Tìm kiếm một nơi lưu trú tiện lợi và chất lượng
+* **Persona 3: Gia đình**
+ + Tên: Chị Mai
+ + Tuổi: 30-50
+ + Giới tính: Nữ
+ + Nghề nghiệp: Nhà nội trợ
+ + Mức thu nhập: 10-20 triệu đồng/tháng
+ + Sở thích: Du lịch cùng gia đình, nghỉ dưỡng
+ + Mục tiêu: Tìm kiếm một nơi lưu trú an toàn và phù hợp cho gia đình
 
-- **Persona 3: Du khách solo**
-  - Tên: Phạm Văn A
-  - Độ tuổi: 20-30
-  - Nghề nghiệp: Sinh viên/Sự nghiệp tự do
-  - Mục tiêu: Tìm kiếm nơi lưu trú giá cả phải chăng, gần biển, có thể kết nối với nhiều người.
-  - Hành vi: Sử dụng TikTok, Facebook để tìm kiếm và đánh giá địa điểm.
+**B. CHIẾN LƯỢC TIẾP CẬN TỪNG PERSONA**
 
-### B. Chiến lược tiếp cận từng Persona
+Dưới đây là chiến lược tiếp cận từng persona:
 
-- **Đối với Du khách gia đình (Nguyễn Thị Mai)**:
-  - Tập trung vào các chương trình khuyến mãi cho gia đình.
-  - Cải thiện dịch vụ cho trẻ em và cơ sở vật chất cho gia đình.
-  - Quảng cáo trên Facebook và các trang web gia đình.
+* **Persona 1: Du khách trẻ tuổi**
+ + Tiếp cận qua: TikTok, Instagram, Facebook
+ + Nội dung: Hình ảnh và video về khách sạn, hoạt động du lịch, khuyến mãi
+ + Thông điệp: "Khám phá Sontra Sea Hotel - nơi nghỉ dưỡng lý tưởng cho bạn!"
+* **Persona 2: Khách doanh nhân**
+ + Tiếp cận qua: LinkedIn, Email, điện thoại
+ + Nội dung: Thông tin về dịch vụ phòng họp, tiện ích, khuyến mãi
+ + Thông điệp: "Sontra Sea Hotel - nơi lưu trú tiện lợi và chất lượng cho doanh nhân"
+* **Persona 3: Gia đình**
+ + Tiếp cận qua: Facebook, Instagram, Google Ads
+ + Nội dung: Hình ảnh và video về khách sạn, hoạt động gia đình, khuyến mãi
+ + Thông điệp: "Sontra Sea Hotel - nơi lưu trú an toàn và phù hợp cho gia đình bạn"
 
-- **Đối với Cặp đôi mới cưới (Trần Văn Minh và Lê Thị Hoa)**:
-  - Phát triển các gói dịch vụ honeymoon lãng mạn.
-  - Quảng cáo trên Instagram và TikTok với hình ảnh lãng mạn.
-  - Cung cấp dịch vụ đặc biệt như bữa tối lãng mạn.
+**C. CHIẾN DỊCH 30 NGÀY**
 
-- **Đối với Du khách solo (Phạm Văn A)**:
-  - Tạo các gói dịch vụ giá cả phải chăng.
-  - Tăng cường hoạt động trên TikTok và Facebook.
-  - Tổ chức các sự kiện gặp gỡ cho du khách solo.
+Dưới đây là chiến dịch 30 ngày cho Sontra Sea Hotel:
 
-### C. Chiến dịch 30 ngày
+* **Tuần 1: Tạo nhận thức**
+ + Ngày 1-3: Tạo nội dung trên TikTok, Instagram, Facebook về khách sạn và hoạt động du lịch
+ + Ngày 4-7: Quảng cáo trên Google Ads, Facebook Ads
+* **Tuần 2: Tăng cường tương tác**
+ + Ngày 8-14: Tổ chức cuộc thi trên TikTok, Instagram về khách sạn
+ + Ngày 15-17: Trả lời câu hỏi của khách hàng trên Facebook, Instagram
+* **Tuần 3: Khuyến mãi**
+ + Ngày 18-24: Khuyến mãi giảm giá phòng cho khách hàng
+ + Ngày 25-27: Quảng cáo về khuyến mãi trên Google Ads, Facebook Ads
+* **Tuần 4: Đánh giá và cải thiện**
+ + Ngày 28-30: Đánh giá kết quả chiến dịch và cải thiện nội dung, quảng cáo cho tương lai
 
-**Tuần 1: Chuẩn bị và lập kế hoạch**
-
-- Ngày 1-3: Phân tích dữ liệu khách hàng và đối thủ.
-- Ngày 4-6: Xây dựng nội dung và hình ảnh cho chiến dịch.
-- Ngày 7: Khởi động chiến dịch.
-
-**Tuần 2: Thực hiện**
-
-- Ngày 8-14: 
-  - Đăng bài đều đặn trên TikTok, Facebook và Instagram.
-  - Chạy quảng cáo nhắm đến các persona.
-
-**Tuần 3: Tương tác và điều chỉnh**
-
-- Ngày 15-21:
-  - Tương tác với khách hàng trên mạng xã hội.
-  - Điều chỉnh quảng cáo dựa trên hiệu quả.
-
-**Tuần 4: Đánh giá và tổng kết**
-
-- Ngày 22-30:
-  - Đánh giá hiệu quả chiến dịch.
-  - Tổng kết và lên kế hoạch cho các chiến dịch tiếp theo.
-
-Chiến dịch này sẽ giúp tăng cường nhận diện thương hiệu, thu hút khách hàng tiềm năng và cải thiện dịch vụ của Sontra Sea Hotel.
+Hy vọng chiến dịch này sẽ giúp Sontra Sea Hotel tăng cường nhận thức và thu hút khách hàng!

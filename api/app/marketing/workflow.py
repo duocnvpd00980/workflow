@@ -2,92 +2,94 @@ from typing import List, Annotated, TypedDict, Optional, Literal
 import operator
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import MemorySaver
+
+# ========== NODES IMPORT ==========
 from app.marketing.nodes import (
-    prepare,                  
-    visual_intent_analyzer,   
-    execute_social,    
-    execute_blog,             
-    execute_image,     
-    execute_research,  
-    review_pause,             
-    visual_asset_selector,    
-    context_synthesizer,      
-    publish,           
-    save,              
-    select_template, 
-    route_after_review,
+    prepare,                  # Phân loại nhóm + chức năng + flag cần ảnh
+    execute_content,          # 1 node viết nội dung chung (thay execute_blog, execute_social, execute_email)
+    execute_image,            # Tạo ảnh (chỉ chạy khi cần)
+    review_pause,             # Human-in-the-loop
+    save,                     # Lưu kết quả
+    route_after_review,       # Điều hướng sau review
+    needs_visual,             # Conditional: có cần ảnh không?
 )
 
 
+# ========== STATE ==========
 class WorkflowState(TypedDict):
     session_id: str
     request: str
     brand_id: str
-    template: Optional[Literal["social", "blog", "image", "research"]]
-    context: dict 
-    draft: Optional[dict]
+    
+    # 3 nhóm chính, mỗi nhóm có các chức năng con
+    group: Literal["blog_web", "email_sale", "social_media"]
+    function: Literal[
+        # Blog & Web
+        "blog_post", "product_description", "website_copy",
+        # Email & Sale
+        "email_marketing", "sales_page", "product_launch",
+        # Social Media
+        "social_post", "caption_set", "hashtag_set"
+    ]
+    
+    # Flag cần ảnh (set tại prepare dựa vào function)
+    needs_image: bool
+    
+    # Content & draft
+    content: Optional[str]      # Nội dung text đã viết
+    image_url: Optional[str]    # URL ảnh (nếu có)
+    draft: Optional[dict]       # Gói kết quả cuối
+    
+    # Review flow
     approved: bool
-    publish_status: Optional[Literal["pending", "published", "failed", "dead_letter"]]
+    revision_note: Optional[str]  # Ghi chú sửa (nếu có)
+    
+    # Tracking
     usage: Annotated[dict, operator.or_]
     error: Optional[Literal["timeout", "rate_limit", "invalid", "fatal"]]
-    visual_intent: dict 
     memory_history: List[dict]
-   
 
 
+# ========== GRAPH ==========
 workflow = StateGraph(WorkflowState)
-    
-# Định nghĩa hàm phụ trợ để fork ngay tại đây
-def fork_blog_node(state):
-    return {}
 
-# Đăng ký toàn bộ các Node
-workflow.add_node("prepare",                prepare)
-workflow.add_node("fork_blog",              fork_blog_node)         
-workflow.add_node("visual_intent_analyzer", visual_intent_analyzer) 
-workflow.add_node("execute_social",         execute_social)
-workflow.add_node("execute_blog",           execute_blog)
-workflow.add_node("execute_image",          execute_image)
-workflow.add_node("execute_research",       execute_research)
-workflow.add_node("review_pause",           review_pause)           
-workflow.add_node("visual_asset_selector",  visual_asset_selector)  
-workflow.add_node("context_synthesizer",    context_synthesizer)    
-workflow.add_node("publish",                publish)
-workflow.add_node("save",                   save)
+# Đăng ký nodes
+workflow.add_node("prepare",         prepare)
+workflow.add_node("execute_content", execute_content)   # 1 node cho cả 3 nhóm
+workflow.add_node("execute_image",   execute_image)       # Chạy khi needs_image=True
+workflow.add_node("review_pause",    review_pause)
+workflow.add_node("save",            save)
 
+# Entry
 workflow.add_edge(START, "prepare")
-workflow.add_conditional_edges("prepare", select_template, {
-    "execute_social":   "execute_social",
-    "execute_blog":     "fork_blog",        
-    "execute_image":    "execute_image",
-    "execute_research": "execute_research",
-    "save":             "save",
-})
 
-workflow.add_edge("fork_blog", "execute_blog")
-workflow.add_edge("fork_blog", "visual_intent_analyzer")
-workflow.add_edge("execute_blog",           "visual_asset_selector")
-workflow.add_edge("visual_intent_analyzer",   "visual_asset_selector")
-workflow.add_edge("visual_asset_selector",    "review_pause")
-workflow.add_edge("execute_social",   "review_pause")
-workflow.add_edge("execute_image",    "review_pause")
-workflow.add_edge("execute_research", "save")
-workflow.add_conditional_edges("review_pause", route_after_review, {
-    "publish": "publish",              
-    "save":    "save",
-    "revise":  "context_synthesizer",   
-})
+# Từ prepare → execute_content (luôn viết nội dung trước)
+workflow.add_edge("prepare", "execute_content")
 
+# Từ execute_content → conditional (cần ảnh không?)
 workflow.add_conditional_edges(
-    "context_synthesizer", 
-    lambda state: state.get("template", "blog"), 
+    "execute_content",
+    needs_visual,  # Hàm kiểm tra state["needs_image"]
     {
-        "blog":   "execute_blog",
-        "social": "execute_social"
+        "needs_image": "execute_image",   # Có ảnh → tạo ảnh
+        "no_image":    "review_pause",    # Không ảnh → đi review luôn
     }
 )
 
-workflow.add_edge("publish", "save")
+# Từ execute_image → review_pause
+workflow.add_edge("execute_image", "review_pause")
+
+# Review loop: publish (save) / revise (quay lại viết lại)
+workflow.add_conditional_edges(
+    "review_pause",
+    route_after_review,
+    {
+        "approve": "save",              # Đồng ý → lưu
+        "revise":  "execute_content",   # Sửa → quay lại viết lại (có thể ghi revision_note)
+    }
+)
+
+# End
 workflow.add_edge("save", END)
 
 marketing_graph = workflow.compile(checkpointer=MemorySaver())
