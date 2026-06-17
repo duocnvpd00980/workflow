@@ -367,6 +367,7 @@ export function DetailView({
                 className="h-8 text-xs gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
                 onClick={() => resumeMutation.mutate({ 
                   action: "reject",
+                  content: item.content,
                   group: item.group,
                 })}
                 disabled={resumeMutation.isPending}
@@ -422,6 +423,7 @@ export function DetailView({
                 className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={() => resumeMutation.mutate({ 
                   action: "approve",
+                  content: item.content,
                   group: item.group,
                 })}
                 disabled={resumeMutation.isPending}
