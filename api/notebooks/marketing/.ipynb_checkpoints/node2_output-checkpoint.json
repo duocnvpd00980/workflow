@@ -1,0 +1,126 @@
+{
+  "input_queries": [
+    "nhà hàng quán nhậu hải sản Đà Nẵng giá rẻ",
+    "nhà hàng quán nhậu hải sản Đà Nẵng gần biển",
+    "nhà hàng quán nhậu hải sản Đà Nẵng review",
+    "nhà hàng quán nhậu hải sản Đà Nẵng cho gia đình",
+    "nhà hàng quán nhậu hải sản Đà Nẵng ngon nhất"
+  ],
+  "collection_date": "2026-06-18",
+  "stats": {
+    "total_serp_results": 25,
+    "unique_competitors": 1,
+    "successful_fetches": 1,
+    "failed_fetches": 14
+  },
+  "competitors": [
+    {
+      "position": 1,
+      "domain": "duckduckgo.com",
+      "url": "https://duckduckgo.com/l/?uddg=https%3A%2F%2Fkhamphadanang.vn%2Fquan%2Dhai%2Dsan%2Dda%2Dnang%2F&rut=5ae89ff8c70ffbd1455417a392a39fb56ca21decd971fabedb12a24b6f685c29",
+      "content_type": "article",
+      "word_count": 0,
+      "monetization": [
+        "content_only"
+      ],
+      "tone": {
+        "formal": 0.0,
+        "casual": 0.0,
+        "storytelling": 0.0,
+        "data_driven": 0.0
+      },
+      "strengths": [],
+      "weaknesses": [
+        "thin_content",
+        "no_visuals",
+        "no_video",
+        "no_comparison_table",
+        "no_cta",
+        "unstructured"
+      ],
+      "ctas": [],
+      "h2_outline": [],
+      "has_visuals": false,
+      "has_table": false
+    }
+  ],
+  "market_narrative": {
+    "total_competitors_analyzed": 1,
+    "content_type_distribution": {
+      "article": 1
+    },
+    "dominant_content_type": "article",
+    "monetization_distribution": {
+      "content_only": 1
+    },
+    "dominant_monetization": "content_only",
+    "average_tone": {
+      "formal": 0.0,
+      "casual": 0.0,
+      "storytelling": 0.0,
+      "data_driven": 0.0
+    },
+    "dominant_tone": "formal",
+    "cta_patterns": {
+      "types": {},
+      "placements": {}
+    },
+    "average_word_count": 0,
+    "content_gaps": [
+      {
+        "weakness": "thin_content",
+        "count": 1,
+        "opportunity": "Create content with thin content"
+      },
+      {
+        "weakness": "no_visuals",
+        "count": 1,
+        "opportunity": "Create content with no visuals"
+      },
+      {
+        "weakness": "no_video",
+        "count": 1,
+        "opportunity": "Create content with no video"
+      },
+      {
+        "weakness": "no_comparison_table",
+        "count": 1,
+        "opportunity": "Create content with no comparison table"
+      },
+      {
+        "weakness": "no_cta",
+        "count": 1,
+        "opportunity": "Create content with no cta"
+      }
+    ],
+    "serp_bias_note": "Analyzed top 1 results. May not represent user favorites, only SEO winners."
+  },
+  "content_opportunities": [
+    {
+      "weakness": "thin_content",
+      "count": 1,
+      "opportunity": "Create content with thin content"
+    },
+    {
+      "weakness": "no_visuals",
+      "count": 1,
+      "opportunity": "Create content with no visuals"
+    },
+    {
+      "weakness": "no_video",
+      "count": 1,
+      "opportunity": "Create content with no video"
+    },
+    {
+      "weakness": "no_comparison_table",
+      "count": 1,
+      "opportunity": "Create content with no comparison table"
+    },
+    {
+      "weakness": "no_cta",
+      "count": 1,
+      "opportunity": "Create content with no cta"
+    }
+  ],
+  "next_step": "Node 3: Collect raw customer voice to validate these market claims"
+}

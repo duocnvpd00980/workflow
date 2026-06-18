@@ -1,11 +1,25 @@
-Tôi sẵn sàng giúp bạn trích xuất tên các khách sạn, resort, homestay ở khu vực Sơn Trà/Đà Nẵng. Tuy nhiên, văn bản bạn cung cấp không chứa thông tin về các khách sạn.
-Nếu bạn cung cấp văn bản OCR lộn xộn chứa thông tin về các khách sạn, tôi sẽ giúp bạn trích xuất tên các khách sạn như sau:
-(Lưu ý: Tôi chưa thấy văn bản OCR nào được cung cấp)
-Xin vui lòng cung cấp văn bản OCR để tôi có thể hỗ trợ bạn.
-Sau khi có thông tin, tôi sẽ trả về danh sách tên hotel như sau:
-Ví dụ:
-Four Points by Sheraton
-InterContinental
-Lotus
-...
-Hãy cung cấp văn bản OCR để tôi có thể giúp bạn!
+Dưới đây là danh sách các khách sạn, resort, homestay ở khu vực Sơn Trà/Đà Nẵng:
+1. Indo Boutique Apartment
+2. The Hem Hotel and Apartment
+3. Bed and Breakfast
+4. Saha Casa Boutique Hotel Da Nang
+5. Hotel Chavana
+6. TMS Hotel Da Nang Beach
+7. Hotel by Haviland
+8. Dian Hotel & Apartment
+9. Sofiana Mv Khe Hotel & Spa
+10. Orange City Center Hotel Da Nang
+11. Premier Resort Da Nang
+12. Flower Hotel
+13. Hotel Del Luna Boutique
+14. Village Danang Resort
+15. Paris Deli Danang Beach Hotel
+16. voco Ma Belle Danang by IHG
+17. Danang Beach Hotel
+18. Sun Danang
+19. Four Points by Sheraton
+20. InterContinental
+21. Melia Hotels & Resorts
+22. Lotus
+23. Stella Maris Beach Danang
+24. wynanam Hotels & Resorts

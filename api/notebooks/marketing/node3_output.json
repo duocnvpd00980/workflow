@@ -1,0 +1,197 @@
+{
+  "input_source": "node3_manual_input.json",
+  "collection_date": "2026-06-18",
+  "stats": {
+    "total_raw_voices": 7,
+    "sources": 7,
+    "complaints": 3,
+    "praises": 2,
+    "questions": 1,
+    "tips": 1,
+    "confidence": "medium"
+  },
+  "raw_voices": [
+    {
+      "id": "fb_001",
+      "text": "Mình đi ăn ở Mộc Seafood hôm qua, tôm hùm 800k/kg nhưng không giòn, nghi ngờ đông lạnh. Nhân viên bảo 'tươi sống' nhưng mình thấy khác. Bill ra 2.8 triệu cho 3 người, không biết có đắt không?",
+      "type": "complaint",
+      "severity": "major",
+      "topic_hint": [
+        "price",
+        "food_quality",
+        "trust",
+        "service"
+      ],
+      "audience": "family_with_kids",
+      "engagement": 45,
+      "timestamp": "2026-06-15",
+      "platform": "facebook_group",
+      "url": "https://facebook.com/groups/hoi-da-nang",
+      "source_name": "Hỏi Đà Nẵng"
+    },
+    {
+      "id": "fb_002",
+      "text": "Cho mình hỏi quán hải sản nào ở Đà Nẵng giá rẻ thật, không phụ thu gì thêm? Mình đi 4 người, budget 1 triệu/người. Cảm ơn!",
+      "type": "question",
+      "severity": "informational",
+      "topic_hint": [
+        "price",
+        "budget",
+        "family",
+        "location"
+      ],
+      "audience": "family_with_kids",
+      "engagement": 12,
+      "timestamp": "2026-06-10",
+      "platform": "facebook_group",
+      "url": "https://facebook.com/groups/du-lich-da-nang",
+      "source_name": "Du Lịch Đà Nẵng"
+    },
+    {
+      "id": "fb_003",
+      "text": "Quán hải sản bên Mỹ Khê nào view đẹp, giá hợp lý không các bạn? Mình thấy nhiều quán chụp ảnh đẹp nhưng ăn vào thất vọng. Lần trước đi quán ABC, view đẹp mà tôm khô, cá ươn. Tức quá!",
+      "type": "complaint",
+      "severity": "deal_breaker",
+      "topic_hint": [
+        "location",
+        "view",
+        "food_quality",
+        "experience"
+      ],
+      "audience": "young_couple",
+      "engagement": 89,
+      "timestamp": "2026-06-08",
+      "platform": "facebook_group",
+      "url": "https://facebook.com/groups/review-da-nang",
+      "source_name": "Review Thật Đà Nẵng"
+    },
+    {
+      "id": "tt_001",
+      "text": "Đỉnh của chóp luôn các bạn ơi 😭😭 tôm hùm nướng phô mai ở quán này ngon bá cháy, giá 750k/kg nhưng tôm to, thịt chắc. Mình quay story 10 phút không dừng được. Nhân viên còn nhớ mình lần trước đi! #haisandanang #foodreview",
+      "type": "praise",
+      "severity": "enthusiastic",
+      "topic_hint": [
+        "food_quality",
+        "service",
+        "price",
+        "social_media_worthy"
+      ],
+      "audience": "young_couple",
+      "engagement": 2340,
+      "timestamp": "2026-06-12",
+      "platform": "tiktok",
+      "url": "https://tiktok.com/@user123/video/456",
+      "source_name": "TikTok Food Review"
+    },
+    {
+      "id": "reddit_001",
+      "text": "First time in Da Nang, went to a seafood restaurant near My Khe beach. The menu said 'fresh lobster 800k/kg' but when we got the bill there was 15% service charge + 10% VAT not listed anywhere. Total was 1.2m/kg. Felt scammed. Is this normal?",
+      "type": "complaint",
+      "severity": "major",
+      "topic_hint": [
+        "price",
+        "hidden_fees",
+        "trust",
+        "tourist_trap"
+      ],
+      "audience": "solo_traveler",
+      "engagement": 156,
+      "timestamp": "2026-06-05",
+      "platform": "reddit",
+      "url": "https://reddit.com/r/VietNam/comments/abc123",
+      "source_name": "r/VietNam"
+    },
+    {
+      "id": "gr_001",
+      "text": "Mộc Seafood: Tôm hùm nướng ngon, tươi. Giá 850k/kg hơi cao nhưng chất lượng. Phục vụ nhanh, không gian đẹp. Nhưng đỗ xe hơi khó, đường hẹp. Nên đi sớm hoặc đặt bàn trước. 4/5 sao.",
+      "type": "praise",
+      "severity": "minor",
+      "topic_hint": [
+        "food_quality",
+        "price",
+        "service",
+        "location",
+        "parking"
+      ],
+      "audience": "family_with_kids",
+      "engagement": 0,
+      "timestamp": "2026-06-01",
+      "platform": "google_reviews",
+      "url": "https://google.com/maps/place/mocseafood",
+      "source_name": "Google Reviews"
+    },
+    {
+      "id": "fb_004",
+      "text": "Mẹo đi ăn hải sản Đà Nẵng: 1. Hỏi giá TRƯỚC khi chọn tôm/cua 2. Hỏi có phí phục vụ không 3. Chụp ảnh menu để đối chiếu bill 4. Đừng chọn quán có người ra đường kéo khách. Mình bị lừa 2 lần rồi, cay lắm!",
+      "type": "tip",
+      "severity": "major",
+      "topic_hint": [
+        "price",
+        "trust",
+        "experience",
+        "avoid_scam"
+      ],
+      "audience": "general",
+      "engagement": 234,
+      "timestamp": "2026-06-14",
+      "platform": "facebook_group",
+      "url": "https://facebook.com/groups/kinh-nghiem-da-nang",
+      "source_name": "Kinh Nghiệm Đà Nẵng"
+    }
+  ],
+  "source_truth_assessment": {
+    "total_voices": 7,
+    "source_diversity": 7,
+    "sources_breakdown": {
+      "Hỏi Đà Nẵng": 1,
+      "Du Lịch Đà Nẵng": 1,
+      "Review Thật Đà Nẵng": 1,
+      "TikTok Food Review": 1,
+      "r/VietNam": 1,
+      "Google Reviews": 1,
+      "Kinh Nghiệm Đà Nẵng": 1
+    },
+    "type_distribution": {
+      "complaint": 3,
+      "question": 1,
+      "praise": 2,
+      "tip": 1
+    },
+    "severity_distribution": {
+      "major": 3,
+      "informational": 1,
+      "deal_breaker": 1,
+      "enthusiastic": 1,
+      "minor": 1
+    },
+    "recurring_pain_words": [
+      "đắt",
+      "khô",
+      "khó",
+      "thất vọng",
+      "lạnh",
+      "lừa",
+      "scam"
+    ],
+    "recurring_praise_words": [
+      "ngon",
+      "tươi",
+      "rẻ",
+      "hợp lý",
+      "nhanh",
+      "đẹp",
+      "view",
+      "đỉnh"
+    ],
+    "unmet_needs": [
+      "đắt",
+      "quán hải sản"
+    ],
+    "confidence": "medium",
+    "bias_flags": [
+      "pre_purchase_focus"
+    ],
+    "collection_date": "2026-06-18"
+  },
+  "next_step": "Node 4: Cross-validate with Node 2 market narrative"
+}

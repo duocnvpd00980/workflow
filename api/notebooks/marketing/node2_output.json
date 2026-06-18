@@ -1,0 +1,518 @@
+{
+  "input_queries": [
+    "nhà hàng quán nhậu hải sản Đà Nẵng giá rẻ",
+    "nhà hàng quán nhậu hải sản Đà Nẵng gần biển",
+    "nhà hàng quán nhậu hải sản Đà Nẵng review",
+    "nhà hàng quán nhậu hải sản Đà Nẵng cho gia đình",
+    "nhà hàng quán nhậu hải sản Đà Nẵng ngon nhất"
+  ],
+  "collection_date": "2026-06-18",
+  "stats": {
+    "total_serp_results": 25,
+    "unique_competitors": 7,
+    "successful_fetches": 7,
+    "failed_fetches": 5
+  },
+  "competitors": [
+    {
+      "position": 1,
+      "domain": "top10danang.com",
+      "url": "https://top10danang.com/tong-hop-top-20-quan-nhau-da-nang-ngon-gia-re-cuc-dong-khach/",
+      "content_type": "review",
+      "word_count": 6482,
+      "monetization": [
+        "content_only"
+      ],
+      "tone": {
+        "formal": 0.0,
+        "casual": 0.33,
+        "storytelling": 0.0,
+        "data_driven": 0.67
+      },
+      "strengths": [
+        "comprehensive_content",
+        "visual_content",
+        "internal_linking",
+        "multiple_ctas"
+      ],
+      "weaknesses": [
+        "no_video",
+        "no_comparison_table"
+      ],
+      "ctas": [
+        {
+          "text": "top 11 địa chỉ đặt hoa khai trương ở đà nẵng thiết",
+          "type": "booking",
+          "element": "a",
+          "placement": "mid"
+        },
+        {
+          "text": "top 15+ công ty lắp đặt thang máy ở đà nẵng uy tín",
+          "type": "booking",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "top 10 địa chỉ mua vợt pickleball tại đà nẵng chín",
+          "type": "purchase",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "top 15 khách sạn xem bắn pháo hoa tại đà nẵng view",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "top 10 quán cafe view rooftop đà nẵng cực chill đư",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        }
+      ],
+      "h2_outline": [
+        "Tra cứu Tiện ích",
+        "Cá nục Bà Xin",
+        "Quán Heo Tộc",
+        "Quán Hải Sản Có",
+        "174 Nhậu Xuyên Đêm"
+      ],
+      "has_visuals": true,
+      "has_table": false
+    },
+    {
+      "position": 1,
+      "domain": "ghiendanang.com",
+      "url": "https://ghiendanang.com/quan-nhau-hai-san-ven-bien-da-nang/",
+      "content_type": "review",
+      "word_count": 2259,
+      "monetization": [
+        "content_only"
+      ],
+      "tone": {
+        "formal": 0.0,
+        "casual": 0.5,
+        "storytelling": 0.0,
+        "data_driven": 0.5
+      },
+      "strengths": [
+        "comprehensive_content",
+        "visual_content",
+        "structured_data",
+        "internal_linking",
+        "multiple_ctas"
+      ],
+      "weaknesses": [
+        "no_video"
+      ],
+      "ctas": [
+        {
+          "text": "top 9 quán nhậu hải sản ven biển đà nẵng có view đ",
+          "type": "information",
+          "element": "a",
+          "placement": "top"
+        },
+        {
+          "text": "top 10 quán cafe view đẹp ở liên chiểu đà nẵng khô",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "khám phá top 13 quán kem ngon nhất đà nẵng: hướng ",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "xem bong da truc tiep",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        }
+      ],
+      "h2_outline": [
+        "Nhà hàng Làng Cá – Quán nhậu hải sản ven biển Đà Nẵng giá hợp lý",
+        "Nhà hàng Bé Mặn – Quán nhậu hải sản tươi ở ven biển Đà Nẵng",
+        "Nhà hàng Mỹ Hạnh – Quán nhậu hải sản sát biển Đà Nẵng lộng gió",
+        "Muối Biển Seafood Restaurant – Quán nhậu hải sản view biển sang trọng Đà Nẵng",
+        "Sơn Trà Marina – Quán nhậu hải sản ven biển Đà Nẵng phù hợp bữa tối lãng mạn"
+      ],
+      "has_visuals": true,
+      "has_table": true
+    },
+    {
+      "position": 3,
+      "domain": "pasgo.vn",
+      "url": "https://pasgo.vn/kham-pha/top-cac-nha-hang-view-bien-da-nang-ngon-nhat-1760",
+      "content_type": "review",
+      "word_count": 1717,
+      "monetization": [
+        "content_only"
+      ],
+      "tone": {
+        "formal": 0.0,
+        "casual": 0.83,
+        "storytelling": 0.0,
+        "data_driven": 0.17
+      },
+      "strengths": [
+        "visual_content",
+        "internal_linking",
+        "multiple_ctas"
+      ],
+      "weaknesses": [
+        "no_video",
+        "no_comparison_table"
+      ],
+      "ctas": [
+        {
+          "text": "đặt chỗ ngay",
+          "type": "booking",
+          "element": "a",
+          "placement": "top"
+        },
+        {
+          "text": "đặt chỗ ngay",
+          "type": "booking",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "top nhà hàng tổ chức tiệc giáng sinh ngon ở đà nẵn",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "top các quán ăn ngon đà nẵng nổi tiếng nhất - xem ",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "top 10+ nhà hàng view cầu rồng đà nẵng có view đẹp",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        }
+      ],
+      "h2_outline": [
+        "Gian hàng|Thông tin|Ưu đãi",
+        "Ưu đãi",
+        "Bài viết",
+        "1.Nhà hàng Phố Biển– Địa chỉ quen thuộc với món ngon hải sản và view biển cực đẹp",
+        "2. Muối Biển Seafood – Nhà hàng view biển Đà Nẵng chuyên hải sản tươi sống cực chill"
+      ],
+      "has_visuals": true,
+      "has_table": false
+    },
+    {
+      "position": 1,
+      "domain": "www.timdanang.com",
+      "url": "https://www.timdanang.com/vn/top-10-nha-hang-hai-san-da-nang-ngon-nhat-review-bang-gia-n71.html",
+      "content_type": "review",
+      "word_count": 5115,
+      "monetization": [
+        "content_only"
+      ],
+      "tone": {
+        "formal": 0.0,
+        "casual": 1.0,
+        "storytelling": 0.0,
+        "data_driven": 0.0
+      },
+      "strengths": [
+        "comprehensive_content",
+        "visual_content",
+        "internal_linking",
+        "multiple_ctas"
+      ],
+      "weaknesses": [
+        "no_video",
+        "no_comparison_table"
+      ],
+      "ctas": [
+        {
+          "text": "xem thêm >>",
+          "type": "information",
+          "element": "a",
+          "placement": "top"
+        },
+        {
+          "text": "xem thêm >>",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "20+ quán cafe đẹp ở đà nẵng, view cực chill",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "xem thêm >>",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "10+ nhà hàng hải sản đà nẵng ngon nhất -  review, ",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        }
+      ],
+      "h2_outline": [
+        "News",
+        "WikiDanang",
+        "Tin tức nổi bật",
+        "Lời khuyên hữu ích",
+        "Thực đơn Menu:"
+      ],
+      "has_visuals": true,
+      "has_table": false
+    },
+    {
+      "position": 3,
+      "domain": "daivietourist.vn",
+      "url": "https://daivietourist.vn/quan-hai-san-da-nang/",
+      "content_type": "review",
+      "word_count": 7250,
+      "monetization": [
+        "content_only"
+      ],
+      "tone": {
+        "formal": 0.0,
+        "casual": 0.6,
+        "storytelling": 0.0,
+        "data_driven": 0.4
+      },
+      "strengths": [
+        "comprehensive_content",
+        "visual_content",
+        "internal_linking",
+        "multiple_ctas"
+      ],
+      "weaknesses": [
+        "no_video",
+        "no_comparison_table"
+      ],
+      "ctas": [
+        {
+          "text": "tour bà nà hills 1 ngày từ đà nẵng: bảng giá, lịch",
+          "type": "booking",
+          "element": "a",
+          "placement": "bottom"
+        },
+        {
+          "text": "tour cù lao chàm 1 ngày từ đà nẵng: giá trọn gói, ",
+          "type": "booking",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "tour đà nẵng đi huế 1 ngày: lịch trình, chi phí và",
+          "type": "booking",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "tour hội an từ đà nẵng 1 ngày – giá, lịch trình và",
+          "type": "booking",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "tour bà nà hills 1 ngày từ đà nẵng: bảng giá, lịch",
+          "type": "booking",
+          "element": "a",
+          "placement": "unknown"
+        }
+      ],
+      "h2_outline": [
+        "Giới thiệu về các quán hải sản Đà Nẵng",
+        "Top 12 quán hải sản Đà Nẵng nức tiếng, đông du khách",
+        "Review quán hải sản Đà Nẵng – Top các nhà hàng hải sản ngon",
+        "Top những  quán hải sản Đà Nẵng bình dân, ngon",
+        "Các lưu ý cần biết khi thưởng thức ở quán hải sản Đà Nẵng"
+      ],
+      "has_visuals": true,
+      "has_table": false
+    },
+    {
+      "position": 1,
+      "domain": "mia.vn",
+      "url": "https://mia.vn/cam-nang-du-lich/quan-hai-san-da-nang-ngon-19525",
+      "content_type": "review",
+      "word_count": 2305,
+      "monetization": [
+        "content_only"
+      ],
+      "tone": {
+        "formal": 0.0,
+        "casual": 1.0,
+        "storytelling": 0.0,
+        "data_driven": 0.0
+      },
+      "strengths": [
+        "comprehensive_content",
+        "visual_content",
+        "internal_linking"
+      ],
+      "weaknesses": [
+        "no_video",
+        "no_comparison_table"
+      ],
+      "ctas": [
+        {
+          "text": "freeshipcombo 2 vali larita sena1.899.000₫4.700.00",
+          "type": "lead_gen",
+          "element": "a",
+          "placement": "top"
+        },
+        {
+          "text": "#40454a#b76e79#9ad8e7#fffffffreeshippisani x9 yg18",
+          "type": "lead_gen",
+          "element": "a",
+          "placement": "unknown"
+        }
+      ],
+      "h2_outline": [
+        "1Hải Sản Thời Cổ Đà Nẵng - Seafood Restaurant",
+        "2Hải sản Mộc quán Đà Nẵng",
+        "3Hải Sản Đà Nẵng Bé Biển",
+        "4Nhà Hàng Hải Sản - Ơ Kìa",
+        "5Hải sản Năm Đảnh"
+      ],
+      "has_visuals": true,
+      "has_table": false
+    },
+    {
+      "position": 2,
+      "domain": "muoibienseafood.com",
+      "url": "https://muoibienseafood.com/nha-hang-hai-san-da-nang/",
+      "content_type": "review",
+      "word_count": 2020,
+      "monetization": [
+        "content_only"
+      ],
+      "tone": {
+        "formal": 0.0,
+        "casual": 0.4,
+        "storytelling": 0.2,
+        "data_driven": 0.4
+      },
+      "strengths": [
+        "comprehensive_content",
+        "visual_content",
+        "structured_data",
+        "internal_linking",
+        "multiple_ctas"
+      ],
+      "weaknesses": [],
+      "ctas": [
+        {
+          "text": "nhà hàng view biển đà nẵng",
+          "type": "information",
+          "element": "a",
+          "placement": "mid"
+        },
+        {
+          "text": "nhà hàng view đẹp",
+          "type": "information",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "facebook",
+          "type": "booking",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "đặt bàn ngay",
+          "type": "booking",
+          "element": "a",
+          "placement": "unknown"
+        },
+        {
+          "text": "đặt bàn",
+          "type": "booking",
+          "element": "button",
+          "placement": "unknown"
+        }
+      ],
+      "h2_outline": [
+        "Muối Biển Seafood Restaurant – Nhà hàng hải sản lớn nhất Đà Nẵng",
+        "Năm Đảnh – Quán hải sản Đà Nẵng",
+        "Hải Sản Bé Mặn",
+        "Nhà hàng Làng Cá",
+        "Hải sản Mộc Quán"
+      ],
+      "has_visuals": true,
+      "has_table": true
+    }
+  ],
+  "market_narrative": {
+    "total_competitors_analyzed": 7,
+    "content_type_distribution": {
+      "review": 7
+    },
+    "dominant_content_type": "review",
+    "monetization_distribution": {
+      "content_only": 7
+    },
+    "dominant_monetization": "content_only",
+    "average_tone": {
+      "formal": 0.0,
+      "casual": 0.67,
+      "storytelling": 0.03,
+      "data_driven": 0.31
+    },
+    "dominant_tone": "casual",
+    "cta_patterns": {
+      "types": {
+        "booking": 12,
+        "purchase": 1,
+        "information": 16,
+        "lead_gen": 2
+      },
+      "placements": {
+        "mid": 2,
+        "unknown": 24,
+        "top": 4,
+        "bottom": 1
+      }
+    },
+    "average_word_count": 3878,
+    "content_gaps": [
+      {
+        "weakness": "no_video",
+        "count": 6,
+        "opportunity": "Create content with no video"
+      },
+      {
+        "weakness": "no_comparison_table",
+        "count": 5,
+        "opportunity": "Create content with no comparison table"
+      }
+    ],
+    "serp_bias_note": "Analyzed top 7 results. May not represent user favorites, only SEO winners."
+  },
+  "content_opportunities": [
+    {
+      "weakness": "no_video",
+      "count": 6,
+      "opportunity": "Create content with no video"
+    },
+    {
+      "weakness": "no_comparison_table",
+      "count": 5,
+      "opportunity": "Create content with no comparison table"
+    }
+  ],
+  "next_step": "Node 3: Collect raw customer voice to validate these market claims"
+}

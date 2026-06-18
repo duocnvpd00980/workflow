@@ -1,0 +1,31 @@
+{
+  "seed_query": "nhà hàng quán nhậu hải sản Đà Nẵng",
+  "language": "vi",
+  "collection_date": "2026-06-18",
+  "stats": {
+    "total_signals": 2,
+    "google_suggest": 0,
+    "bing_suggest": 2,
+    "related_searches": 0,
+    "questions_found": 0
+  },
+  "raw_signals": {
+    "all_queries": [
+      "nhà hàng quán nhậu hải sản Đà nẵng nối",
+      "nhà hàng quán nhậu hải sản Đà nẵng"
+    ],
+    "questions": []
+  },
+  "intent_groups": {
+    "food_type": [
+      "nhà hàng quán nhậu hải sản Đà nẵng nối",
+      "nhà hàng quán nhậu hải sản Đà nẵng"
+    ]
+  },
+  "search_strategy_hints": [
+    "Primary intent: food_type",
+    "Questions: 0 (content opportunity)",
+    "Food-specific: 2 signals",
+    "Next: Node 2 — crawl SERP for top URLs in dominant clusters"
+  ]
+}

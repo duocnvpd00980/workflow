@@ -20,6 +20,8 @@ class Settings(BaseSettings):
 
     POLLINATIONS_API_KEY: str = "sk_J68kYhDowZ8FTDPupSlolhNEcnqsWZ1P"
 
+    JINA_API_KEY : str = "jina_3de0aae4312d41f382883d98441b1cb8LecWrx2z5tNNFGYJuWIxPWqMXeo9"
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()

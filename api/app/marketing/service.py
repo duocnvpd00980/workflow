@@ -449,7 +449,7 @@ Nếu is_vague = true: {{"is_vague": true, "message": "...", "options": []}}
                 )
 
             resume_cmd = {"action": action}
-            if action == "edit" and content:
+            if content:
                 resume_cmd["content"] = content
 
             result_graph = await graph.ainvoke(Command(resume=resume_cmd), config=config)

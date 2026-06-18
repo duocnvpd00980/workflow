@@ -1,0 +1,161 @@
+{
+  "input_files": {
+    "node2": "node2_output.json",
+    "node3": "node3_output.json"
+  },
+  "processing_date": "2026-06-18",
+  "stats": {
+    "competitors_analyzed": 1,
+    "raw_voices_analyzed": 7,
+    "mismatches_found": 0,
+    "validations_found": 0,
+    "pain_points": 0,
+    "market_gaps": 5,
+    "differentiation_hooks": 0,
+    "content_briefs": 7
+  },
+  "cross_validation": {
+    "mismatches": [],
+    "validations": []
+  },
+  "insights": {
+    "real_pain_points": [],
+    "market_gaps": [
+      {
+        "gap": "thin_content",
+        "description": "Create content with thin content",
+        "competitor_count": 1,
+        "opportunity": "Create content addressing: thin_content"
+      },
+      {
+        "gap": "no_visuals",
+        "description": "Create content with no visuals",
+        "competitor_count": 1,
+        "opportunity": "Create content addressing: no_visuals"
+      },
+      {
+        "gap": "no_video",
+        "description": "Create content with no video",
+        "competitor_count": 1,
+        "opportunity": "Create content addressing: no_video"
+      },
+      {
+        "gap": "no_comparison_table",
+        "description": "Create content with no comparison table",
+        "competitor_count": 1,
+        "opportunity": "Create content addressing: no_comparison_table"
+      },
+      {
+        "gap": "no_cta",
+        "description": "Create content with no cta",
+        "competitor_count": 1,
+        "opportunity": "Create content addressing: no_cta"
+      }
+    ],
+    "differentiation_hooks": [],
+    "positioning_strategy": {
+      "market_frame": "seafood_restaurant_da_nang",
+      "current_narrative": "Competitors promise 'fresh, cheap, beautiful view'",
+      "customer_reality": "Customers experience: hidden costs and quality issues",
+      "reframe": "From 'cheapest seafood' to 'honest seafood with transparent pricing'",
+      "brand_promise": "We show you the real total cost. No hidden fees. No fake freshness claims.",
+      "proof_points": [
+        "Real photos with timestamps",
+        "Total cost calculator: food + service + extras",
+        "Customer reviews with verification"
+      ],
+      "competitor_weakness_to_attack": []
+    }
+  },
+  "content_briefs": {
+    "blog_honest_review": {
+      "title": "Ăn Hải Sản Đà Nẵng: Hidden Costs And Fake Freshness (Và Cách Tránh)",
+      "hook": "Story: 'hidden costs and fake freshness...'",
+      "h2_outline": [
+        "Cách đọc menu hải sản: giá nào là giá thật?",
+        "5 quán hải sản Đà Nẵng: Tổng chi phí thực tế",
+        "Dấu hiệu nhận biết hải sản tươi vs đông lạnh",
+        "Checklist: 7 câu phải hỏi trước khi gọi món"
+      ],
+      "key_message": "We show you the real total cost. No hidden fees. No fake freshness claims.",
+      "cta": "Lưu checklist — đặt bàn lần sau không bị 'bất ngờ'",
+      "tone": "honest_friend",
+      "evidence_required": [],
+      "target_audience": "family_budget_conscious",
+      "seo_keyword_cluster": "hải sản đà nẵng giá rẻ"
+    },
+    "facebook_ad": {
+      "headline": "Ăn Hải Sản 'Giá Rẻ' = hidden costs and fake freshnes?",
+      "body": "hidden costs and fake freshness. Chúng tôi so sánh TỔNG CHI PHÍ thật.",
+      "cta": "Xem so sánh giá thật",
+      "audience": "lookalike_family_travelers",
+      "differentiation": "Total cost transparency"
+    },
+    "email_newsletter": {
+      "subject": "Mẹo ăn hải sản Đà Nẵng: 7 câu phải hỏi (trước khi mất tiền)",
+      "preview": "hidden costs and fake freshness. Checklist miễn phí.",
+      "body_angle": "Story-driven: 'Lần đầu mình ăn hải sản Đà Nẵng... hidden costs and fake freshness'",
+      "cta": "Tải checklist PDF"
+    },
+    "tiktok_script": {
+      "hook_3s": "Đặt hải sản 800k/kg? [show bill] hidden costs and fake freshnes",
+      "story_arc": "Order → Arrive → Shock → Compare 5 restaurants → Reveal trick",
+      "cta": "Follow để không bị lừa giá nữa"
+    },
+    "landing_page": {
+      "hero_headline": "Hải Sản Đà Nẵng: Giá Thật, Tươi Thật",
+      "subheadline": "We show you the real total cost. No hidden fees. No fake freshness claims.",
+      "objection_handler": "Q: Tại sao giá cao hơn quán khác? A: hidden costs and fake freshness — chúng tôi không có phí ẩn.",
+      "social_proof": "1,200+ khách hàng đã check tổng bill trước khi đặt bàn",
+      "cta": "Tính tổng chi phí thực"
+    },
+    "google_ad": {
+      "headline_1": "Hải Sản Đà Nẵng Giá Rẻ?",
+      "headline_2": "Xem Tổng Bill Thật Trước",
+      "headline_3": "Không Phí Ẩn, Không Lừa",
+      "description": "hidden costs and fake freshness. Tính tổng chi phí trước khi đặt bàn.",
+      "cta": "So Sánh Giá"
+    },
+    "instagram_post": {
+      "caption_hook": "Swipe để thấy hidden costs and fake freshness 👉",
+      "carousel_slides": [
+        "Bill quán A: 800k/kg tôm",
+        "Bill thực tế: +200k phí + 150k service",
+        "Quán chúng tôi: 900k/kg, TỔNG = 900k",
+        "Cách tính tổng bill trước khi ăn"
+      ],
+      "hashtags": "#haisandanang #danangfood #foodtransparency #danangtravel",
+      "cta": "Lưu lại để so sánh"
+    }
+  },
+  "positioning_strategy": {
+    "market_frame": "seafood_restaurant_da_nang",
+    "current_narrative": "Competitors promise 'fresh, cheap, beautiful view'",
+    "customer_reality": "Customers experience: hidden costs and quality issues",
+    "reframe": "From 'cheapest seafood' to 'honest seafood with transparent pricing'",
+    "brand_promise": "We show you the real total cost. No hidden fees. No fake freshness claims.",
+    "proof_points": [
+      "Real photos with timestamps",
+      "Total cost calculator: food + service + extras",
+      "Customer reviews with verification"
+    ],
+    "competitor_weakness_to_attack": []
+  },
+  "confidence_scores": {
+    "pain_points": 0.6,
+    "market_gaps": 0.8,
+    "differentiation_hooks": 0.4,
+    "content_angles": 0.9
+  },
+  "risk_flags": [
+    "LLM not used — template-based generation may lack nuance",
+    "Node 3 data may be insufficient for high-confidence insights",
+    "Cultural nuance may be missed without human review"
+  ],
+  "human_review_required": [
+    "Verify cultural context of pain points",
+    "Check legal compliance of competitor naming",
+    "Validate pricing claims with actual market data"
+  ],
+  "next_step": "Feed content_briefs into app content generation engine"
+}

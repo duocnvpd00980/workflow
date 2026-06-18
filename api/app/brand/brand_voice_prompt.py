@@ -8,7 +8,7 @@ Usage:
 
     prompt = await build_system_prompt(
         brand_voice=bv_dict,
-        content_type="blog",
+        content_type="blog_web",
         user_input={"topic": "Ra mắt sản phẩm mới", "keywords": ["bền vững", "đột phá"]},
     )
 """
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__))
 _TEMPLATE_FILE = "brand_voice_prompt.j2"
 
-ContentType = Literal["blog", "email", "social", "ad", "landing_page", "other"]
+ContentType = Literal["blog_web", "email_sale", "social_media", "ad","landing_page", "other"] 
 
 
 @lru_cache(maxsize=1)
@@ -152,7 +152,7 @@ async def build_system_prompt(
 
     Args:
         brand_voice:  dict từ Brand ORM hoặc BrandOut.model_dump()
-        content_type: loại nội dung — "blog" | "email" | "social" | "ad" | ...
+        content_type: loại nội dung — ["blog_web", "email_sale", "social_media", "ad","landing_page", "other"] ...
         user_input:   {
                         topic?: str,
                         keywords?: List[str],

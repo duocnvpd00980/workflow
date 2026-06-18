@@ -48,7 +48,7 @@ class CtaStyle(BaseModel):
 class VoiceExample(BaseModel):
     input: str = Field(..., min_length=1)
     output: str = Field(..., min_length=1)
-    contentType: Literal["blog", "email", "social", "ad", "other"]
+    contentType: Literal["blog_web", "email_sale", "social_media", "ad","landing_page", "other"] 
 
 
 class BrandEightFields(BaseModel):

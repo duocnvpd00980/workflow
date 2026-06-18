@@ -360,16 +360,11 @@ def execute_blog_image(state: dict) -> dict:
         "usage": _merge_usage(state.get("usage", {}), 150, "blog_image"),
     }
 
-
 def blog_review_pause(state: dict) -> dict:
     """Human-in-the-loop: pause để user review."""
     print("\n" + "="*60)
     print("🟡 NODE: blog_review_pause (WAITING FOR USER)")
     print("="*60)
-    
-    print(f"📤 Interrupting for user review...")
-    print(f"   - draft title: {state.get('title')}")
-    print(f"   - image_url: {state.get('image_url')}")
 
     action = interrupt({
         "status":     "paused",
@@ -380,38 +375,43 @@ def blog_review_pause(state: dict) -> dict:
         "usage":      state.get("usage"),
         "session_id": state.get("session_id"),
     })
-    
-    print(f"📥 User action received: {action}")
 
+    print(f"📥 User action received: {action}")
     user_action = action.get("action", "save")
 
     if user_action == "approve":
         print(f"✅ User APPROVED")
-        return {**state, "approved": True, "error": None}
         
+        current_draft = state.get("draft") or {}
+        
+        # ✅ FIX: Nếu user gửi kèm content đã edit → cập nhật draft
+        edited_content = action.get("content")
+        if edited_content:
+            current_draft = {
+                **current_draft,
+                "content": edited_content,
+            }
+            print(f"📝 Content updated by user ({len(edited_content)} chars)")
+        
+        return {
+            **state,
+            "approved": True,
+            "draft": current_draft,   # ✅ draft đã có content mới
+            "content": edited_content or state.get("content"),  # ✅ sync cả field content
+            "error": None,
+        }
+
     elif user_action == "revise":
-        feedback = action.get(
-            "feedback",
-            "Hãy tối ưu lại bài viết."
-        )
-
+        feedback = action.get("feedback", "Hãy tối ưu lại bài viết.")
         print(f"🔄 User REVISE: {feedback}")
-
         return {
             **state,
             "approved": False,
             "revision_note": feedback,
-
-            # KHÔNG ghi đè request gốc
-            "request": (
-                state.get("request", "")
-                + "\n\nRevision:\n"
-                + feedback
-            ),
-
+            "request": state.get("request", "") + "\n\nRevision:\n" + feedback,
             "error": None,
         }
-        
+
     print(f"💾 User SAVE (fallback)")
     return {**state, "approved": False, "error": None}
 
@@ -421,22 +421,26 @@ def blog_save(state: dict) -> dict:
     print("\n" + "="*60)
     print("🟢 NODE: blog_save")
     print("="*60)
-    
+
+    current_draft = state.get("draft") or {}
+
+    # ✅ FIX: Ưu tiên draft["content"] — đây là source of truth sau khi user edit
+    final_content = current_draft.get("content") or state.get("content")
+
     draft = {
-        "group": "blog_web",
-        "function": state.get("function"),
-        "title": state.get("title"),
-        "content": state.get("content"),
+        "group":     "blog_web",
+        "function":  state.get("function"),
+        "title":     current_draft.get("title") or state.get("title"),
+        "content":   final_content,   # ✅ lấy từ draft, không phải state["content"]
         "image_url": state.get("image_url"),
-        "seo_meta": state.get("seo_meta"),
-        "approved": state.get("approved", False),
+        "seo_meta":  state.get("seo_meta"),
+        "approved":  state.get("approved", False),
     }
 
     print(f"💾 Saving draft:")
     print(f"   - title: {draft['title']}")
-    print(f"   - function: {draft['function']}")
+    print(f"   - content length: {len(draft['content'] or '')}")
     print(f"   - approved: {draft['approved']}")
-    print(f"   - image_url: {draft['image_url']}")
 
     return {
         **state,
@@ -444,7 +448,6 @@ def blog_save(state: dict) -> dict:
         "publish_status": "published" if state.get("approved") else "saved",
         "status_action": None,
     }
-
 
 # ── Conditional Edges ───────────────────────────────────────
 

@@ -62,16 +62,20 @@ Trả về JSON thuần — KHÔNG dùng markdown, KHÔNG thêm trường ngoài
   "tone": {{
     "base": ["<tone_word>"],
     "overrides": {{
-      "blog":   ["<tone_word>"],
-      "email":  ["<tone_word>"],
-      "social": ["<tone_word>"]
+      "blog_web":   ["<tone_word>"],
+      "email_sale":  ["<tone_word>"],
+      "social_media": ["<tone_word>"]
     }}
   }},
 
   "style": {{
     "sentenceLength": "<short|medium|long|mixed>",
     "voice":          "<active|passive>",
-    "perspective":    "<first|second|third>"
+    "perspective":    "<first|second|third>",
+    "pronouns": {{
+      "ai": "<Thương hiệu tự xưng là gì khi viết tiếng Việt? Ví dụ: Chúng tôi, Brilliant Restaurant, Shop>",
+      "reader": "<Gọi khách hàng/độc giả là gì khi viết tiếng Việt? Ví dụ: Quý khách, Bạn, Anh/Chị>"
+    }}
   }},
 
   "vocabulary": {{
@@ -97,7 +101,7 @@ Trả về JSON thuần — KHÔNG dùng markdown, KHÔNG thêm trường ngoài
     {{
       "input":       "<user yêu cầu gì>",
       "output":      "<output mẫu đúng giọng>",
-      "contentType": "<blog|email|social|ad|other>"
+      "contentType": "<blog_web|email_sale|social_media|ad|landing_page|other>"
     }}
   ]
 }}
