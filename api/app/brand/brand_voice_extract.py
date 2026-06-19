@@ -1,11 +1,13 @@
 """
 services/brand_voice_extract.py
 ────────────────────────────────
-Extract 8 Brand Voice fields từ RAG content.
+Extract 8 Brand Voice fields từ brand_voice_input (Signal Extraction output).
 Dùng async_groq_client từ app.llm_clients — KHÔNG dùng litellm.
 
 Flow:
-    RAG content + voice_config + business info
+    research_mapper.build_research_json()
+        → signal_extractor.extract_brand_signals()
+        → brand_voice_input (dict)
         → EXTRACTION_PROMPT
         → async_groq_client (json_object)
         → _sanitize_raw()
@@ -19,104 +21,15 @@ import json
 import logging
 from typing import Any, Dict
 
+from app.brand.extraction_prompt import SYSTEM_MSG, build_extraction_prompt
 from app.llm_clients import async_groq_client, GROQ_MODEL
 from .schemas import BrandEightFields
 
 logger = logging.getLogger(__name__)
 
-# ═══════════════════════════════════════════════════════════════════
-# PROMPT TEMPLATE
-# ═══════════════════════════════════════════════════════════════════
-
-SYSTEM_MSG = (
-    "Bạn là chuyên gia phân tích Brand Voice. "
-    "Chỉ trả về JSON object hợp lệ, không markdown, không giải thích."
-)
-
-EXTRACTION_PROMPT = """\
-Bạn là chuyên gia phân tích Brand Voice.
-
-THÔNG TIN THƯƠNG HIỆU:
-- Tên: {business_name}
-- Ngành: {industry}
-- Sản phẩm/Dịch vụ: {products}
-
-THIẾT LẬP VOICE NÀY:
-- Tên voice: {voice_name}
-- Mục đích: {purpose}
-- Kênh triển khai: {channels}
-- Tone mong muốn: {desired_tone}
-- Đối tượng cụ thể: {target_audience}
-
-TÀI LIỆU THAM KHẢO:
-{rag_content}
-
-═══════════════════════════════════════════════════
-YÊU CẦU: Trích xuất Brand Voice thành JSON với đúng 7 trường sau.
-Trả về JSON thuần — KHÔNG dùng markdown, KHÔNG thêm trường ngoài schema.
-═══════════════════════════════════════════════════
-
-{{
-  "personality": "<1-2 câu mô tả AI đóng vai gì, phong cách ra sao>",
-
-  "tone": {{
-    "base": ["<tone_word>"],
-    "overrides": {{
-      "blog_web":   ["<tone_word>"],
-      "email_sale":  ["<tone_word>"],
-      "social_media": ["<tone_word>"]
-    }}
-  }},
-
-  "style": {{
-    "sentenceLength": "<short|medium|long|mixed>",
-    "voice":          "<active|passive>",
-    "perspective":    "<first|second|third>",
-    "pronouns": {{
-      "ai": "<Thương hiệu tự xưng là gì khi viết tiếng Việt? Ví dụ: Chúng tôi, Brilliant Restaurant, Shop>",
-      "reader": "<Gọi khách hàng/độc giả là gì khi viết tiếng Việt? Ví dụ: Quý khách, Bạn, Anh/Chị>"
-    }}
-  }},
-
-  "vocabulary": {{
-    "wordsToUse":      ["..."],
-    "wordsToAvoid":    ["..."],
-    "phrasesToUse":    ["..."],
-    "phrasesToAvoid":  ["..."]
-  }},
-
-  "format_rules": {{
-    "paragraphMaxSentences": <1-20>,
-    "useEmoji":              <true|false>,
-    "useHashtags":           <true|false>,
-    "bulletPointStyle":      "<dash|dot|number|arrow|none>"
-  }},
-
-  "cta_style": {{
-    "style":   "<soft|direct|urgent|none>",
-    "phrases": ["..."]
-  }},
-
-  "examples": [
-    {{
-      "input":       "<user yêu cầu gì>",
-      "output":      "<output mẫu đúng giọng>",
-      "contentType": "<blog_web|email_sale|social_media|ad|landing_page|other>"
-    }}
-  ]
-}}
-
-QUY TẮC BẮT BUỘC:
-- Từ vựng phải phù hợp ngành: {industry}
-- tone.overrides chỉ ghi kênh có trong danh sách kênh: {channels}
-- examples: tối thiểu 1, tối đa 3 — phải đúng giọng, có thể trích từ tài liệu
-- KHÔNG dùng từ generic: "rất", "cực kỳ", "tuyệt vời", "chất lượng cao"
-- KHÔNG giải thích, KHÔNG markdown — chỉ JSON
-"""
-
 
 # ═══════════════════════════════════════════════════════════════════
-# SANITIZE + VALIDATE
+# SANITIZE + VALIDATE  (giữ nguyên logic cũ — không đổi)
 # ═══════════════════════════════════════════════════════════════════
 
 def _sanitize_raw(raw: Dict[str, Any]) -> Dict[str, Any]:
@@ -147,7 +60,7 @@ def _sanitize_raw(raw: Dict[str, Any]) -> Dict[str, Any]:
             raw[field] = max(0, min(100, int(raw.get(field, 50))))
         except (ValueError, TypeError):
             raw[field] = 50
-            
+
     return raw
 
 
@@ -160,23 +73,24 @@ def _validate(raw: Dict[str, Any]) -> BrandEightFields:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# MAIN FUNCTION
+# MAIN FUNCTION — signature mới: chỉ nhận brand_voice_input
 # ═══════════════════════════════════════════════════════════════════
 
 async def extract_brand_voice(
-    business: Dict[str, Any],
-    voice_config: Dict[str, Any],
-    rag_content: str,
-    max_rag_chars: int = 8000,
+    brand_voice_input: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    Gọi Groq async để extract 8 Brand Voice fields từ RAG content.
+    Gọi Groq async để extract 8 Brand Voice fields từ brand_voice_input
+    (output của signal_extractor.extract_brand_signals()).
 
     Args:
-        business:      dict từ Business ORM (name, industry, products, ...)
-        voice_config:  dict từ VoiceConfigIn
-        rag_content:   text đã thu thập từ RAG sources
-        max_rag_chars: cắt ngắn để tránh vượt context window
+        brand_voice_input: {
+            customer_language, market_patterns, existing_brand_voice,
+            customer_feedback, competitor_insights, business_context
+        }
+        business_context phải chứa: business_name, voice_config{name,purpose,
+        channels,desired_tone,target_audience}. industry/products là optional —
+        nếu thiếu, prompt sẽ ghi "—".
 
     Returns:
         Dict khớp BrandEightFields — sẵn sàng unpack vào Brand ORM.
@@ -185,25 +99,10 @@ async def extract_brand_voice(
         RuntimeError: Groq call thất bại
         ValueError:   JSON không đúng schema
     """
-    channels_str = ", ".join(voice_config.get("channels", []))
-    products_str = ", ".join(business.get("products", [])) or "—"
+    prompt = build_extraction_prompt(brand_voice_input)
 
-    prompt = EXTRACTION_PROMPT.format(
-        business_name  = business.get("name", ""),
-        industry       = business.get("industry", ""),
-        products       = products_str,
-        voice_name     = voice_config.get("name", ""),
-        purpose        = voice_config.get("purpose", ""),
-        channels       = channels_str,
-        desired_tone   = voice_config.get("desired_tone", ""),
-        target_audience= voice_config.get("target_audience", ""),
-        rag_content    = rag_content[:max_rag_chars],
-    )
-
-    logger.info(
-        "extract_brand_voice | business=%s | rag_chars=%d",
-        business.get("name"), min(len(rag_content), max_rag_chars),
-    )
+    business_name = brand_voice_input.get("business_context", {}).get("business_name", "")
+    logger.info("extract_brand_voice | business=%s", business_name)
 
     # ── Gọi Groq async (dùng async_groq_client từ app.llm_clients) ──
     try:

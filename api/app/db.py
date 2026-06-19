@@ -28,6 +28,7 @@ def set_sqlite_pragma(dbapi_conn, _connection_record):
 class Base(DeclarativeBase):
     pass
 
+
 # ── Session factory ──────────────────────────────────────────────
 AsyncSessionLocal = async_sessionmaker(
     engine,

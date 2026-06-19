@@ -23,9 +23,7 @@ from sqlalchemy import (
     JSON,
     DateTime,
 )
-from sqlalchemy.orm import declarative_base
-
-Base = declarative_base()
+from app.db import Base
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -169,11 +167,11 @@ class FbComment(Base):
     created_at = Column(DateTime, default=datetime.now)
 
 
-def init_db(db_path: str = "research.db"):
-    """Tạo engine + tạo bảng nếu chưa có. Gọi 1 lần khi pipeline khởi tạo."""
-    engine = create_engine(f"sqlite:///{db_path}")
-    Base.metadata.create_all(engine)
-    return engine
+# def init_db(db_path: str = "research.db"):
+#     """Tạo engine + tạo bảng nếu chưa có. Gọi 1 lần khi pipeline khởi tạo."""
+#     engine = create_engine(f"sqlite:///{db_path}")
+#     Base.metadata.create_all(engine)
+#     return engine
 
 
 # ═══════════════════════════════════════════════════════════════════════

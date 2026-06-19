@@ -9,24 +9,21 @@ from typing import Optional
 
 import httpx
 from bs4 import BeautifulSoup
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete
 
 from .models import (
-    Base,
     PipelineTask,
     PipelineEvent,
     ResearchResult,
     FbPost,
     FbComment,
     ResearchState,
-    init_db,
     safe_get,
     SUGGESTIONS_TAGGED_SCHEMA,
     SERP_DATA_SCHEMA,
     FB_BRAND_SCHEMA,
     default_suggestions_tagged,
-    default_serp_data,
-    default_fb_brand,
 )
 import nodriver as uc
 
@@ -48,74 +45,119 @@ ASYNC_HTTP_CLIENT = httpx.AsyncClient(
 # ═══════════════════════════════════════════════════════════════════════
 # DB HELPERS 
 # ═══════════════════════════════════════════════════════════════════════
+async def _upsert_task(db: AsyncSession, state: ResearchState):
+    task = (
+        await db.execute(
+            select(PipelineTask)
+            .where(PipelineTask.business_id == state.business_id)
+        )
+    ).scalar_one_or_none()
 
-def _upsert_task(session: Session, state: ResearchState):
-    task = session.query(PipelineTask).filter_by(business_id=state.business_id).first()
-    if task is None:
+    if not task:
         task = PipelineTask(business_id=state.business_id)
-        session.add(task)
+        db.add(task)
+
     task.business_name = state.business_name
     task.query = state.query
     task.fb_url = state.fb_url
     task.status = state.status
     task.error = state.error
     task.updated_at = datetime.now()
-    session.commit()
 
 
-def _replace_events(session: Session, state: ResearchState):
-    session.query(PipelineEvent).filter_by(business_id=state.business_id).delete()
-    for ev in state.events:
-        session.add(PipelineEvent(
+async def _replace_events(db: AsyncSession, state: ResearchState):
+    await db.execute(
+        delete(PipelineEvent)
+        .where(PipelineEvent.business_id == state.business_id)
+    )
+
+    db.add_all([
+        PipelineEvent(
             business_id=state.business_id,
-            seq=ev["seq"],
-            node_name=ev["node"],
-            payload=ev["payload"],
-        ))
-    session.commit()
+            seq=e["seq"],
+            node_name=e["node"],
+            payload=e["payload"],
+        )
+        for e in state.events
+    ])
 
 
-def _upsert_result(session: Session, state: ResearchState):
-    result = session.query(ResearchResult).filter_by(business_id=state.business_id).first()
-    if result is None:
-        result = ResearchResult(business_id=state.business_id)
-        session.add(result)
+async def _upsert_result(db: AsyncSession, state: ResearchState):
+    result = (
+        await db.execute(
+            select(ResearchResult)
+            .where(ResearchResult.business_id == state.business_id)
+        )
+    ).scalar_one_or_none()
+
+    if not result:
+        result = ResearchResult(
+            business_id=state.business_id
+        )
+        db.add(result)
 
     result.business_name = state.business_name
-    result.suggestions_raw = list(state.suggestions)
-    result.suggestions_tagged = safe_get(state.tagged_suggestions, SUGGESTIONS_TAGGED_SCHEMA)
-    result.serp_data = safe_get(state.serp_data, SERP_DATA_SCHEMA)
-    result.fb_brand = safe_get(state.fb_data.get("brand"), FB_BRAND_SCHEMA)
-    result.final_report = state.report.get("text") if isinstance(state.report, dict) else None
+    result.suggestions_raw = state.suggestions
+    result.suggestions_tagged = safe_get(
+        state.tagged_suggestions,
+        SUGGESTIONS_TAGGED_SCHEMA,
+    )
+    result.serp_data = safe_get(
+        state.serp_data,
+        SERP_DATA_SCHEMA,
+    )
+    result.fb_brand = safe_get(
+        state.fb_data["brand"],
+        FB_BRAND_SCHEMA,
+    )
+    result.final_report = state.report.get("text")
     result.updated_at = datetime.now()
-    session.commit()
 
 
-def _replace_fb_posts_comments(session: Session, state: ResearchState):
-    session.query(FbPost).filter_by(business_id=state.business_id).delete()
-    session.query(FbComment).filter_by(business_id=state.business_id).delete()
+async def _replace_fb_posts_comments(
+    db: AsyncSession,
+    state: ResearchState,
+):
+    await db.execute(
+        delete(FbPost)
+        .where(FbPost.business_id == state.business_id)
+    )
 
-    for content in state.fb_data.get("posts", []):
-        if content:
-            session.add(FbPost(business_id=state.business_id, content=content))
+    await db.execute(
+        delete(FbComment)
+        .where(FbComment.business_id == state.business_id)
+    )
 
-    for c in state.fb_data.get("comments", []):
-        session.add(FbComment(
+    db.add_all([
+        FbPost(
+            business_id=state.business_id,
+            content=p,
+        )
+        for p in state.fb_data["posts"]
+    ])
+
+    db.add_all([
+        FbComment(
             business_id=state.business_id,
             author=c.get("author"),
             time=c.get("time"),
             comment=c.get("comment"),
-            replies=list(c.get("replies", [])),
-        ))
-    session.commit()
+            replies=c.get("replies", []),
+        )
+        for c in state.fb_data["comments"]
+    ])
 
 
-def save_after_node(engine, state: ResearchState):
-    with Session(engine) as session:
-        _upsert_task(session, state)
-        _replace_events(session, state)
-        _upsert_result(session, state)
-        _replace_fb_posts_comments(session, state)
+async def save_after_node(
+    db: AsyncSession,
+    state: ResearchState,
+):
+    await _upsert_task(db, state)
+    await _replace_events(db, state)
+    await _upsert_result(db, state)
+    await _replace_fb_posts_comments(db, state)
+
+    await db.commit()
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -570,51 +612,56 @@ def node_report(state: ResearchState, seq: list):
     print("\n📊 BAO CAO PIPELINE:")
     print(text)
 
-
 async def run_research(
+    db: AsyncSession,
     business_id: str,
     query: str,
     fb_url: str,
-    business_name: Optional[str] = None,
-    db_path: str = "research.db",
-    headless: bool = False,
-) -> ResearchState:
-    engine = init_db(db_path)
-    state = ResearchState(query=query, fb_url=fb_url, business_id=business_id, business_name=business_name)
+    business_name: Optional[str]=None,
+    headless=False,
+)-> ResearchState:
+
+    state = ResearchState(
+        query=query,
+        fb_url=fb_url,
+        business_id=business_id,
+        business_name=business_name,
+    )
+
     seq = [0]
 
     global UC_BROWSER
 
     try:
-        # Node 1
-        try: 
+        try:
             await node_suggest(state, seq)
-        except Exception: 
+        except Exception:
             pass
-        save_after_node(engine, state)
 
-        # Node 2
+        await save_after_node(db, state)
+
         await node_serp(state, seq, headless)
-        save_after_node(engine, state)
+        await save_after_node(db, state)
 
-        # Node 3
         await node_facebook(state, seq, headless)
-        save_after_node(engine, state)
+        await save_after_node(db, state)
 
-        # Node 4
         node_report(state, seq)
+
         state.status = "error" if state.error else "done"
-        save_after_node(engine, state)
+
+        await save_after_node(db, state)
 
         return state
 
     finally:
-        # Cơ chế giải phóng Driver an toàn chống sập API
-        if UC_BROWSER is not None:
-            print("🛑 Giải phóng Browser cuối vòng đời pipeline...")
+        if UC_BROWSER:
+            print("🛑 Release browser...")
+
             try:
                 UC_BROWSER.stop()
                 await asyncio.sleep(0.5)
             except Exception:
                 pass
+
             UC_BROWSER = None

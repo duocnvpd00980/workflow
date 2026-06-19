@@ -55,7 +55,7 @@ class Business(Base):
     
     # ── Relationships ────────────────────────────────────────────
     brands = relationship("Brand", back_populates="business", cascade="all, delete-orphan")
-    pipeline_tasks = relationship("PipelineTask", back_populates="business", cascade="all, delete-orphan")
+    #pipeline_tasks = relationship("PipelineTask", back_populates="business", cascade="all, delete-orphan")
     hotel_rooms = relationship("HotelRoom", back_populates="business", cascade="all, delete-orphan")
     document_sources = relationship("DocumentSource", back_populates="business", cascade="all, delete-orphan")
     workflow_sessions = relationship("WorkflowSession", back_populates="business", cascade="all, delete-orphan")

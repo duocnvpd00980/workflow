@@ -238,7 +238,6 @@ async def get_brand_prompt_by_id(
         .limit(1)
     )).scalars().one_or_none()
 
-    # 2. Fallback hoặc Raise lỗi nếu không tìm thấy Brand
     if not bv or not bv.personality:
         logger.warning("Brand voice ID=%s chưa hoàn tất extraction hoặc không tồn tại. Dùng fallback default.", brand_id)
         # Tạo bản dict mặc định an toàn để hệ thống không bị crash
@@ -252,7 +251,6 @@ async def get_brand_prompt_by_id(
             "examples": [],
         }
     else:
-        # 3. Gom đúng cụm dict như hàm generate_content gốc của bạn
         brand_voice_dict = {
             "personality":                      bv.personality,
             "tone":                             bv.tone,
@@ -261,7 +259,6 @@ async def get_brand_prompt_by_id(
             "format_rules":                     bv.format_rules,
             "cta_style":                        bv.cta_style,
             "examples":                         bv.examples or [],
-            # Đẩy kèm slider để tầng dịch thuật _normalize_brand_voice bốc dỡ
             "tone_funny_serious":               bv.tone_funny_serious,
             "tone_formal_casual":               bv.tone_formal_casual,
             "tone_respectful_irreverent":       bv.tone_respectful_irreverent,
