@@ -119,7 +119,7 @@ def create_initial_state(
     address: str,
     industry: str,
     business_id: str | None = None,   # ← thêm
-) -> HotelResearchState:
+) :
     return {
         "business_id":   business_id,  # ← xuyên suốt LangGraph state
         "business_name": business_name,
@@ -151,7 +151,7 @@ async def run_pipeline(
     industry: str,
     business_id: str | None = None,
     owner_id: str | None = None,
-) -> HotelResearchState:
+) :
     """
     Chạy pipeline research. Chạy xong tự lưu kết quả vào research_results.
     - Nếu không có business_id: tự tạo business từ owner_id
