@@ -77,7 +77,7 @@ async def _get_brand_prompt_async(brand_id: str, content_type: str, user_input: 
 _ALLOWED_FUNCTIONS = {"blog_web", "email_sale", "social_media"}
 
 
-async def blog_prepare(state: dict) -> dict:
+def blog_prepare(state: dict) -> dict:
     """Chỉ gọi get_brand_prompt_by_id — đã làm sẵn hết."""
     print("\n" + "="*60)
     print("🟢 NODE: blog_prepare")
@@ -102,7 +102,23 @@ async def blog_prepare(state: dict) -> dict:
 
     try:
         user_input = {"topic": user_request, "length": selected_length, "tone": selected_tone}
-        system_prompt = await _get_brand_prompt_async(brand_id, function, user_input)
+        
+        # Chạy async function trong sync context
+        import asyncio
+        try:
+            loop = asyncio.get_running_loop()
+            # Đang trong event loop → chạy trong thread mới
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                future = pool.submit(
+                    asyncio.run,
+                    _get_brand_prompt_async(brand_id, function, user_input)
+                )
+                system_prompt = future.result()
+        except RuntimeError:
+            # Không có event loop → chạy trực tiếp
+            system_prompt = asyncio.run(_get_brand_prompt_async(brand_id, function, user_input))
+        
         print(f"✅ get_brand_prompt_by_id success | prompt length: {len(system_prompt)}")
     except Exception as e:
         logger.exception(f"[BLOG_PREPARE ERROR] brand_id={brand_id}: {e}")
@@ -133,7 +149,7 @@ def execute_blog_content(state: dict) -> dict:
     print("🟢 NODE: execute_blog_content")
     print("="*60)
 
-    function       = state.get("function", "blog_web")
+    function       = state.get("function", "blog_post")
     request        = state.get("request", "")
     system_prompt  = state.get("system_prompt", "")
     enriched_topic = state.get("enriched_topic", request)
