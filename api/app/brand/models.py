@@ -34,6 +34,9 @@ class Brand(Base):
     desired_tone    = Column(String(100), nullable=False)   # "energetic"
     target_audience = Column(String(500), nullable=False)   # "Runner 20-30 tuổi"
 
+    # ── NEW: Website URL ──────────────────────────────────────────
+    website_url = Column(String(2048), nullable=True)
+    
     # ── 8 fields (LLM extract) ────────────────────────────────────
     personality  = Column(Text, nullable=False)
     tone         = Column(JSON, nullable=False)

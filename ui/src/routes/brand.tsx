@@ -206,7 +206,7 @@ export default function BrandDetailPage() {
             <Cpu className="h-4 w-4" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-foreground leading-none">{brandVoice.name}</h1>
+            <h3 className="text-sm font-bold text-foreground leading-none text-left">{brandVoice.name}</h3>
             <span className="text-[10px] text-muted-foreground font-medium">ID: {brandVoice.id}</span>
           </div>
         </div>

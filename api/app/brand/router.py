@@ -35,6 +35,7 @@ from .schemas import (
     BrandListOut,
     BrandOut,
     BrandUpdate,
+    VoiceConfigIn,
 )
 
 logger = logging.getLogger(__name__)
@@ -758,7 +759,7 @@ async def create_brand_voice(
     from app.research.models import ResearchResult  # Import model tương ứng của bạn vào đây
 
     is_research_needed = False
-    
+
     # ── Determine Case ──────────────────────────────────────────
     if payload.business_id:
         # Case 1: Existing business
@@ -818,15 +819,17 @@ async def create_brand_voice(
                 industry=payload.industry,
             )
             is_research_needed = True
-        
+    
     # ── Create Brand record ─────────────────────────────────────
     voice = Brand(
         business_id     = business.id,
-        name            = payload.voice_config.name,
-        purpose         = payload.voice_config.purpose,
-        channels        = payload.voice_config.channels,
-        desired_tone    = payload.voice_config.desired_tone,
-        target_audience = payload.voice_config.target_audience,
+        name            = payload.business_name,
+        purpose         = "Tăng trưởng kinh doanh và nhận diện thương hiệu",
+        channels        = ["social", "blog"],
+        desired_tone    = "Chuyên nghiệp",
+        target_audience = "Khách hàng mục tiêu",
+
+        website_url=payload.website_url,
         # 8 fields placeholder
         personality  = "",
         tone         = {"base": [], "overrides": {}},

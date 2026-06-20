@@ -111,9 +111,13 @@ BÀI VIẾT:
 
 Viết 1 đoạn văn liền mạch 200-400 từ: brand tự hào điều gì NHẤT? Không bao giờ làm gì vì tiền? 3 metaphor tự mô tả? Khác biệt đối thủ?
 
-KHÔNG dùng "thân thiện", "chuyên nghiệp", "chất lượng".
+QUY TẮC TUYỆT ĐỐI:
+- CHỈ viết 1 đoạn văn liền mạch, KHÔNG đánh số, KHÔNG bullet point
+- KHÔNG dùng markdown header (##, ###)
+- KHÔNG trả về dạng danh sách 1. 2. 3.
+- KHÔNG dùng từ "thân thiện", "chuyên nghiệp", "chất lượng"
 
-QUAN TRỌNG — KẾT THÚC bằng EXACTLY 5 dòng, mỗi dòng 1 SIGNATURE PHRASE trong ngoặc kép:
+KẾT THÚC bằng EXACTLY 5 dòng, mỗi dòng 1 SIGNATURE PHRASE trong ngoặc kép:
 "phrase 1"
 "phrase 2"
 "phrase 3"
@@ -273,36 +277,45 @@ def _slider(t, lo, hi):
     return 50
 
 
-def _clean_personality(k1, bname):
-    # Thử lấy đoạn văn dài nhất từ K1 (bỏ dòng đầu/cuối nếu là header)
-    paras = [p.strip() for p in k1.strip().split("\n\n") if len(p.strip()) > 80]
+def _clean_personality(k1, bname=None):
+    # FILTER 1: Bỏ nếu K1 trả về dạng list số hoặc markdown
+    stripped = k1.strip()
+    if re.search(r'^\d+\.', stripped, re.M) and stripped.count('\n') > 5:
+        return f"{bname or 'Thương hiệu'} tự hào mang đến trải nghiệm đẳng cấp với sự tận tâm và chất lượng vượt trội."
+    
+    # FILTER 2: Bỏ nếu toàn từ lặp vô nghĩa
+    words = stripped.lower().split()
+    if len(words) > 20:
+        unique_ratio = len(set(words)) / len(words)
+        if unique_ratio < 0.3:  # >70% từ lặp
+            return f"{bname or 'Thương hiệu'} mang đến trải nghiệm chất lượng, độc đáo và đáng nhớ cho khách hàng."
+    
+    # Thử lấy đoạn văn dài nhất từ K1
+    paras = [p.strip() for p in stripped.split("\n\n") if len(p.strip()) > 80]
     if not paras:
-        paras = [p.strip() for p in k1.strip().split("\n") if len(p.strip()) > 80]
+        paras = [p.strip() for p in stripped.split("\n") if len(p.strip()) > 80]
     
     # Tìm paragraph có ít repetition nhất
     best = ""
     best_score = -1
     for p in paras:
-        words = p.lower().split()
-        if len(words) < 10:
+        p_words = p.lower().split()
+        if len(p_words) < 10:
             continue
-        # Score = unique words / total words (cao = ít lặp)
-        unique_ratio = len(set(words)) / len(words)
-        # Penalty nếu có từ lặp >3 lần
+        unique_ratio = len(set(p_words)) / len(p_words)
         from collections import Counter
-        repeats = sum(1 for c in Counter(words).values() if c > 3)
+        repeats = sum(1 for c in Counter(p_words).values() if c > 3)
         score = unique_ratio - (repeats * 0.1)
         if score > best_score:
             best_score = score
             best = p
     
-    # Nếu vẫn tệ, fallback
+    # Nếu vẫn tệ, extract từ K1
     if best_score < 0.5 or not best:
-        # Extract từ K1: tìm câu có "tự hào", "linh hồn", "khác biệt"
-        s = re.search(r'([^.]*(?:tự hào|linh hồn|khác biệt|điều đặc biệt)[^.]{50,300}\.)', k1, re.I)
-        best = s.group(1).strip() if s else f"{bname} tự hào mang đến trải nghiệm ẩm thực đẳng cấp với hải sản tươi sống."
+        s = re.search(r'([^.]*(?:tự hào|linh hồn|khác biệt|điều đặc biệt|đam mê|tâm huyết)[^.]{50,300}\.)', stripped, re.I)
+        best = s.group(1).strip() if s else f"{bname or 'Thương hiệu'} tự hào mang đến trải nghiệm đẳng cấp."
     
-    return best[:1000]
+    return best[:800]
 
 
 

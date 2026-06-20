@@ -6,9 +6,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { CreateBrandModal } from "./CreateBrandModal";
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api/v1";
 
@@ -27,6 +28,8 @@ type Brand = {
 
 export function BrandSwitcher() {
   const search = useSearch({ strict: false });
+  const [modalOpen, setModalOpen] = useState(false);
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   const { data: brands = [], isLoading, isError } = useQuery<Brand[]>({
@@ -73,7 +76,11 @@ export function BrandSwitcher() {
     }  as any);
   }
 
-  return (
+   const handleCreated = (_newBrand: Brand) => {
+      queryClient.invalidateQueries({ queryKey: ["brand-voices", "options"] });
+    };
+
+  return (<>  
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
@@ -147,10 +154,15 @@ export function BrandSwitcher() {
         )}
 
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="text-[13px] text-zinc-500 rounded-md cursor-pointer">
+        <DropdownMenuItem className="text-[13px] text-zinc-500 rounded-md cursor-pointer" onClick={() => setModalOpen(true)}>
           <Plus className="h-3.5 w-3.5 mr-2" /> Thêm brand
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <CreateBrandModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onCreated={handleCreated}
+      /></>
   );
 }

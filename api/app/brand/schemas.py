@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
-
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 import re
 
@@ -42,7 +41,7 @@ class FormatRules(BaseModel):
 
 
 class CtaStyle(BaseModel):
-    style: Literal["soft", "direct", "urgent", "none"]
+    style: Literal["soft", "direct", "urgent", "mixed", "none"]
     phrases: List[str] = Field(default_factory=list)
 
 
@@ -97,24 +96,29 @@ class VoiceConfigIn(BaseModel):
 
 class BrandCreate(BaseModel):
     """
-    POST /brand-voices — tạo mới, LLM sẽ extract 8 fields từ research.
+    POST /brand-voices — tạo mới.
     
-    Case 1: business_id đã có → skip research, dùng thẳng
-    Case 2: business_id = None → tạo business mới + run pipeline research + extract voice
+    User chỉ cần nhập:
+      - business_name (bắt buộc)
+      - website_url   (bắt buộc, Facebook URL)
+      - business_id   (optional, nếu đã có business)
+    
+    Các field còn lại auto-generate hoặc lấy từ research.
     """
-    # Case 1: Existing business
-    business_id: Optional[str] = Field(None, min_length=1)
-    
-    # Case 2: Create new business + research
-    business_name: Optional[str] = Field(None, min_length=1, max_length=255)
-    address: Optional[str] = Field(None, max_length=500)
-    industry: Optional[str] = Field(None, max_length=100)
-    owner_id: Optional[str] = Field(None, min_length=1)
+    # User input — bắt buộc
+    business_name: str = Field(..., min_length=1, max_length=255)
     website_url: str = Field(..., min_length=1, max_length=500)
     
-    # Common
-    voice_config: VoiceConfigIn
-
+    # User input — optional
+    business_id: Optional[str] = Field(None, min_length=1)
+    owner_id: Optional[str] = Field(None, min_length=1)
+    
+    # Auto-generate fields (không cần user nhập)
+    address: Optional[str] = Field(None, max_length=500)
+    industry: Optional[str] = Field(None, max_length=100)
+    
+    voice_config: Optional[VoiceConfigIn] = None  # ← Optional, auto nếu None
+    
     tone_funny_serious: int = Field(default=50, ge=0, le=100)
     tone_formal_casual: int = Field(default=50, ge=0, le=100)
     tone_respectful_irreverent: int = Field(default=50, ge=0, le=100)
@@ -123,32 +127,34 @@ class BrandCreate(BaseModel):
     @field_validator("website_url")
     @classmethod
     def validate_fb_url(cls, v: str) -> str:
+        v = v.strip()
+        
+        # Auto-fix: thêm https:// nếu thiếu
+        if not v.startswith("http"):
+            v = "https://" + v
+        
+        # Auto-fix: thêm www. nếu cần
+        if "facebook.com" in v and not v.startswith("https://www."):
+            v = v.replace("https://", "https://www.")
+            v = v.replace("http://", "https://www.")
+        
+        # Strip trailing slash
+        v = v.rstrip("/")
+        
+        # Validate sau khi clean
         pattern = r'^https?://(www\.)?(facebook|fb)\.com/[a-zA-Z0-9.]{5,}$'
         if not re.match(pattern, v):
-            raise ValueError("website_url must be a valid Facebook URL (https://www.facebook.com/...)")
-        return v.rstrip("/")
+            raise ValueError("website_url phải là link Facebook hợp lệ (VD: facebook.com/mocseafood)")
+        
+        return v
     
     @model_validator(mode="after")
-    def validate_business_input(self) -> BrandCreate:
-        """Ensure either business_id OR (business_name + owner_id) is provided."""
-        has_business_id = bool(self.business_id and self.business_id.strip())
-        has_new_business = bool(self.business_name and self.business_name.strip())
-        
-        if not has_business_id and not has_new_business:
-            raise ValueError(
-                "Phải cung cấp business_id hoặc business_name + owner_id"
-            )
-        
-        if has_business_id and has_new_business:
-            raise ValueError(
-                "Không thể cung cấp cả business_id và business_name cùng lúc"
-            )
-        
-        # Nếu tạo mới, owner_id bắt buộc
-        if has_new_business and not self.owner_id:
-            raise ValueError("owner_id bắt buộc khi tạo business mới")
-        
+    def validate_business_input(self) -> "BrandCreate":
+        # Nếu không có business_id thì phải có owner_id (để tạo business mới)
+        if not self.business_id and not self.owner_id:
+            raise ValueError("owner_id bắt buộc khi tạo business mới (không có business_id)")
         return self
+    
 
 
 class BrandUpdate(BaseModel):

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Search, X, Clock, FileText, BookOpen, Zap } from "lucide-react";
 import { recentSearches, mockSearchResults } from "./mock";
+import type { Brand } from "./BrandItem";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   open: boolean;
@@ -11,7 +13,6 @@ interface Props {
 
 export function CommandPalette({ open, onClose }: Props) {
   const [query, setQuery] = useState("");
-
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -25,7 +26,7 @@ export function CommandPalette({ open, onClose }: Props) {
   if (!open) return null;
 
   const hasQuery = query.trim().length > 0;
-
+ 
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] bg-black/30 backdrop-blur-sm"
