@@ -20,7 +20,7 @@ import os
 from functools import lru_cache
 from sqlalchemy import select
 from typing import Any, Dict, Literal
-
+from sqlalchemy.ext.asyncio import AsyncSession
 from jinja2 import Environment, FileSystemLoader, Template, select_autoescape
 
 logger = logging.getLogger(__name__)
@@ -73,11 +73,12 @@ def _normalize_brand_voice(brand_voice: Dict[str, Any]) -> Dict[str, Any]:
     style.setdefault("sentenceLength", "medium")
     style.setdefault("voice", "active")
     style.setdefault("perspective", "second")
+    style.setdefault("pronouns", {"ai": "Chúng tôi", "reader": "Quý khách"})
     bv["style"] = style
 
     # vocabulary defaults
     vocab = bv.get("vocabulary") or {}
-    for key in ("wordsToUse", "wordsToAvoid", "phrasesToUse", "phrasesToAvoid"):
+    for key in ("wordsToUse", "wordsToAvoid", "phrasesToUse", "phrasesToAvoid", "topicsToAvoid"):  # ← thêm topicsToAvoid
         vocab.setdefault(key, [])
     bv["vocabulary"] = vocab
 

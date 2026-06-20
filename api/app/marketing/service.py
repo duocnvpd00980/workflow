@@ -20,8 +20,6 @@ import unicodedata
 
 logger = logging.getLogger(__name__)
 
-# Thread pool riêng cho LangGraph (blocking I/O operations)
-_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="workflow_")
 
 
 # ─── PRE-FILTER (zero token cost) ───
@@ -190,22 +188,19 @@ Nếu is_vague = true: {{"is_vague": true, "message": "...", "options": []}}
         except Exception as e:
             logger.error(f"[AMBIGUITY CHECK ERROR] {e}")
             return True, _FALLBACK_CLARIFICATION
-
+        
     async def _run_workflow_background(
         self,
         session_id: str,
         thread_id: str,
         request: str,
         brand_id: str,
-        group: str,  # ✅ Thêm group
-        function: str,  # ✅ Thêm function
+        group: str,
+        function: str,
         auto_mode: bool,
     ) -> None:
-        loop = asyncio.get_event_loop()
         try:
-            await loop.run_in_executor(
-                _executor,
-                self._sync_run_workflow,
+            await self._async_run_workflow(
                 session_id, thread_id, request, brand_id, group, function, auto_mode
             )
         except Exception as e:

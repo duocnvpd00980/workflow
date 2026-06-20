@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
+import re
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -11,9 +12,8 @@ from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 # ═══════════════════════════════════════════════════════════════════
 
 class ToneOverride(BaseModel):
-    base: List[str] = Field(default_factory=list)  # ← Bỏ min_length=1
+    base: List[str] = Field(default_factory=list)
     overrides: Dict[str, List[str]] = Field(default_factory=dict)
-    # e.g. {"blog": ["formal"], "social": ["playful"]}
 
 
 class StyleConfig(BaseModel):
@@ -23,6 +23,7 @@ class StyleConfig(BaseModel):
     pronouns: Optional[Dict[str, str]] = Field(
         default_factory=lambda: {"ai": "Chúng tôi", "reader": "Quý khách"}
     )
+    logo_url: Optional[str] = None
 
 
 class VocabularyRules(BaseModel):
@@ -87,17 +88,7 @@ class VoiceConfigIn(BaseModel):
                 f"Invalid channel(s): {invalid}. "
                 f"Allowed: {VALID_CHANNELS}"
             )
-        return list(dict.fromkeys(v))  # deduplicate, preserve order
-
-
-# ═══════════════════════════════════════════════════════════════════
-# RAG SOURCE
-# ═══════════════════════════════════════════════════════════════════
-
-class RagSource(BaseModel):
-    website_url: Optional[str] = None
-    uploaded_files: List[str] = Field(default_factory=list)
-    pasted_text: Optional[str] = None
+        return list(dict.fromkeys(v))
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -106,7 +97,7 @@ class RagSource(BaseModel):
 
 class BrandCreate(BaseModel):
     """
-    POST /brand-voices — tạo mới, LLM sẽ extract 8 fields từ rag_source.
+    POST /brand-voices — tạo mới, LLM sẽ extract 8 fields từ research.
     
     Case 1: business_id đã có → skip research, dùng thẳng
     Case 2: business_id = None → tạo business mới + run pipeline research + extract voice
@@ -118,16 +109,24 @@ class BrandCreate(BaseModel):
     business_name: Optional[str] = Field(None, min_length=1, max_length=255)
     address: Optional[str] = Field(None, max_length=500)
     industry: Optional[str] = Field(None, max_length=100)
-    owner_id: Optional[str] = Field(None, min_length=1)  # Required for Case 2
+    owner_id: Optional[str] = Field(None, min_length=1)
+    website_url: str = Field(..., min_length=1, max_length=500)
     
     # Common
     voice_config: VoiceConfigIn
-    rag_source: Optional[RagSource] = None
 
     tone_funny_serious: int = Field(default=50, ge=0, le=100)
     tone_formal_casual: int = Field(default=50, ge=0, le=100)
     tone_respectful_irreverent: int = Field(default=50, ge=0, le=100)
     tone_enthusiastic_matter_of_fact: int = Field(default=50, ge=0, le=100)
+    
+    @field_validator("website_url")
+    @classmethod
+    def validate_fb_url(cls, v: str) -> str:
+        pattern = r'^https?://(www\.)?(facebook|fb)\.com/[a-zA-Z0-9.]{5,}$'
+        if not re.match(pattern, v):
+            raise ValueError("website_url must be a valid Facebook URL (https://www.facebook.com/...)")
+        return v.rstrip("/")
     
     @model_validator(mode="after")
     def validate_business_input(self) -> BrandCreate:
@@ -225,6 +224,8 @@ class BrandOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    metadata_info: Dict[str, Any] = Field(default_factory=dict)
+    
     model_config = {"from_attributes": True}
 
 

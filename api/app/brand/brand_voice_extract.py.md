@@ -21,9 +21,13 @@ import json
 import logging
 from typing import Any, Dict
 
+from app.brand.service_slice import aggregate, prepare_kien_inputs, run_kiens
 from app.brand.extraction_prompt import SYSTEM_MSG, build_extraction_prompt
 from app.llm_clients import async_groq_client, GROQ_MODEL
 from .schemas import BrandEightFields
+from typing import Dict, Any
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -76,58 +80,139 @@ def _validate(raw: Dict[str, Any]) -> BrandEightFields:
 # MAIN FUNCTION — signature mới: chỉ nhận brand_voice_input
 # ═══════════════════════════════════════════════════════════════════
 
+
+
+
 async def extract_brand_voice(
-    brand_voice_input: Dict[str, Any],
+    research_record: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    Gọi Groq async để extract 8 Brand Voice fields từ brand_voice_input
-    (output của signal_extractor.extract_brand_signals()).
+    Extract Brand Voice từ FULL research aggregate.
 
-    Args:
-        brand_voice_input: {
-            customer_language, market_patterns, existing_brand_voice,
-            customer_feedback, competitor_insights, business_context
-        }
-        business_context phải chứa: business_name, voice_config{name,purpose,
-        channels,desired_tone,target_audience}. industry/products là optional —
-        nếu thiếu, prompt sẽ ghi "—".
+    Input:
+    {
+        "task": PipelineTask | None,
+        "result": ResearchResult,
+        "posts": list[FbPost],
+        "comments": list[FbComment],
+        "events": list[PipelineEvent],
+    }
 
-    Returns:
-        Dict khớp BrandEightFields — sẵn sàng unpack vào Brand ORM.
-
-    Raises:
-        RuntimeError: Groq call thất bại
-        ValueError:   JSON không đúng schema
+    Output:
+        Dict khớp BrandEightFields
     """
-    prompt = build_extraction_prompt(brand_voice_input)
 
-    business_name = brand_voice_input.get("business_context", {}).get("business_name", "")
-    logger.info("extract_brand_voice | business=%s", business_name)
+    result = research_record["result"]
 
-    # ── Gọi Groq async (dùng async_groq_client từ app.llm_clients) ──
-    try:
-        response = await async_groq_client.chat.completions.create(
-            model=GROQ_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_MSG},
-                {"role": "user",   "content": prompt},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.2,
-            max_completion_tokens=2000,
-            timeout=60,
+    if not result:
+        raise ValueError("ResearchResult không tồn tại")
+
+    logger.info(
+        "extract_brand_voice | business=%s | posts=%s | comments=%s",
+        result.business_name,
+        len(research_record["posts"]),
+        len(research_record["comments"]),
+    )
+
+    # ============================================================
+    # Chuẩn hóa input cho Kien pipeline
+    # (KHÔNG build prompt, KHÔNG signal extractor)
+    # ============================================================
+
+    input_data = {
+        "task": {
+            "business_id": result.business_id,
+            "business_name": result.business_name,
+        },
+
+        "research": {
+            "suggestions_raw": result.suggestions_raw,
+            "suggestions_tagged": result.suggestions_tagged,
+
+            "serp_data": result.serp_data,
+
+            "fb_brand": result.fb_brand,
+
+            "final_report": result.final_report,
+        },
+
+        "posts": [
+            {
+                "id": p.id,
+                "content": p.content,
+                "attachments": p.attachments,
+            }
+            for p in research_record["posts"]
+        ],
+
+        "comments": [
+            {
+                "author": c.author,
+                "time": c.time,
+                "comment": c.comment,
+                "replies": c.replies,
+            }
+            for c in research_record["comments"]
+        ],
+
+        "events": [
+            {
+                "seq": e.seq,
+                "node": e.node_name,
+                "payload": e.payload,
+            }
+            for e in research_record["events"]
+        ],
+    }
+
+    # ============================================================
+    # Slice dữ liệu → Kien
+    # ============================================================
+
+    kien_inputs = prepare_kien_inputs(input_data)
+
+    logger.info(
+        "extract_brand_voice | prepared"
+    )
+
+    # ============================================================
+    # Multi extraction
+    # ============================================================
+
+    outputs = await run_kiens(
+        kien_inputs
+    )
+
+    if not outputs:
+        raise RuntimeError(
+            "run_kiens() trả rỗng"
         )
-    except Exception as exc:
-        logger.error("Groq call failed: %s", exc)
-        raise RuntimeError(f"Lỗi kết nối Groq: {exc}") from exc
 
-    raw_text: str = response.choices[0].message.content or ""
-    try:
-        raw: Dict[str, Any] = json.loads(raw_text)
-    except json.JSONDecodeError as exc:
-        logger.error("Groq returned non-JSON: %s", raw_text[:500])
-        raise ValueError(f"Groq không trả về JSON hợp lệ: {exc}") from exc
+    logger.info(
+        "extract_brand_voice | aggregate"
+    )
 
-    raw = _sanitize_raw(raw)
-    validated = _validate(raw)
-    return validated.model_dump()
+    # ============================================================
+    # Final merge
+    # ============================================================
+
+    brand = aggregate(
+        outputs["k1"],
+        outputs["k2"],
+        outputs["k3"],
+        outputs["k4"],
+        business_id=result.business_id,
+        business_name=result.business_name,
+    )
+
+    if not isinstance(brand, dict):
+        raise RuntimeError(
+            "aggregate() phải trả dict"
+        )
+
+    logger.info(
+        "extract_brand_voice | done"
+    )
+
+    return brand
+

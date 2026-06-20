@@ -19,6 +19,7 @@ def build_research_json(
     fb_posts: Optional[List[FbPost]] = None,
     fb_comments: Optional[List[FbComment]] = None,
     voice_config: Optional[Dict[str, Any]] = None,
+    business: Optional[Any] = None,   # ← thêm
 ) -> Dict[str, Any]:
     """
     Gom raw data theo 6 nhóm cố định. KHÔNG lọc, KHÔNG rút gọn —
@@ -89,9 +90,10 @@ def build_research_json(
             "competitor_pattern": serp.get("competitor_pattern", []),
         },
         "business_context": {
-            "business_id": research.business_id,
-            "business_name": research.business_name,
-            "query": None, 
-            "voice_config": voice_config or {},
+            "business_id":   research.business_id,
+            "business_name": research.business_name or getattr(business, "name", None) or "",
+            "industry":      getattr(business, "industry", None) or "—",   # ← mới
+            "products":      getattr(business, "products", None) or "—",   # ← mới
+            "voice_config":  voice_config or {},
         },
     }

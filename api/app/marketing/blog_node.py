@@ -54,15 +54,6 @@ def _merge_usage(current: dict, tokens: int, node: str) -> dict:
         "calls": current.get("calls", []) + [{"node": node, "tokens": tokens}],
     }
 
-async def _get_brand_prompt_async(brand_id: str, content_type: str, user_input: dict):
-    """Helper async để gọi brand service."""
-    async with AsyncSessionLocal() as db:
-        return await get_brand_prompt_by_id(
-            brand_id=brand_id,
-            content_type=content_type,
-            user_input=user_input,
-            db=db
-        )
 
 
 
@@ -83,101 +74,55 @@ async def _get_brand_prompt_async(brand_id: str, content_type: str, user_input: 
 # ══════════════════════════════════════════════════════════════
 #  BLOG NODES — với LOG chi tiết
 # ══════════════════════════════════════════════════════════════
+_ALLOWED_FUNCTIONS = {"blog_web", "email_sale", "social_media"}
 
 
-def blog_prepare(state: dict) -> dict:
+async def blog_prepare(state: dict) -> dict:
     """Chỉ gọi get_brand_prompt_by_id — đã làm sẵn hết."""
     print("\n" + "="*60)
     print("🟢 NODE: blog_prepare")
     print("="*60)
-    
+
     started = time.time()
 
     user_request = state.get("request", "")
-    function = state.get("function", "blog_post")
-    brand_id = state.get("brand_id")
+    function     = state.get("function", "blog_post")
+    brand_id     = state.get("brand_id")
     selected_length = state.get("length", "vừa")
-    selected_tone = state.get("tone", "chuyên nghiệp")
+    selected_tone   = state.get("tone", "chuyên nghiệp")
 
-    print(f"📥 Input:")
-    print(f"   - request: {user_request[:50]}...")
-    print(f"   - function: {function}")
-    print(f"   - brand_id: {brand_id}")
-
-    # Kiểm tra brand_id bắt buộc
     if not brand_id:
-        print(f"❌ ERROR: brand_id is required")
-        return {
-            **state,
-            "error": "missing_brand_id",
-            "system_prompt": None,
-            "needs_image": False,
-        }
+        return {**state, "error": "missing_brand_id", "system_prompt": None, "needs_image": False}
 
-    # Map chức năng → cần ảnh
-    image_map = {
-        "blog_post": True,
-        "product_description": True,
-        "website_copy": False,
-    }
+    if function not in _ALLOWED_FUNCTIONS:
+        return {**state, "error": f"invalid_function: {function}", "system_prompt": None, "needs_image": False}
+
+    image_map  = {"blog_post": True, "product_description": True, "website_copy": False}
     needs_image = image_map.get(function, False)
 
-    # ── GỌI get_brand_prompt_by_id — ĐÃ LÀM SẴN HẾT ──
-    system_prompt = None
-    
     try:
-        import asyncio
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        # user_input cho brand service
-        user_input = {
-            "topic": user_request,
-            "length": selected_length,
-            "tone": selected_tone,
-        }
-        
-        # Gọi hàm đã có sẵn
-        system_prompt = loop.run_until_complete(
-            _get_brand_prompt_async(brand_id, function, user_input)
-        )
-        loop.close()
-        
-        print(f"✅ get_brand_prompt_by_id success")
-        print(f"   - prompt length: {len(system_prompt)}")
-        
+        user_input = {"topic": user_request, "length": selected_length, "tone": selected_tone}
+        system_prompt = await _get_brand_prompt_async(brand_id, function, user_input)
+        print(f"✅ get_brand_prompt_by_id success | prompt length: {len(system_prompt)}")
     except Exception as e:
         logger.exception(f"[BLOG_PREPARE ERROR] brand_id={brand_id}: {e}")
-        print(f"❌ DB error: {e}")
-        return {
-            **state,
-            "error": "brand_db_error",
-            "system_prompt": None,
-            "needs_image": needs_image,
-        }
+        return {**state, "error": "brand_db_error", "system_prompt": None, "needs_image": needs_image}
 
     if not system_prompt:
-        print(f"❌ ERROR: system_prompt is empty")
-        return {
-            **state,
-            "error": "empty_system_prompt",
-            "system_prompt": None,
-            "needs_image": needs_image,
-        }
+        return {**state, "error": "empty_system_prompt", "system_prompt": None, "needs_image": needs_image}
 
     elapsed = round(time.time() - started, 3)
-    print(f"⏱️  Elapsed: {elapsed}s")
-    print(f"✅ needs_image={needs_image}")
+    print(f"⏱️  Elapsed: {elapsed}s | needs_image={needs_image}")
 
     return {
         **state,
-        "function": function,
-        "needs_image": needs_image,
+        "function":      function,
+        "needs_image":   needs_image,
         "system_prompt": system_prompt,
         "enriched_topic": user_request,
-        "usage": state.get("usage") or {"total_tokens": 0, "total_cost": 0.0, "calls": []},
+        "usage":  state.get("usage") or {"total_tokens": 0, "total_cost": 0.0, "calls": []},
         "approved": False,
-        "error": None,
+        "error":    None,
     }
 
 
@@ -187,89 +132,59 @@ def execute_blog_content(state: dict) -> dict:
     print("\n" + "="*60)
     print("🟢 NODE: execute_blog_content")
     print("="*60)
-    
-    function = state["function"]
-    request = state.get("request", "")
-    system_prompt = state.get("system_prompt", "")
+
+    function       = state.get("function", "blog_web")
+    request        = state.get("request", "")
+    system_prompt  = state.get("system_prompt", "")
     enriched_topic = state.get("enriched_topic", request)
 
-    # Kiểm tra system_prompt
     if not system_prompt:
-        print(f"❌ ERROR: system_prompt is missing")
         return {
             **state,
             "error": "missing_system_prompt",
-            "draft": {
-                "content": "Lỗi: Không có brand prompt.",
-                "metadata": {"type": function, "status": "error"},
-                "version": 0,
-            },
+            "draft": {"content": "Lỗi: Không có brand prompt.", "metadata": {"type": function, "status": "error"}, "version": 0},
         }
 
-    print(f"📥 Input:")
-    print(f"   - function: {function}")
-    print(f"   - topic: {enriched_topic[:50]}...")
-    print(f"   - system_prompt length: {len(system_prompt)}")
+    if function not in _ALLOWED_FUNCTIONS:
+        return {**state, "error": f"invalid_function: {function}"}
 
-    # Render prompt — chỉ cần topic + system_prompt đã có brand voice
     prompt = _render_prompt(
         f"blog_{function}.j2",
         topic=enriched_topic,
-        system_prompt=system_prompt,  # ✅ Đã có brand voice từ blog_prepare
+        system_prompt=system_prompt,
     )
-    
-    # LOG PROMPT
-    print(f"\n{'='*60}")
-    print("📝 PROMPT GỬI CHO GROQ:")
-    print(f"{'='*60}")
-    print(prompt)
-    print(f"{'='*60}")
-    print(f"Prompt length: {len(prompt)} chars")
-    print(f"{'='*60}\n")
 
-    print(f"🤖 Calling Groq...")
+    print(f"📝 PROMPT ({len(prompt)} chars):\n{'='*60}\n{prompt}\n{'='*60}")
+
     raw_text = call_groq(prompt, max_tokens=2000)
 
     if raw_text.startswith("[ERROR:"):
-        print(f"❌ ERROR: {raw_text}")
         return {**state, "error": raw_text[7:-1]}
 
-    # Parse từ text thuần
-    lines = raw_text.strip().split('\n')
-    
+    # Parse title
     title = None
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith('# '):
-            title = stripped[2:].strip()
-            break
-        elif stripped.startswith('## '):
-            title = stripped[3:].strip()
-            break
-    
+    for line in raw_text.strip().split('\n'):
+        s = line.strip()
+        if s.startswith('# '):
+            title = s[2:].strip(); break
+        if s.startswith('## '):
+            title = s[3:].strip(); break
     if not title:
-        for line in lines:
+        for line in raw_text.strip().split('\n'):
             if line.strip():
-                title = line.strip()[:100]
-                break
+                title = line.strip()[:100]; break
 
     images = re.findall(r"\[IMAGE:\s*(.*?)\]", raw_text)
-    
-    print(f"✅ title: {title}")
-    print(f"🖼️  images: {len(images)} — {images}")
+    print(f"✅ title: {title} | images: {len(images)}")
 
     return {
         **state,
-        "title": title,
+        "title":   title,
         "content": raw_text.strip(),
         "draft": {
             "content": raw_text.strip(),
-            "title": title,
-            "metadata": {
-                "type": function,
-                "word_count": len(raw_text.split()),
-                "images": images,
-            },
+            "title":   title,
+            "metadata": {"type": function, "word_count": len(raw_text.split()), "images": images},
             "version": (state.get("draft") or {}).get("version", 0) + 1,
         },
         "usage": _merge_usage(state.get("usage", {}), len(raw_text.split()), f"blog_{function}"),

@@ -228,11 +228,6 @@ export function CreateBrandModal({
           desired_tone: tone,
           target_audience: audience.trim(),
         },
-        rag_source: {
-          website_url: docTab === 'auto' ? (newWebsite || undefined) : undefined,
-          uploaded_files: fileName ? [fileName] : [],
-          pasted_text: docTab === 'paste' ? docPaste : undefined,
-        },
       }),
     });
 

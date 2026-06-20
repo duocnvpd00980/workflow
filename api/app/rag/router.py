@@ -13,7 +13,7 @@ from app.rag.schemas import (
     CrawlBusinessIn, CrawlIn, DocOut, SearchOut, UploadOut,
     PageSummaryOut, PageDetailOut,
 )
-from app.rag.service import RAG
+from app.rag.service_marketing import RAG
 from app.rag.loader import DocumentLoader
 from .models import DocumentSource, DocumentPage
 from app.tasks import create_task

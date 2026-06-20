@@ -20,7 +20,8 @@ class BlogState(TypedDict):
     brand_id: str
     brand_profile: Optional[dict]
     
-    function: Literal["blog_post", "product_description", "website_copy"]
+    group: Literal["blog_web", "email_sale", "social_media"]
+    function: str
     needs_image: bool
     system_prompt: str
     enriched_topic: str

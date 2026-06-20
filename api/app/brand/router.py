@@ -17,18 +17,16 @@ import json
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.brand.service_slice import extract_brand_voice
+from app.research.models import PipelineEvent
 from app.db import get_db
 from app.business.models import Business
 from app.tasks.service import create_task, finish_task, fail_task, update_task
 from app.llm_clients import async_groq_client, GROQ_MODEL
 from app.db import get_db, AsyncSessionLocal
-# ✅ IMPORTS - HỌ chưa import signal_extractor & research_mapper
-from app.brand.research_mapper import build_research_json
-from app.brand.signal_extractor import extract_brand_signals
-from app.brand.brand_voice_extract import extract_brand_voice
 from app.brand.brand_voice_prompt import build_system_prompt
 
 from .models import Brand
@@ -84,6 +82,41 @@ async def _get_latest_research(db: AsyncSession, business_id: str):
         .limit(1)
     )
     return result.scalars().first()
+
+async def _find_business_by_brand_voice(
+    db: AsyncSession,
+    url: str | None = None,
+    name: str | None = None,
+) -> str | None:
+    """Tìm business_id từ brand voice đã có cùng URL hoặc name."""
+    from app.brand.models import Brand  # điều chỉnh import theo project
+    
+    if url:
+        stmt = select(Brand).where(Brand.website_url == url)
+        result = await db.execute(stmt)
+        brand = result.scalars().first()
+        if brand:
+            return brand.business_id
+    
+    if name:
+        from app.business.models import Business
+        stmt = (
+            select(Brand)
+            .join(Business, Brand.business_id == Business.id)
+            .where(
+                or_(
+                    func.lower(Brand.name) == name.lower().strip(),
+                    func.lower(Business.name) == name.lower().strip(),
+                )
+            )
+        )
+        result = await db.execute(stmt)
+        brand = result.scalars().first()
+        if brand:
+            return brand.business_id
+    
+    return None
+
 
 async def _get_fb_posts_for_research(
     db: AsyncSession,
@@ -176,86 +209,347 @@ async def _create_new_business(
     return business
 
 
-# async def _run_research_pipeline(
-#     db: AsyncSession,
-#     business: Business,
-#     brand_task_id: int,
-# ) -> Dict[str, Any]:
-#     """
-#     Gọi pipeline research. run_pipeline tự lưu DB research.
-#     KHÔNG tạo task thêm, KHÔNG update brand_task_id.
-#     """
-#     try:
-#         logger.info("Starting research pipeline | business_id=%s", business.id)
-        
-#         from app.research.research_service import run_research
-        
-#         # Tạo query từ business info
-#         query = f"{business.name} {business.industry or ''}".strip()
-#         fb_url = business.website or ""
-
-#         state = await run_research(
-#             business_id=business.id,
-#             query="nhà hàng hải sản đà nẵng",
-#             fb_url="https://www.facebook.com/mocseafood/",
-#             business_name=business.name,
-#         )
-        
-#         # Extract output
-#         final_report = state.get("final_report", "")
-#         competitor_analysis = state.get("competitor_analysis", "")
-#         competitors_clean = state.get("competitors_clean", [])
-        
-#         # Update business
-#         business.description = final_report
-#         business.status = "active"
-#         await db.commit()
-        
-#         logger.info(
-#             "Research pipeline done | business_id=%s | report_len=%d",
-#             business.id,
-#             len(final_report),
-#         )
-        
-#         return {
-#             "business_id": business.id,
-#             "final_report": final_report,
-#             "competitor_analysis": competitor_analysis,
-#             "competitors_clean": competitors_clean,
-#         }
-        
-#     except Exception as exc:
-#         logger.error("Research pipeline failed | business_id=%s | err=%s", business.id, exc)
-        
-#         # Soft delete business
-#         business.status = "deleted"
-#         business.deleted_at = _utcnow()
-#         await db.commit()
-        
-#         raise RuntimeError(f"Research pipeline failed: {exc}") from exc
-
 
 # ═══════════════════════════════════════════════════════════════════
 # 🔧 FIXED BACKGROUND TASK #1 — Extract từ existing research
 # ═══════════════════════════════════════════════════════════════════
+
+
 async def _extract_and_save_bg(
     voice_id: str,
     business_id: str,
-    voice_config_dict: Dict[str, Any],
     task_id: int,
 ) -> None:
     """
-    ✅ Case 1: Existing business + existing research
-    Sử dụng AsyncSessionLocal độc lập hoàn toàn để không lỗi đóng kết nối request.
+    Existing business + existing research.
+
+    Flow:
+    load research aggregate
+        ↓
+    extract_brand_voice()
+        ↓
+    save Brand
     """
+
+    async with AsyncSessionLocal() as db:
+
+        try:
+
+            # =====================================================
+            # Load business + research
+            # =====================================================
+
+            # business = await _get_business_or_404(
+            #     business_id,
+            #     db,
+            # )
+
+            research = await _get_latest_research(
+                db,
+                business_id,
+            )
+
+            if not research:
+                raise ValueError(
+                    "Business chưa có research"
+                )
+
+            fb_posts = (
+                await _get_fb_posts_for_research(
+                    db,
+                    business_id,
+                )
+            )
+
+            fb_comments = (
+                await _get_fb_comments_for_research(
+                    db,
+                    business_id,
+                )
+            )
+
+            events = (
+                await db.execute(
+                    select(PipelineEvent)
+                    .where(
+                        PipelineEvent.business_id
+                        == business_id
+                    )
+                    .order_by(
+                        PipelineEvent.seq
+                    )
+                )
+            ).scalars().all()
+
+            logger.info(
+                "_extract_and_save_bg | business=%s | posts=%s | comments=%s",
+                business_id,
+                len(fb_posts),
+                len(fb_comments),
+            )
+
+            # =====================================================
+            # Build aggregate
+            # =====================================================
+
+            full_record = {
+                "task": None,
+                "result": research,
+                "posts": fb_posts,
+                "comments": fb_comments,
+                "events": events,
+            }
+
+            # =====================================================
+            # Extract
+            # =====================================================
+
+            eight_fields = (
+                await extract_brand_voice(
+                    full_record
+                )
+            )
+
+            await update_task(
+                db,
+                task_id,
+                steps_done=1,
+            )
+
+            # =====================================================
+            # Load brand
+            # =====================================================
+
+            result = await db.execute(
+                select(Brand)
+                .where(
+                    Brand.id
+                    == voice_id
+                )
+            )
+
+            voice = (
+                result
+                .scalars()
+                .first()
+            )
+
+            if not voice:
+
+                await fail_task(
+                    db,
+                    task_id,
+                    error_message=(
+                        f"Brand "
+                        f"{voice_id}"
+                        " không tồn tại"
+                    ),
+                )
+
+                return
+
+            # =====================================================
+            # Save
+            # =====================================================
+
+            logo_url = (
+                research.fb_brand
+                .get(
+                    "og_image",
+                    "",
+                )
+            )
+
+            voice.metadata_info = {
+                "logo_url": logo_url,
+                "updated_at": (
+                    _utcnow()
+                    .isoformat()
+                ),
+            }
+
+            voice.personality = (
+                eight_fields[
+                    "personality"
+                ]
+            )
+
+            voice.tone = (
+                eight_fields[
+                    "tone"
+                ]
+            )
+
+            voice.style = (
+                eight_fields[
+                    "style"
+                ]
+            )
+
+            voice.vocabulary = (
+                eight_fields[
+                    "vocabulary"
+                ]
+            )
+
+            voice.format_rules = (
+                eight_fields[
+                    "format_rules"
+                ]
+            )
+
+            voice.cta_style = (
+                eight_fields[
+                    "cta_style"
+                ]
+            )
+
+            voice.examples = (
+                eight_fields.get(
+                    "examples",
+                    [],
+                )
+            )
+
+            voice.tone_funny_serious = (
+                eight_fields.get(
+                    "tone_funny_serious",
+                    50,
+                )
+            )
+
+            voice.tone_formal_casual = (
+                eight_fields.get(
+                    "tone_formal_casual",
+                    50,
+                )
+            )
+
+            voice.tone_respectful_irreverent = (
+                eight_fields.get(
+                    "tone_respectful_irreverent",
+                    50,
+                )
+            )
+
+            voice.tone_enthusiastic_matter_of_fact = (
+                eight_fields.get(
+                    "tone_enthusiastic_matter_of_fact",
+                    50,
+                )
+            )
+
+            await db.commit()
+
+            await finish_task(
+                db,
+                task_id,
+                steps_done=2,
+            )
+
+            logger.info(
+                "_extract_and_save_bg success"
+                " | voice=%s",
+                voice_id,
+            )
+
+        except Exception as exc:
+
+            logger.exception(
+                "_extract_and_save_bg failed"
+            )
+
+            await fail_task(
+                db,
+                task_id,
+                error_message=str(
+                    exc
+                ),
+            )
+
+
+
+# ═══════════════════════════════════════════════════════════════════
+# 🔧 FIXED BACKGROUND TASK #2 — Research + Extract
+# ═══════════════════════════════════════════════════════════════════
+
+async def _research_and_extract_bg(
+    voice_id: str,
+    business_id: str,
+    task_id: int,
+    website_url: str | None = None,
+) -> None:
+    """
+    Background:
+    - Đảm bảo research tồn tại
+    - Load FULL research aggregate từ DB
+    - Extract brand voice
+    - Save Brand
+    """
+
     async with AsyncSessionLocal() as db:
         try:
-            # Step 1: Fetch research + posts + comments
-            research = await _get_latest_research(db, business_id)
-            
+            business = await _get_business_or_404(
+                business_id,
+                db,
+            )
+
+            # =====================================================
+            # Ensure research exists
+            # =====================================================
+
+            research = await _get_latest_research(
+                db,
+                business_id,
+            )
+
             if not research:
-                raise ValueError("Chưa có research data cho business này. Hãy chạy research trước.")
-            
+                logger.info(
+                    "_research_and_extract_bg | run research"
+                )
+
+                from app.research.research_service import (
+                    run_research,
+                )
+
+                query = (
+                    f"{business.name} "
+                    f"{business.address or ''} "
+                    f"{business.industry or ''}"
+                ).strip()
+                
+                await run_research(
+                    db=db,
+                    business_id=business.id,
+                    query=query,
+                    fb_url=website_url,
+                    business_name=business.name,
+                )
+
+                business.status = "active"
+
+                await db.commit()
+
+            await update_task(
+                db,
+                task_id,
+                steps_done=1,
+            )
+
+            # =====================================================
+            # Reload DB (source of truth)
+            # =====================================================
+
+            research = await _get_latest_research(
+                db,
+                business_id,
+            )
+
+            if not research:
+                raise RuntimeError(
+                    "Research pipeline completed nhưng DB rỗng"
+                )
+
             fb_posts = await _get_fb_posts_for_research(
                 db,
                 business_id,
@@ -264,171 +558,194 @@ async def _extract_and_save_bg(
             fb_comments = await _get_fb_comments_for_research(
                 db,
                 business_id,
-)
-            
-            logger.info(
-                "extract_bg | fetched data | business_id=%s | posts=%d | comments=%d",
-                business_id, len(fb_posts), len(fb_comments)
             )
-            
-            # Step 2: Build research_json (gom raw data thành 6 nhóm signal)
-            research_json = build_research_json(
-                research=research,
-                fb_posts=fb_posts,
-                fb_comments=fb_comments,
-                voice_config=voice_config_dict,
+
+            events = (
+                await db.execute(
+                    select(PipelineEvent)
+                    .where(
+                        PipelineEvent.business_id
+                        == business_id
+                    )
+                    .order_by(
+                        PipelineEvent.seq
+                    )
+                )
+            ).scalars().all()
+
+            full_record = {
+                "task": None,
+                "result": research,
+                "posts": fb_posts,
+                "comments": fb_comments,
+                "events": events,
+            }
+
+            # =====================================================
+            # Extract
+            # =====================================================
+
+            eight_fields = await extract_brand_voice(
+                full_record
             )
-            
-            # Step 3: Extract signals (lọc raw data thành brand_voice_input)
-            brand_voice_input = extract_brand_signals(research_json)
-            
-            # Step 4: Extract 8 Brand Voice fields
-            eight_fields = await extract_brand_voice(brand_voice_input)
-            await update_task(db, task_id, steps_done=1)
-            
-            # Step 5: Update Brand ORM
+
+            await update_task(
+                db,
+                task_id,
+                steps_done=2,
+            )
+
+            # =====================================================
+            # Load brand
+            # =====================================================
+
             result = await db.execute(
-                select(Brand).filter(Brand.id == voice_id)
+                select(Brand)
+                .where(
+                    Brand.id == voice_id
+                )
             )
-            voice = result.scalars().first()
+
+            voice = (
+                result
+                .scalars()
+                .first()
+            )
+
             if not voice:
-                await fail_task(db, task_id, error_message=f"Brand {voice_id} không tìm thấy.")
-                return
-            
-            voice.personality  = eight_fields["personality"]
-            voice.tone         = eight_fields["tone"]
-            voice.style        = eight_fields["style"]
-            voice.vocabulary   = eight_fields["vocabulary"]
-            voice.format_rules = eight_fields["format_rules"]
-            voice.cta_style    = eight_fields["cta_style"]
-            voice.examples     = eight_fields.get("examples", [])
-            
-            voice.tone_funny_serious               = eight_fields.get("tone_funny_serious", 50)
-            voice.tone_formal_casual               = eight_fields.get("tone_formal_casual", 50)
-            voice.tone_respectful_irreverent       = eight_fields.get("tone_respectful_irreverent", 50)
-            voice.tone_enthusiastic_matter_of_fact = eight_fields.get("tone_enthusiastic_matter_of_fact", 50)
-            
-            await db.commit()
-            await finish_task(db, task_id, steps_done=2)
-            logger.info("extract_bg done | voice_id=%s | task_id=%s", voice_id, task_id)
-        
-        except Exception as exc:
-            logger.error("extract_bg failed | voice_id=%s | err=%s", voice_id, exc)
-            await fail_task(db, task_id, error_message=str(exc))
-
-
-# ═══════════════════════════════════════════════════════════════════
-# 🔧 FIXED BACKGROUND TASK #2 — Research + Extract
-# ═══════════════════════════════════════════════════════════════════
-
-# Giả sử file app.db của bạn có async_session_maker (hoặc sessionmanager)
-
-async def _research_and_extract_bg(
-    voice_id: str,
-    business_id: str,
-    voice_config_dict: Dict[str, Any],
-    task_id: int,
-) -> None:
-    """
-    Sử dụng AsyncSessionLocal độc lập để đảm bảo pipeline mất vài phút chạy ngầm ổn định.
-    """
-    async with AsyncSessionLocal() as db:
-        try:
-            business = await _get_business_or_404(business_id, db)
-
-            # Thử đọc DB trước
-            research = await _get_latest_research(db, business_id)
-
-            if research:
-                # Có rồi → đọc DB bình thường
-                logger.info("_research_and_extract_bg | Research found in DB. Extracting...")
-                fb_posts    = await _get_fb_posts_for_research(db, research.id)
-                fb_comments = await _get_fb_comments_for_research(db, research.id)
-                research_json = build_research_json(
-                    research=research,
-                    fb_posts=fb_posts,
-                    fb_comments=fb_comments,
-                    voice_config=voice_config_dict,
+                await fail_task(
+                    db,
+                    task_id,
+                    error_message=(
+                        f"Brand {voice_id}"
+                        " không tồn tại"
+                    ),
                 )
-            else:
-                # Chưa có → gọi run_research → đọc thẳng state
-                logger.info("_research_and_extract_bg | Research NOT found. Running research pipeline...")
-                from app.research.research_service import run_research
-
-                query = f"{business.name} {business.address or ''} {business.industry or ''}".strip()
-                state = await run_research(
-                    db=db,
-                    business_id=business.id,
-                    query="nhà hàng quán nhậu hải sản Đà Nẵng",
-                    fb_url="https://www.facebook.com/mocseafood/",
-                    business_name=business.name,
-                )
-
-                # Build research_json thẳng từ state, KHÔNG qua DB
-                research_json = {
-                    "customer_language": {
-                        "suggestions_raw": list(state.suggestions) if hasattr(state, 'suggestions') else state.get("suggestions", []),
-                        "suggestions_tagged": state.tagged_suggestions if hasattr(state, 'tagged_suggestions') else state.get("tagged_suggestions", {}),
-                    },
-                    "market_patterns": state.serp_data if hasattr(state, 'serp_data') else state.get("serp_data", {}),
-                    "existing_brand_voice": {
-                        "fb_brand": state.fb_data.get("brand", {}) if hasattr(state, 'fb_data') else state.get("fb_data", {}).get("brand", {}),
-                        "posts_raw": state.fb_data.get("posts", []) if hasattr(state, 'fb_data') else state.get("fb_data", {}).get("posts", []),
-                    },
-                    "customer_feedback": {
-                        "comments_raw": state.fb_data.get("comments", []) if hasattr(state, 'fb_data') else state.get("fb_data", {}).get("comments", []),
-                    },
-                    "competitor_insights": {
-                        "competitor_pattern": (state.serp_data or {}).get("competitor_pattern", []) if hasattr(state, 'serp_data') else state.get("serp_data", {}).get("competitor_pattern", []),
-                    },
-                    "business_context": {
-                        "business_id": business.id,
-                        "business_name": business.name,
-                        "voice_config": voice_config_dict,
-                    },
-                }
-
-                # Update business status
-                business.status = "active"
-                await db.commit()
-
-            await update_task(db, task_id, steps_done=1)
-
-            # Trích xuất tín hiệu & gọi Groq LLM xử lý 8 trường
-            brand_voice_input = extract_brand_signals(research_json)
-            eight_fields = await extract_brand_voice(brand_voice_input)
-            await update_task(db, task_id, steps_done=2)
-
-            result = await db.execute(select(Brand).filter(Brand.id == voice_id))
-            voice = result.scalars().first()
-            if not voice:
-                await fail_task(db, task_id, error_message=f"Brand {voice_id} không tìm thấy.")
                 return
 
-            voice.personality  = eight_fields["personality"]
-            voice.tone         = eight_fields["tone"]
-            voice.style        = eight_fields["style"]
-            voice.vocabulary   = eight_fields["vocabulary"]
-            voice.format_rules = eight_fields["format_rules"]
-            voice.cta_style    = eight_fields["cta_style"]
-            voice.examples     = eight_fields.get("examples", [])
+            # =====================================================
+            # Save
+            # =====================================================
 
-            voice.tone_funny_serious               = eight_fields.get("tone_funny_serious", 50)
-            voice.tone_formal_casual               = eight_fields.get("tone_formal_casual", 50)
-            voice.tone_respectful_irreverent       = eight_fields.get("tone_respectful_irreverent", 50)
-            voice.tone_enthusiastic_matter_of_fact = eight_fields.get("tone_enthusiastic_matter_of_fact", 50)
+            logo_url = (
+                research.fb_brand
+                .get(
+                    "og_image",
+                    "",
+                )
+            )
+
+            voice.metadata_info = {
+                "logo_url": logo_url,
+                "updated_at": (
+                    _utcnow()
+                    .isoformat()
+                ),
+            }
+
+            voice.personality = (
+                eight_fields[
+                    "personality"
+                ]
+            )
+
+            voice.tone = (
+                eight_fields[
+                    "tone"
+                ]
+            )
+
+            voice.style = (
+                eight_fields[
+                    "style"
+                ]
+            )
+
+            voice.vocabulary = (
+                eight_fields[
+                    "vocabulary"
+                ]
+            )
+
+            voice.format_rules = (
+                eight_fields[
+                    "format_rules"
+                ]
+            )
+
+            voice.cta_style = (
+                eight_fields[
+                    "cta_style"
+                ]
+            )
+
+            voice.examples = (
+                eight_fields.get(
+                    "examples",
+                    [],
+                )
+            )
+
+            voice.tone_funny_serious = (
+                eight_fields.get(
+                    "tone_funny_serious",
+                    50,
+                )
+            )
+
+            voice.tone_formal_casual = (
+                eight_fields.get(
+                    "tone_formal_casual",
+                    50,
+                )
+            )
+
+            voice.tone_respectful_irreverent = (
+                eight_fields.get(
+                    "tone_respectful_irreverent",
+                    50,
+                )
+            )
+
+            voice.tone_enthusiastic_matter_of_fact = (
+                eight_fields.get(
+                    "tone_enthusiastic_matter_of_fact",
+                    50,
+                )
+            )
 
             await db.commit()
-            await finish_task(db, task_id, steps_done=3)
-            logger.info("_research_and_extract_bg success | voice_id=%s | task_id=%s", voice_id, task_id)
+
+            await finish_task(
+                db,
+                task_id,
+                steps_done=3,
+            )
+
+            logger.info(
+                "_research_and_extract_bg success"
+                " | voice=%s",
+                voice_id,
+            )
 
         except Exception as exc:
-            logger.error("_research_and_extract_bg failed | voice_id=%s | err=%s", voice_id, exc)
-            await fail_task(db, task_id, error_message=str(exc))
+
+            logger.exception(
+                "_research_and_extract_bg failed"
+            )
+
+            await fail_task(
+                db,
+                task_id,
+                error_message=str(exc),
+            )
+
 
 # ═══════════════════════════════════════════════════════════════════
 # POST /brand-voices — tạo mới (Case 1 + Case 2)
 # ═══════════════════════════════════════════════════════════════════
+
+
 @router.post("", response_model=BrandOut, status_code=status.HTTP_202_ACCEPTED)
 async def create_brand_voice(
     payload: BrandCreate,
@@ -445,43 +762,63 @@ async def create_brand_voice(
     # ── Determine Case ──────────────────────────────────────────
     if payload.business_id:
         # Case 1: Existing business
-        logger.info("create_brand_voice | Case 1 | business_id=%s", payload.business_id)
         business = await _get_business_or_404(payload.business_id, db)
-        
-        # Kiểm tra thực tế trong Database xem đã tồn tại data research của business này chưa
-        stmt = select(ResearchResult).where(ResearchResult.business_id == business.id)
-        res = await db.execute(stmt)
-        research = res.scalars().first()
+        research = await _get_latest_research(db, business.id)
         
         if not research:
-            # Nếu lỡ xóa sạch DB, không thấy data research -> Bắt buộc phải chạy lại pipeline research
-            logger.info("Research result NOT found in DB for business_id=%s. Forcing research pipeline...", business.id)
+            logger.info("No research found → forcing research")
             is_research_needed = True
         else:
-            # Nếu đã có data research nhưng URL truyền lên khác với URL cũ đã từng cào dữ liệu
-            new_url = payload.rag_source.website_url if payload.rag_source else None
+            # Lấy URL từ payload nếu có
+            new_url = payload.website_url if hasattr(payload, 'website_url') else None
+            
+            # URL cũ từ research: ưu tiên fb_brand, fallback serp_data
             old_url = None
-            if research.serp_data and isinstance(research.serp_data, dict):
+            if research.fb_brand and isinstance(research.fb_brand, dict):
+                old_url = research.fb_brand.get("url") or research.fb_brand.get("link")
+            if not old_url and research.serp_data and isinstance(research.serp_data, dict):
                 old_url = research.serp_data.get("website_url")
-
-            if new_url and new_url != old_url:
-                logger.info("website_url changed (%s -> %s). Forcing re-run research pipeline...", old_url, new_url)
+            
+            # So sánh URL (nếu cả 2 đều có)
+            if new_url and old_url and new_url.rstrip("/") != old_url.rstrip("/"):
+                logger.info("URL changed %s → %s → forcing research", old_url, new_url)
                 is_research_needed = True
+            else:
+                logger.info("Research exists → skip research")
+                is_research_needed = False
+
     else:
-        # Case 2: New business + research
-        logger.info(
-            "create_brand_voice | Case 2 | business_name=%s | owner_id=%s",
-            payload.business_name, payload.owner_id
-        )
-        business = await _create_new_business(
+        # Case 2: New business — check duplicate trước
+        existing_bid = await _find_business_by_brand_voice(
             db,
-            business_name=payload.business_name,
-            owner_id=payload.owner_id,
-            address=payload.address,
-            industry=payload.industry,
+            url=payload.website_url if hasattr(payload, 'website_url') else None,
+            name=payload.business_name,
         )
-        is_research_needed = True
-    
+        
+        if existing_bid:
+            # Đã có brand voice cho URL/name này → reuse
+            business = await _get_business_or_404(existing_bid, db)
+            research = await _get_latest_research(db, business.id)
+            is_research_needed = not bool(research)
+            logger.info(
+                "create_brand_voice | Reuse existing | business_id=%s | research_needed=%s",
+                business.id, is_research_needed
+            )
+        else:
+            # Tạo business mới
+            logger.info(
+                "create_brand_voice | Case 2 | business_name=%s | owner_id=%s",
+                payload.business_name, payload.owner_id
+            )
+            business = await _create_new_business(
+                db,
+                business_name=payload.business_name,
+                owner_id=payload.owner_id,
+                address=payload.address,
+                industry=payload.industry,
+            )
+            is_research_needed = True
+        
     # ── Create Brand record ─────────────────────────────────────
     voice = Brand(
         business_id     = business.id,
@@ -504,10 +841,6 @@ async def create_brand_voice(
         tone_respectful_irreverent       = payload.tone_respectful_irreverent,
         tone_enthusiastic_matter_of_fact = payload.tone_enthusiastic_matter_of_fact,
         
-        # RAG sources
-        website_url    = payload.rag_source.website_url if payload.rag_source else None,
-        uploaded_files = payload.rag_source.uploaded_files if payload.rag_source else [],
-        pasted_text    = payload.rag_source.pasted_text if payload.rag_source else None,
     )
     db.add(voice)
     await db.commit()
@@ -525,7 +858,6 @@ async def create_brand_voice(
         model       = GROQ_MODEL,
     )
     
-    voice_config_dict = payload.voice_config.model_dump()
     
     # ── Schedule background task ────────────────────────────────
     if is_research_needed:
@@ -533,15 +865,14 @@ async def create_brand_voice(
             _research_and_extract_bg,
             voice_id        = voice.id,
             business_id     = business.id,
-            voice_config_dict = voice_config_dict,
             task_id         = task.id,
+            website_url=payload.website_url if hasattr(payload, 'website_url') else None,
         )
     else:
         background_tasks.add_task(
             _extract_and_save_bg,
             voice_id        = voice.id,
             business_id     = business.id,
-            voice_config_dict = voice_config_dict,
             task_id         = task.id,
         )
     

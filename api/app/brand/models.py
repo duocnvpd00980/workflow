@@ -25,7 +25,8 @@ class Brand(Base):
         nullable=False,
         index=True,
     )
-
+    metadata_info = Column(JSON, default=dict)
+    
     # ── Voice config (user nhập) ──────────────────────────────────
     name            = Column(String(255), nullable=False)   # "Nike Sporty"
     purpose         = Column(String(500), nullable=False)   # "Bán giày chạy"
@@ -43,9 +44,9 @@ class Brand(Base):
     examples     = Column(JSON, default=list)
 
     # ── RAG sources ───────────────────────────────────────────────
-    website_url    = Column(String(2048), nullable=True)
-    uploaded_files = Column(JSON,         default=list)  # list of file paths / S3 keys
-    pasted_text    = Column(Text,         nullable=True)
+    # website_url    = Column(String(2048), nullable=True)
+    # uploaded_files = Column(JSON,         default=list)  # list of file paths / S3 keys
+    # pasted_text    = Column(Text,         nullable=True)
 
 
     # ── 4 Trục khẩu khí định lượng (0 -> 100) phục vụ Radar & Sliders ──

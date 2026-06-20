@@ -54,6 +54,7 @@ SERP_DATA_SCHEMA = {
 FB_BRAND_SCHEMA = {
     "page_info": {"title": "", "followers": "", "following": ""},
     "intro": "",
+    "og_image": "",
     "phones": [],
     "emails": [],
     "domains": [],
@@ -151,6 +152,7 @@ class FbPost(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     business_id = Column(String(64), nullable=False, index=True)
     content = Column(Text, nullable=False)
+    attachments = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.now)
 
 
@@ -165,13 +167,6 @@ class FbComment(Base):
     comment = Column(Text, nullable=True)
     replies = Column(JSON, nullable=False, default=list)  # list[str]
     created_at = Column(DateTime, default=datetime.now)
-
-
-# def init_db(db_path: str = "research.db"):
-#     """Tạo engine + tạo bảng nếu chưa có. Gọi 1 lần khi pipeline khởi tạo."""
-#     engine = create_engine(f"sqlite:///{db_path}")
-#     Base.metadata.create_all(engine)
-#     return engine
 
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -128,12 +128,14 @@ async def _replace_fb_posts_comments(
         .where(FbComment.business_id == state.business_id)
     )
 
+    attachments_map = state.fb_data.get("attachments_map", [])
     db.add_all([
         FbPost(
             business_id=state.business_id,
             content=p,
+            attachments=attachments_map[i] if i < len(attachments_map) else [],
         )
-        for p in state.fb_data["posts"]
+        for i, p in enumerate(state.fb_data["posts"])
     ])
 
     db.add_all([
@@ -388,47 +390,105 @@ def _extract_brand_info(html: str) -> dict:
     emails = sorted(set(re.findall(r'[\w.-]+@[\w.-]+\.\w+', clean_text)))
     domains = sorted(set(d for d in re.findall(r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,6}\b', clean_text.lower()) if not d.endswith(("js", "css", "png", "jpg", "jpeg", "gif", "ico"))))
 
+    og_image = ""
+    og_tag = soup.find("meta", property="og:image")
+    if og_tag:
+        og_image = og_tag.get("content", "")
+
     posts = [c.strip() for c in re.split(r'Shared with Public|Công khai', clean_text) if len(c.strip()) > 150][:10]
     return {
-        "page_info": page_info, "intro": intro_section,
-        "phones": sorted(list(phones)), "emails": emails,
-        "domains": domains, "posts_from_text": posts
+        "page_info": page_info, 
+        "intro": intro_section,
+        "phones": sorted(list(phones)), 
+        "emails": emails,
+        "domains": domains, 
+        "og_image": og_image, 
+        "posts_from_text": posts
     }
-
 
 def _extract_posts_comments(html: str) -> tuple:
     soup = BeautifulSoup(html, "html.parser")
-    post_contents = [_clean_fb_text(div.get_text(separator="\n", strip=True)) for div in soup.find_all("div", attrs={"data-ad-preview": "message"})]
-    
+
+    _SKIP_PATTERNS = [
+        "/p40x40/", "/s40x40/", "/p50x50/", "/s50x50/",
+        "profile", "avatar", "emoji", "rsrc.php", "static.xx.fbcdn",
+    ]
+
+    # ── Extract post contents ──
+    post_contents = [
+        _clean_fb_text(div.get_text(separator="\n", strip=True))
+        for div in soup.find_all("div", attrs={"data-ad-preview": "message"})
+    ]
+
     if not post_contents:
         for text_div in soup.find_all("div", class_="xdj266r"):
             if len(text_div.get_text()) > 100:
                 cleaned = _clean_fb_text(text_div.get_text(strip=True))
-                if cleaned and cleaned not in post_contents: 
+                if cleaned and cleaned not in post_contents:
                     post_contents.append(cleaned)
 
+    # ── Extract tất cả ảnh thật từ toàn bộ HTML ──
+    all_imgs = []
+    seen_imgs = set()
+    for img in soup.find_all("img", src=True):
+        src = img.get("src", "")
+        if not src or src in seen_imgs:
+            continue
+        if "scontent" in src and "fbcdn.net" in src:
+            if not any(p in src for p in _SKIP_PATTERNS):
+                all_imgs.append(src)
+                seen_imgs.add(src)
+
+    # Gán ảnh vào từng post theo vị trí data-visualcompletion block
+    # Vì FB tách ảnh ra div riêng, không nằm trong post block
+    # → chia đều: mỗi post lấy tối đa 5 ảnh theo thứ tự
+    n_posts = len(post_contents)
+    attachments_map = [[] for _ in range(max(n_posts, 1))]
+
+    if all_imgs and n_posts > 0:
+        chunk_size = max(1, len(all_imgs) // n_posts)
+        for i in range(n_posts):
+            start = i * chunk_size
+            end = start + chunk_size if i < n_posts - 1 else len(all_imgs)
+            attachments_map[i] = all_imgs[start:end][:5]
+
+    # ── Extract comments ──
     comments_list = []
     for block in soup.find_all("div", attrs={"role": "article"}):
         aria_label = block.get("aria-label", "")
         author_name, comment_time = "Ẩn danh", "Không rõ"
         if "Comment by" in aria_label:
-            match = re.search(r'(.+?)\s(\d+\s\w+\sago|\d+\w+)', aria_label.replace("Comment by ", ""))
-            if match: 
+            match = re.search(
+                r'(.+?)\s(\d+\s\w+\sago|\d+\w+)',
+                aria_label.replace("Comment by ", "")
+            )
+            if match:
                 author_name, comment_time = match.group(1), match.group(2)
-        
-        container = block.find("div", attrs={"dir": "auto"}) or block.find("div", class_="xdj266r")
+
+        container = (
+            block.find("div", attrs={"dir": "auto"})
+            or block.find("div", class_="xdj266r")
+        )
         comment_text = _clean_fb_text(container.get_text(strip=True)) if container else ""
-        
+
         replies = []
         if block.find_parent() and block.find_parent().find_next_sibling():
-            reply_text = _clean_fb_text(block.find_parent().find_next_sibling().get_text(separator=" ", strip=True))
-            if reply_text: 
+            reply_text = _clean_fb_text(
+                block.find_parent().find_next_sibling().get_text(separator=" ", strip=True)
+            )
+            if reply_text:
                 replies.append(reply_text)
 
         if comment_text or author_name != "Ẩn danh":
-            comments_list.append({"author": author_name, "time": comment_time, "comment": comment_text, "replies": replies})
+            comments_list.append({
+                "author": author_name,
+                "time": comment_time,
+                "comment": comment_text,
+                "replies": replies,
+            })
 
-    return post_contents, comments_list
+    return post_contents, comments_list, attachments_map
+
 
 
 async def _scrape_facebook(browser, fb_url: str, business_id: str):
@@ -562,23 +622,29 @@ async def node_facebook(state: ResearchState, seq: list, headless: bool):
             
         brand = _extract_brand_info(page_html)
 
+
         if popup_path:
             with open(popup_path, "r", encoding="utf-8") as f: 
                 popup_html = f.read()
-            posts, comments = _extract_posts_comments(popup_html)
+            posts, comments, attachments_map = _extract_posts_comments(popup_html)
             if not posts and not comments: 
-                posts, comments = _extract_posts_comments(page_html)
+                posts, comments, attachments_map = _extract_posts_comments(page_html)
         else:
-            posts, comments = _extract_posts_comments(page_html)
+            posts, comments, attachments_map = _extract_posts_comments(page_html)
 
+        final_posts = posts if posts else brand["posts_from_text"]
         state.fb_data = {
             "brand": {
                 "page_info": brand["page_info"], "intro": brand["intro"], 
-                "phones": brand["phones"], "emails": brand["emails"], "domains": brand["domains"]
+                "phones": brand["phones"], "emails": brand["emails"],
+                "domains": brand["domains"], "og_image": brand.get("og_image", ""),
             },
-            "posts": posts if posts else brand["posts_from_text"], 
+            "posts": final_posts,
+            "attachments_map": attachments_map if posts else [[] for _ in final_posts],
             "comments": comments,
         }
+
+
         print(f"  ✅ Posts: {len(state.fb_data['posts'])} | Comments: {len(state.fb_data['comments'])}")
 
         seq[0] += 1
