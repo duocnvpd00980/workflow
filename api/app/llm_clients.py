@@ -28,27 +28,54 @@ MEDIA_ROOT = Path("app/media")
 
 # ── Groq ──────────────────────────────────────────────────
 
-def call_groq(prompt: str, max_tokens: int = 500) -> str:
-    """Gọi Groq sync, trả về text."""
+def call_groq(prompt: str, max_tokens: int = 1500, temperature: float = 0.2) -> str:
+    """Gọi Groq sync, tự động dọn dẹp format và raise exception chuẩn hóa."""
     try:
         msg = groq_client.chat.completions.create(
             model=GROQ_MODEL,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                # Thêm System hoặc bổ sung chỉ thị ngắn để ép Llama không lảm nhảm Step 1, Step 2
+                {"role": "user", "content": prompt}
+            ],
             max_completion_tokens=max_tokens,
-            temperature=0.7,
+            temperature=temperature,  # Hạ xuống để 5 kiến tuân thủ quy tắc tốt hơn
             top_p=1,
             stop=None,
             timeout=LLM_TIMEOUT,
         )
-        return msg.choices[0].message.content or "[No response]"
-    except Exception as e:
-        error_type = str(e).lower()
-        if "timeout" in error_type:
-            return "[ERROR:timeout]"
-        if "rate" in error_type:
-            return "[ERROR:rate_limit]"
-        return "[ERROR:fatal]"
 
+        content = msg.choices[0].message.content
+        if not content:
+            raise RuntimeError("GROQ_EMPTY_RESPONSE")
+            
+        # [💡 MẸO CHO DEV]: Loại bỏ các đoạn bộc bạch "Suy nghĩ của AI" nếu có
+        content = content.strip()
+        if "---" in content and content.count('"') < 10: 
+            # Nếu phát hiện format lạ lùng, bạn có thể xử lý chuỗi ở đây trước khi return
+            pass
+
+        return content
+
+    except Exception as e:
+        err = str(e).lower()
+
+        # 401 Unauthorized
+        if "401" in err or "unauthorized" in err:
+            raise PermissionError("GROQ_AUTH_401: Invalid API key or unauthorized")
+
+        # timeout
+        if "timeout" in err:
+            raise TimeoutError("GROQ_TIMEOUT: request exceeded time limit")
+
+        # rate limit
+        if "rate" in err or "429" in err:
+            raise RuntimeError("GROQ_RATE_LIMIT: too many requests")
+
+        # fallback
+        raise RuntimeError(f"GROQ_FATAL_ERROR: {str(e)}")
+    
+    
+    
 
 async def call_groq_stream(prompt: str, max_tokens: int = 500):
     """Gọi Groq async streaming."""

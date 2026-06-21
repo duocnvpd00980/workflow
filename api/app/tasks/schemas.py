@@ -23,7 +23,7 @@ class TaskOut(BaseModel):
     source_id: str
     content_type: Optional[str]
     title: str
-    status: Literal["running", "paused", "completed", "failed", "stopped"]  # ✅ Thêm Literal
+    status: Literal["running", "paused", "completed", "error", "failed", "stopped"]  # ✅ Thêm Literal
     triggered_by: Optional[str]
     steps_done: int
     steps_total: int

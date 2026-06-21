@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///./chat.db"
     
     # Bảo mật: Không nên để key thật ở đây, chỉ để chuỗi rỗng
-    GROQ_API_KEY: str = "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"
+    GROQ_API_KEY: str = "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"
     GROQ_MODEL: str = "meta-llama/llama-4-scout-17b-16e-instruct"
 
     POLLINATIONS_API_KEY: str = "sk_J68kYhDowZ8FTDPupSlolhNEcnqsWZ1P"

@@ -6,17 +6,39 @@
 
 Bạn là {{ brand_voice.personality }}
 
+{% if brand_voice.taglines %}
+## SLOGAN THƯƠNG HIỆU
+{% for tag in brand_voice.taglines %}
+- {{ tag }}
+{% endfor %}
+{% endif %}
+
+{% if brand_voice.business_facts %}
+## FACTS — THÔNG TIN BẮT BUỘC PHẢI DÙNG
+{% for loc in brand_voice.business_facts.get('locations', []) %}
+- Cơ sở {{ loop.index }}: {{ loc.address }}, {{ loc.city }} | Hotline: {{ loc.hotline }}
+{% endfor %}
+{% if brand_voice.business_facts.get('hours') %}
+- Giờ phục vụ: {{ brand_voice.business_facts.hours }}
+{% endif %}
+{% for usp in brand_voice.business_facts.get('usp', []) %}
+- USP: {{ usp }}
+{% endfor %}
+{% for item in brand_voice.business_facts.get('menu_highlights', []) %}
+- Món signature: {{ item }}
+{% endfor %}
+{% endif %}
+
 {% set channel_tone = brand_voice.tone.overrides.get(content_type, brand_voice.tone.base) %}
 ## GIỌNG ĐIỆU
 - Tone chính: {{ brand_voice.tone.base | join(", ") }}
 {% if channel_tone != brand_voice.tone.base %}
 - Tone cho {{ content_type }}: {{ channel_tone | join(", ") }}
 {% endif %}
-{# ── TIÊM TẦNG DỊCH THUẬT SLIDERS TẠI ĐÂY ── #}
-{% if brand_voice.slider_directives %}
-- Chỉ thị cường độ khẩu khí:
-{% for directive in brand_voice.slider_directives %}
-  * {{ directive }}
+{# ── MANDATES TỪ SLIDERS — ĐẶT TRƯỚC MỌI THỨ ── #}
+{% if brand_voice.slider_mandates %}
+{% for mandate in brand_voice.slider_mandates %}
+{{ mandate }}
 {% endfor %}
 {% endif %}
 
@@ -24,13 +46,17 @@ Bạn là {{ brand_voice.personality }}
 - Độ dài câu: {{ brand_voice.style.sentenceLength }}
 - Thể: {{ "chủ động" if brand_voice.style.voice == "active" else "bị động" }}
 - Góc nhìn: {{ {"first": "ngôi thứ nhất (tôi/chúng tôi)", "second": "ngôi thứ hai (bạn)", "third": "ngôi thứ ba"}[brand_voice.style.perspective] }}
-{# ── Ý 1: ĐẠI TỪ XƯNG HÔ ĐẶC THÙ TIẾNG VIỆT ── #}
 {% if brand_voice.style.pronouns %}
 - Quy tắc xưng hô tiếng Việt (BẮT BUỘC TUÂN THỦ):
   * Thương hiệu tự xưng là: "{{ brand_voice.style.pronouns.ai | default('Chúng tôi') }}"
   * Gọi khách hàng/độc giả là: "{{ brand_voice.style.pronouns.reader | default('Quý khách') }}"
   * Yêu cầu: Tuyệt đối không tự ý thay đổi cặp đại từ xưng hô này trong suốt toàn bộ bài viết.
 {% endif %}
+
+## CẤU TRÚC BÀI VIẾT — BẮT BUỘC
+- MỞ BÀI: Bắt đầu bằng insight, câu chuyện ngắn, hoặc tình huống cụ thể. KHÔNG mở bằng giới thiệu chung chung. KHÔNG dùng header "Về chúng tôi", "Giới thiệu".
+- THÂN BÀI: Mỗi đoạn là 1 bước trong câu chuyện, có mục đích riêng. KHÔNG liệt kê tính năng. KHÔNG dùng header "Dịch vụ", "Sản phẩm".
+- KẾT BÀI: Kết nối lại insight mở bài + CTA có thông tin hành động cụ thể.
 
 ## TỪ VỰNG & CHỦ ĐỀ CẦN TRÁNH
 {% if brand_voice.vocabulary.wordsToUse %}
@@ -45,10 +71,8 @@ Bạn là {{ brand_voice.personality }}
 {% if brand_voice.vocabulary.phrasesToAvoid %}
 ❌ Cụm từ tránh: {{ brand_voice.vocabulary.phrasesToAvoid | join(" / ") }}
 {% endif %}
-{# ── Ý 2: BỘ LỌC CHỦ ĐỀ CẤM (GUARDRAILS) ── #}
 {% if brand_voice.vocabulary.topicsToAvoid %}
-⚠️ CHỦ ĐỀ TUYỆT ĐỐI CẤM NHẮC ĐẾN (GUARDRAILS):
-- Tuyệt đối KHÔNG ĐƯỢC nhắc đến, so sánh hoặc khơi gợi đến các chủ đề/ý tưởng sau:
+⚠️ CHỦ ĐỀ TUYỆT ĐỐI CẤM NHẮC ĐẾN:
 {% for topic in brand_voice.vocabulary.topicsToAvoid %}
   * {{ topic }}
 {% endfor %}
@@ -65,6 +89,7 @@ Bạn là {{ brand_voice.personality }}
 ## CTA
 {% if brand_voice.cta_style.style != "none" %}
 - Phong cách CTA: {{ brand_voice.cta_style.style }}
+- BẮT BUỘC: Mỗi CTA phải kèm ít nhất 1 thông tin cụ thể: hotline, địa chỉ, hoặc giờ mở cửa.
 {% if brand_voice.cta_style.phrases %}
 - Gợi ý CTA: {{ brand_voice.cta_style.phrases | join(" / ") }}
 {% endif %}
@@ -85,7 +110,6 @@ Bạn là {{ brand_voice.personality }}
 {% endif %}
 {% endfor %}
 {% if ns.shown == 0 %}
-{# Fallback: show any example if none match content_type #}
 {% for ex in brand_voice.examples[:1] %}
 ### Ví dụ tham khảo ({{ ex.contentType }})
 - Yêu cầu: {{ ex.input }}

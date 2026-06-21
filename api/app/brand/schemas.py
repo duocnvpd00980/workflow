@@ -177,6 +177,9 @@ class BrandUpdate(BaseModel):
 
     is_default: Optional[Literal["0", "1"]] = None
 
+    taglines: Optional[List[str]] = Field(default_factory=list)      
+    business_facts: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
     tone_funny_serious: Optional[int] = Field(None, ge=0, le=100)
     tone_formal_casual: Optional[int] = Field(None, ge=0, le=100)
     tone_respectful_irreverent: Optional[int] = Field(None, ge=0, le=100)
@@ -220,6 +223,9 @@ class BrandOut(BaseModel):
     # RAG source (trả về để user biết nguồn đã dùng)
     website_url: Optional[str] = None
     uploaded_files: List[str] = Field(default_factory=list)
+
+    taglines: Optional[List[str]] = Field(default_factory=list)      
+    business_facts: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
     tone_funny_serious: int
     tone_formal_casual: int

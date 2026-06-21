@@ -73,7 +73,7 @@ class VersionHistoryResponse(BaseModel):
 
 class SessionListItem(BaseModel):
     session_id: str
-    status: Literal["running", "paused", "completed", "error", "queued"]
+    status: Literal["running", "paused", "completed", "error", "failed", "queued"]  # ✅
     request: Optional[str] = None
     draft: Optional[Dict[str, Any]] = None
     conversation_id: Optional[str] = None
@@ -86,7 +86,7 @@ class SessionListItem(BaseModel):
 
 class WorkflowResponse(BaseModel):
     session_id: str
-    status: Literal["running", "paused", "completed", "error", "queued"]
+    status: Literal["running", "paused", "completed", "error", "failed", "queued"]  # ✅
     draft: Optional[Dict[str, Any]] = None
     conversation_id: Optional[str] = None
     publish_status: Optional[str] = None

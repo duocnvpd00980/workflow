@@ -46,10 +46,10 @@ class Brand(Base):
     cta_style    = Column(JSON, nullable=False)
     examples     = Column(JSON, default=list)
 
-    # ── RAG sources ───────────────────────────────────────────────
-    # website_url    = Column(String(2048), nullable=True)
-    # uploaded_files = Column(JSON,         default=list)  # list of file paths / S3 keys
-    # pasted_text    = Column(Text,         nullable=True)
+    # ── NEW: Brand Voice Enhancement ──────────────────────────────
+    taglines        = Column(JSON, nullable=True)
+    business_facts  = Column(JSON, default=dict, nullable=True)
+
 
 
     # ── 4 Trục khẩu khí định lượng (0 -> 100) phục vụ Radar & Sliders ──

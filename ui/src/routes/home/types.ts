@@ -94,7 +94,7 @@ export type ContentItem = {
   icon: "email" | "social" | "ads" | "blog"
   title: string
   type: string
-  status: "running"|  "paused" | "completed" | "error" | "queued"
+  status: "running"|  "paused" | "completed" | "error" | "queued" | "failed"
   preview: string
   time: string
   author?: string
@@ -132,6 +132,7 @@ export interface ChatSidebarProps {
 export const STATUS_LABELS: Record<ContentItem["status"], string> = {
   running: "Đang tạo",
   paused: "Chờ duyệt",
+  failed:"thất bại", 
   completed: "Hoàn thành",
   error: "Lỗi",
   queued: "Xếp hàng",
@@ -142,6 +143,7 @@ export const STATUS_STYLES: Record<ContentItem["status"], string> = {
   paused: "bg-amber-50 text-amber-700 border-amber-200",
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   error: "bg-destructive/10 text-destructive",
+  failed: "bg-destructive/20 text-destructive",
   queued: "bg-muted text-muted-foreground",
 }
 

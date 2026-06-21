@@ -103,38 +103,40 @@ def _normalize_brand_voice(brand_voice: Dict[str, Any]) -> Dict[str, Any]:
     # ═══════════════════════════════════════════════════════════════════
     # TẦNG DỊCH THUẬT (TRANSLATION LAYER) — Trả ra mảng string cho Jinja2
     # ═══════════════════════════════════════════════════════════════════
-    slider_directives = []
+        # ═══════════════════════════════════════════════════════════════════
+    # TẦNG DỊCH THUẬT (TRANSLATION LAYER) — MANDATES cho Jinja2
+    # ═══════════════════════════════════════════════════════════════════
+    slider_mandates = []
 
-    # 1. Trục Hài hước vs Nghiêm túc
+    # 1. Trục Hài hước vs Nghiêm túc (0=funny, 100=serious)
     funny_serious_val = bv.get("tone_funny_serious", 50)
-    if funny_serious_val <= 35:
-        slider_directives.append("Hành văn hài hước, dí dỏm, sử dụng câu đùa và từ lóng bắt trend để tạo không khí vui vẻ.")
-    elif funny_serious_val >= 65:
-        slider_directives.append("Hành văn cực kỳ nghiêm túc, trang trọng, chuẩn mực chuyên gia. Tuyệt đối không dùng câu đùa hay từ cảm thán.")
+    if funny_serious_val >= 65:
+        slider_mandates.append("MANDATE: HÀNH VĂN PHẢI CỰC KỲ NGHIÊM TÚC, TRANG TRỌNG, CHUẨN MỰC CHUYÊN GIA. TUYỆT ĐỐI KHÔNG DÙNG CÂU ĐÙA HAY TỪ CẢM THÁN.")
+    elif funny_serious_val <= 35:
+        slider_mandates.append("MANDATE: HÀNH VĂN HÀI HƯỚC, DÍ DỎM, SỬ DỤNG CÂU ĐÙA VÀ TỪ LÓNG BẮT TREND.")
 
-    # 2. Trục Trang trọng vs Bình dân
+    # 2. Trục Trang trọng vs Bình dân (0=formal, 100=casual)
     formal_casual_val = bv.get("tone_formal_casual", 50)
-    if formal_casual_val <= 35:
-        slider_directives.append("Phong cách diễn đạt trang trọng, chính thống, sử dụng thuật ngữ chuyên môn chính xác.")
-    elif formal_casual_val >= 65:
-        slider_directives.append("Phong cách diễn đạt bình dân, giản dị, tự nhiên như cuộc trò chuyện đời thường.")
+    if formal_casual_val >= 65:
+        slider_mandates.append("MANDATE: PHONG CÁCH DIỄN ĐẠT BÌNH DÂN, GIẢN DỊ, TỰ NHIÊN NHƯ CUỘC TRÒ CHUYỆN ĐỜI THƯỜNG.")
+    elif formal_casual_val <= 35:
+        slider_mandates.append("MANDATE: PHONG CÁCH DIỄN ĐẠT TRANG TRỌNG, CHÍNH THỐNG, SỬ DỤNG THUẬT NGỮ CHUYÊN MÔN CHÍNH XÁC.")
 
-    # 3. Trục Tôn trọng vs Phá cách
+    # 3. Trục Tôn trọng vs Phá cách (0=irreverent, 100=respectful)
     respectful_irreverent_val = bv.get("tone_respectful_irreverent", 50)
-    if respectful_irreverent_val <= 35:
-        slider_directives.append("Thể hiện sự tôn trọng tối đa đối với người đọc, lịch sự, sử dụng kính ngữ đầy đủ.")
-    elif respectful_irreverent_val >= 65:
-        slider_directives.append("Phong cách phá cách, táo bạo, nổi loạn nhẹ hoặc hóm hỉnh châm biếm để gây ấn tượng mạnh.")
+    if respectful_irreverent_val >= 65:
+        slider_mandates.append("MANDATE: THỂ HIỆN SỰ TÔN TRỌNG TỐI ĐA ĐỐI VỚI NGƯỜI ĐỌC, LỊCH SỰ, SỬ DỤNG KÍNH NGỮ ĐẦY ĐỦ.")
+    elif respectful_irreverent_val <= 35:
+        slider_mandates.append("MANDATE: PHONG CÁCH PHÁ CÁCH, TÁO BẠO, HÓM HỈNH CHÂM BIẾM ĐỂ GÂY ẤN TƯỢNG MẠNH.")
 
-    # 4. Trục Nhiệt huyết vs Thực tế
+    # 4. Trục Nhiệt huyết vs Thực tế (0=enthusiastic, 100=matter-of-fact)
     enthusiastic_matter_val = bv.get("tone_enthusiastic_matter_of_fact", 50)
-    if enthusiastic_matter_val <= 35:
-        slider_directives.append("Giọng điệu tràn đầy năng lượng, nhiệt huyết, sử dụng văn phong sôi nổi kích thích hành động.")
-    elif enthusiastic_matter_val >= 65:
-        slider_directives.append("Giọng điệu khách quan tuyệt đối, chỉ tập trung vào sự thật và số liệu (matter-of-fact), không thổi phồng cảm xúc.")
+    if enthusiastic_matter_val >= 65:
+        slider_mandates.append("MANDATE: GIỌNG ĐIỆU KHÁCH QUAN TUYỆT ĐỐI, CHỈ TẬP TRUNG VÀO SỰ THẬT VÀ SỐ LIỆU. KHÔNG THỔI PHỒNG CẢM XÚC.")
+    elif enthusiastic_matter_val <= 35:
+        slider_mandates.append("MANDATE: GIỌNG ĐIỆU TRÀN ĐẦY NĂNG LƯỢNG, NHIỆT HUYẾT, VĂN PHONG SÔI NỔI KÍCH THÍCH HÀNH ĐỘNG.")
 
-    # Gán mảng này vào dictionary để Jinja2 bốc dỡ ra render
-    bv["slider_directives"] = slider_directives
+    bv["slider_mandates"] = slider_mandates
 
     return bv
 
@@ -184,35 +186,37 @@ async def build_system_prompt(
     return prompt.strip()
 
 
-async def get_brand_context_summary(brand_id: str, db: AsyncSession) -> str:
-    """
-    Tóm tắt brand SIÊU NGẮN — chỉ phần "là ai / bán gì / cho ai", dùng cho
-    các tác vụ phân loại/làm rõ ý định (ambiguity check), KHÔNG dùng cho
-    sinh content thật (đã có build_system_prompt/get_brand_prompt_by_id
-    riêng cho việc đó, chứa đủ tone/style/vocab/format/cta).
-    """
+async def get_brand_context_summary(
+    brand_id: str,
+    db: AsyncSession,
+) -> str:
     from app.brand.models import Brand
 
-    bv = (await db.execute(
-        select(Brand)
-        .where(Brand.id == brand_id, Brand.deleted_at.is_(None))
-        .limit(1)
-    )).scalars().one_or_none()
+    brand = (
+        await db.execute(
+            select(Brand)
+            .where(
+                Brand.id == brand_id,
+                Brand.deleted_at.is_(None),
+            )
+        )
+    ).scalars().first()
 
-    if not bv:
+    if not brand:
         return ""
 
     parts = []
-    if bv.name:
-        parts.append(f"Thương hiệu: {bv.name}")
-    if bv.purpose:
-        parts.append(f"Lĩnh vực/mục đích kinh doanh: {bv.purpose}")
-    if bv.target_audience:
-        parts.append(f"Đối tượng khách hàng mục tiêu: {bv.target_audience}")
-    if bv.desired_tone:
-        parts.append(f"Tông giọng mong muốn: {bv.desired_tone}")
-    if bv.personality:
-        parts.append(f"Tính cách thương hiệu: {bv.personality}")
+
+    if brand.name:
+        parts.append(f"Brand={brand.name}")
+
+    if brand.purpose:
+        parts.append(f"Business={brand.purpose}")
+
+    if brand.target_audience:
+        parts.append(
+            f"Audience={brand.target_audience}"
+        )
 
     return " | ".join(parts)
 
@@ -250,6 +254,8 @@ async def get_brand_prompt_by_id(
             "format_rules": {"paragraphMaxSentences": 4, "useEmoji": True, "useHashtags": True, "bulletPointStyle": "dot"},
             "cta_style": {"style": "soft", "phrases": ["Khám phá ngay"]},
             "examples": [],
+            "taglines": [],
+            "business_facts": {},
         }
     else:
         brand_voice_dict = {
@@ -264,6 +270,8 @@ async def get_brand_prompt_by_id(
             "tone_formal_casual":               bv.tone_formal_casual,
             "tone_respectful_irreverent":       bv.tone_respectful_irreverent,
             "tone_enthusiastic_matter_of_fact": bv.tone_enthusiastic_matter_of_fact,
+            "taglines":                         bv.taglines or [],
+            "business_facts":                   bv.business_facts or {},
         }
 
     # 4. Gọi hàm build có sẵn Jinja2 để sinh ra chuỗi prompt hoàn chỉnh

@@ -73,28 +73,6 @@ async def _call_with_language_guard(prompt_builder, i, max_tokens, label, retrie
         logger.error(f"[{label}] Still English after {retries} retries, keeping anyway.")
     return result
 
-# ═══════════════════════════════════════════════════
-
-import re
-
-def parse_section(text, section):
-    p = rf"{section}:\s*(.*?)(?=\n[A-Z_]+:|\Z)"
-    m = re.search(p, text, re.S)
-    return m.group(1).strip() if m else ""
-
-def parse_list(text, section):
-    content = parse_section(text, section)
-
-    items = []
-
-    for line in content.split("\n"):
-        line = line.strip()
-
-        if line.startswith("-"):
-            items.append(line[1:].strip())
-
-    return items
-
 
 # ═══════════════════════════════════════════════════
 # CELL 2A: SLICER — Helper functions
@@ -215,58 +193,20 @@ def prepare_kien_inputs(data):
     fb_clean = _clean_fb_intro(fb.get("intro", ""))
 
     result = {
-        "k1": {
-            "posts": _k1_posts(posts),
-            "fb": fb_clean[:2000],
-            "name": data.get("task", {}).get("business_name", "")
-        },
-
-        "k2": {
-            "posts": _k2_posts(posts),
-            "comments": mc[:15],
-            "name": data.get("task", {}).get("business_name", "")
-        },
-
-        "k3": {
-            "minimal": m3,
-            "full": f3,
-            "kc": serp.get("keyword_cluster", []),
-            "cp": serp.get("competitor_pattern", [])
-        },
-
-        "k4": {
-            "posts": _k4_posts(posts),
-            "bc": [
-                c for c in mc
-                if any(
-                    x in c.get("comment", "").lower()
-                    for x in ["đặt bàn", "menu", "hotline", "giá"]
-                )
-            ][:10]
-        },
-
-        "k5": {
-            "posts": posts[:5],
-            "fb": fb_clean[:1500],
-            "phones": fb.get("phones", []),
-            "emails": fb.get("emails", []),
-            "domains": fb.get("domains", []),
-            "name": data.get("task", {}).get("business_name", "")
-        },
-
-        # NEW
-        "k6": {
-            "posts": posts[:20],
-            "comments": mc[:20],
-            "name": data.get("task", {}).get("business_name", "")
-        },
-
-        # NEW
-        "k7": {
-            "posts": posts[:20],
-            "fb": fb_clean[:1000],
-            "name": data.get("task", {}).get("business_name", "")
-        }
+        "k1": {"posts": _k1_posts(posts), "fb": fb_clean[:2000],
+               "name": data.get("task", {}).get("business_name", "")},
+        "k2": {"posts": _k2_posts(posts), "comments": mc[:15],
+               "name": data.get("task", {}).get("business_name", "")},
+        "k3": {"minimal": m3, "full": f3,
+               "kc": serp.get("keyword_cluster", []), "cp": serp.get("competitor_pattern", [])},
+        "k4": {"posts": _k4_posts(posts),
+               "bc": [c for c in mc if any(x in c.get("comment", "").lower()
+                      for x in ["đặt bàn", "menu", "hotline", "giá"])][:10]},
+        "k5": {"posts": posts[:5], "fb": fb_clean[:1500],
+               "phones": fb.get("phones", []),
+               "emails": fb.get("emails", []),
+               "domains": fb.get("domains", []),
+               "name": data.get("task", {}).get("business_name", "")},
     }
 
     logger.info("[prepare_kien_inputs] Kien inputs built:")
@@ -300,217 +240,333 @@ def prepare_kien_inputs(data):
 # rule abstractly). All parsing anchors (funny-serious:, PRONOUNS:,
 # LOCATIONS:, "9." + "CHỦ ĐỀ", etc.) are kept verbatim so regex never breaks.
 # ═══════════════════════════════════════════════════
+
 def _pk1(i):
+    bname = i.get("name", "thương hiệu")
+
+    pt = "\n\n---\n".join(
+        [
+            f"ID:{p['id']}\n{_strip_invisible(p.get('content', ''))[:1000]}"
+            for p in i.get("posts", [])
+        ]
+    )
+
     fb_text = _strip_invisible(i.get("fb", ""))[:500]
 
-    pt = "\n\n---\n".join(
-        f"ID:{p['id']}\n{_strip_invisible(p.get('content',''))[:800]}"
-        for p in i.get("posts", [])
-    )
-
     return f"""
-ROLE
+        IDENTITY
 
-Brand DNA Extraction Agent
+        You are a Brand Research Analyst.
 
-MISSION
+        OBJECTIVE
 
-Extract brand identity from observable evidence.
+        Extract observable brand information.
 
-DATA
+        AVAILABLE DATA
 
-FACEBOOK_INTRO:
-{fb_text}
+        Facebook Intro:
 
-POSTS:
-{pt}
+        {fb_text}
 
-RULES
+        Posts:
 
-- Use only provided data.
-- No assumptions.
-- No explanations.
-- No markdown.
-- No XML.
-- No JSON.
-- Return exact schema only.
+        {pt}
 
-OUTPUT
+        TASK
 
-PURPOSE:
-(one sentence)
+        1. Identify recurring topics.
+        2. Identify products or services.
+        3. Identify repeated phrases.
+        4. Extract evidence.
 
-PERSONALITY:
-(one paragraph)
+        REASONING RULES
 
-MAIN_TOPICS:
-- item
+        - Use only available data.
+        - Do not speculate.
+        - Do not invent information.
+        - Prefer repeated patterns.
 
-PRODUCTS_SERVICES:
-- item
+        QUALITY CRITERIA
 
-REPEATED_PHRASES:
-- item
+        Good output:
+        - Specific
+        - Observable
+        - Evidence-based
 
-TAGLINES:
-- item
+        Bad output:
+        - Generic marketing language
+        - Assumptions
 
-EVIDENCE:
-- item
+        UNCERTAINTY HANDLING
 
-END
-"""
+        If information is missing:
+        Không đủ dữ liệu
+
+        OUTPUT CONTRACT
+
+        MAIN_TOPICS
+
+        - ...
+
+        PRODUCTS_SERVICES
+
+        - ...
+
+        REPEATED_PHRASES
+
+        - ...
+
+        EVIDENCE
+
+        - ...
+
+        LANGUAGE REQUIREMENT
+
+        Return everything in Vietnamese.
+        """
+
 
 def _pk2(i):
+    bname = i.get("name", "thương hiệu")
+
+    pt = "\n\n---\n".join(
+        [
+            f"ID:{p['id']}\n{_strip_invisible(p.get('content', ''))[:500]}"
+            for p in i.get("posts", [])
+        ]
+    )
 
     ct = "\n".join(
-        f"- {c['author']}: {_strip_invisible(c.get('comment',''))[:200]}"
-        for c in i.get("comments", [])
+        [
+            f"- {c['author']}: {_strip_invisible(c.get('comment', ''))[:200]}"
+            for c in i.get("comments", [])
+        ]
     )
 
     return f"""
-ROLE
+        IDENTITY
 
-Audience Extraction Agent
+        You are a Customer Feedback Analyst.
 
-MISSION
+        OBJECTIVE
 
-Identify audience and customer intent.
+        Analyze customer comments.
 
-DATA
+        AVAILABLE DATA
 
-COMMENTS:
-{ct}
+        Comments:
 
-RULES
+        {ct}
 
-- Use comments only.
-- No assumptions.
-- No explanations.
-- Return exact schema only.
+        TASK
 
-OUTPUT
+        1. Identify recurring customer topics.
+        2. Identify dominant customer sentiment.
+        3. Identify recurring requests or questions.
+        4. Extract evidence.
 
-AUDIENCE:
-(one sentence)
+        REASONING RULES
 
-CUSTOMER_TOPICS:
-- item
+        - Use comments only.
+        - Do not speculate.
+        - Do not invent information.
+        - Prefer repeated patterns.
 
-CUSTOMER_SENTIMENT:
-- item
+        QUALITY CRITERIA
 
-CUSTOMER_REQUESTS:
-- item
+        Good output:
+        - Based on comments
+        - Specific
+        - Evidence-based
 
-PAIN_POINTS:
-- item
+        Bad output:
+        - Guessing customer intent
+        - Marketing language
 
-EVIDENCE:
-- item
+        UNCERTAINTY HANDLING
 
-END
-"""
+        If information is missing:
+        Không đủ dữ liệu
+
+        OUTPUT CONTRACT
+
+        CUSTOMER_TOPICS
+
+        - ...
+
+        CUSTOMER_SENTIMENT
+
+        - ...
+
+        CUSTOMER_REQUESTS
+
+        - ...
+
+        EVIDENCE
+
+        - ...
+
+        LANGUAGE REQUIREMENT
+
+        Return everything in Vietnamese.
+        """
+
+
 
 def _pk3(i):
+    bname = i.get("name", "thương hiệu")
 
     pt = "\n\n---\n".join(
-        f"ID:{p['id']}\n{_strip_invisible(p.get('content',''))[:600]}"
-        for p in i.get("posts", [])
+        [
+            f"ID:{p['id']}\n{_strip_invisible(p.get('content', ''))[:800]}"
+            for p in i.get("posts", [])
+        ]
     )
 
     return f"""
-ROLE
+        IDENTITY
 
-Content System Agent
+        You are a Content Pattern Analyst.
 
-MISSION
+        OBJECTIVE
 
-Extract content system.
+        Analyze recurring content patterns.
 
-DATA
+        AVAILABLE DATA
 
-POSTS:
-{pt}
+        Posts:
 
-RULES
+        {pt}
 
-- Use posts only.
-- No assumptions.
-- No explanations.
-- Return exact schema only.
+        TASK
 
-OUTPUT
+        1. Identify recurring content topics.
+        2. Identify recurring content formats.
+        3. Identify recurring CTA patterns.
+        4. Extract evidence.
 
-CONTENT_TOPICS:
-- item
+        REASONING RULES
 
-CONTENT_PATTERNS:
-- item
+        - Use posts only.
+        - Do not speculate.
+        - Do not invent information.
+        - Focus on recurring patterns.
 
-CONTENT_FORMATS:
-- item
+        QUALITY CRITERIA
 
-COMMON_CTA:
-- item
+        Good output:
+        - Observable
+        - Repeated
+        - Evidence-based
 
-FORMAT_RULES:
-- emoji=yes/no
-- hashtag=yes/no
-- bullet=yes/no
+        Bad output:
+        - Generic marketing advice
+        - Unsupported claims
 
-EVIDENCE:
-- item
+        UNCERTAINTY HANDLING
 
-END
-"""
+        If information is missing:
+        Không đủ dữ liệu
+
+        OUTPUT CONTRACT
+
+        CONTENT_TOPICS
+
+        - ...
+
+        CONTENT_PATTERNS
+
+        - ...
+
+        COMMON_CTA
+
+        - ...
+
+        EVIDENCE
+
+        - ...
+
+        LANGUAGE REQUIREMENT
+
+        Return everything in Vietnamese.
+        """
 
 def _pk4(i):
+    bname = i.get("name", "thương hiệu")
 
     pt = "\n\n---\n".join(
-        f"ID:{p['id']}\n{_strip_invisible(p.get('content',''))[:500]}"
-        for p in i.get("posts", [])
+        [
+            f"ID:{p['id']}\n{_strip_invisible(p.get('content', ''))[:500]}"
+            for p in i.get("posts", [])
+        ]
     )
 
     return f"""
-ROLE
+IDENTITY
 
-CTA System Agent
+You are a CTA Extraction Analyst.
 
-MISSION
+OBJECTIVE
 
-Extract CTA behaviour.
+Extract CTA patterns from content.
 
-DATA
+AVAILABLE DATA
 
-POSTS:
+Posts:
+
 {pt}
 
-RULES
+TASK
 
-- Exact extraction only.
-- No assumptions.
-- No explanations.
-- Return exact schema only.
+1. Extract CTA phrases.
+2. Extract requested actions.
+3. Identify the most repeated CTA.
+4. Extract evidence.
 
-OUTPUT
+REASONING RULES
 
-CTA_STYLE:
-direct|soft|mixed
+- Use posts only.
+- Do not speculate.
+- Do not invent information.
+- Do not evaluate CTA effectiveness.
 
-CTA_PHRASES:
-- item
+QUALITY CRITERIA
 
-CONTACT_ACTIONS:
-- item
+Good output:
+- Exact CTA phrases
+- Observable actions
+- Evidence-based
 
-MOST_REPEATED_CTA:
-(one line)
+Bad output:
+- Marketing recommendations
+- Performance assumptions
 
-EVIDENCE:
-- item
+UNCERTAINTY HANDLING
 
-END
+If information is missing:
+Không đủ dữ liệu
+
+OUTPUT CONTRACT
+
+CTA_PHRASES
+
+- ...
+
+CONTACT_ACTIONS
+
+- ...
+
+MOST_REPEATED_CTA
+
+- ...
+
+EVIDENCE
+
+- ...
+
+LANGUAGE REQUIREMENT
+
+Return everything in Vietnamese.
 """
 
 
@@ -572,98 +628,6 @@ def _pk5(i: dict) -> dict:
         "OG_IMAGE": fb_brand_data.get("og_image", "")
     }
 
-def _pk6(i):
-
-    pt = "\n\n---\n".join(
-        _strip_invisible(p.get("content",""))[:300]
-        for p in i.get("posts", [])
-    )
-
-    return f"""
-ROLE
-
-Tone Analysis Agent
-
-MISSION
-
-Measure brand tone.
-
-DATA
-
-{pt}
-
-RULES
-
-- Return numbers only.
-- Integer only.
-- 0-100.
-- No ranges.
-- No explanations.
-
-OUTPUT
-
-TONE_BASE:
-- item
-
-TONE_TRAITS:
-- item
-
-FUNNY_SERIOUS: 20
-
-FORMAL_CASUAL: 70
-
-RESPECTFUL_IRREVERENT: 90
-
-ENTHUSIASTIC_MATTER_OF_FACT: 75
-
-END
-"""
-
-def _pk7(i):
-
-    pt = "\n\n---\n".join(
-        _strip_invisible(p.get("content",""))[:500]
-        for p in i.get("posts", [])
-    )
-
-    return f"""
-ROLE
-
-Vocabulary System Agent
-
-MISSION
-
-Extract vocabulary system.
-
-DATA
-
-{pt}
-
-RULES
-
-- Extract only.
-- No writing.
-- No explanations.
-- No examples.
-- No markdown.
-
-OUTPUT
-
-WORDS_TO_USE:
-- item
-
-WORDS_TO_AVOID:
-- item
-
-PHRASES_TO_USE:
-- item
-
-PHRASES_TO_AVOID:
-- item
-
-END
-"""
-
 
 # ═══════════════════════════════════════════════════
 # CELL 4: RUN 5 KIENS IN PARALLEL
@@ -724,29 +688,6 @@ async def _k5(i):
         return "LOCATIONS: []\nHOURS: \nMENU_HIGHLIGHTS: []\nUSP: []\n"
 
 
-async def _k6(i):
-    logger.info("[_k6] Calling LLM...")
-    result = await _call_with_language_guard(
-        _pk6,
-        i,
-        1000,
-        "_k6"
-    )
-    return result
-
-
-async def _k7(i):
-    logger.info("[_k7] Calling LLM...")
-    result = await _call_with_language_guard(
-        _pk7,
-        i,
-        1000,
-        "_k7"
-    )
-    return result
-
-
-
 async def run_kiens(data):
     logger.info("[run_kiens] === STARTING 5 KIENS ===")
     inp = prepare_kien_inputs(data)
@@ -759,23 +700,15 @@ async def run_kiens(data):
     )
 
     r = await asyncio.gather(
-        _k1(inp["k1"]),
-        _k2(inp["k2"]),
-        _k3(inp["k3"]),
-        _k4(inp["k4"]),
-        _k5(inp["k5"]),
-        _k6(inp["k6"]),
-        _k7(inp["k7"])
+        asyncio.create_task(_k1(inp["k1"])),
+        asyncio.create_task(_k2(inp["k2"])),
+        asyncio.create_task(_k3(inp["k3"])),
+        asyncio.create_task(_k4(inp["k4"])),
+        asyncio.create_task(_k5(inp["k5"]))
     )
 
     result = {
-        "k1": r[0],
-        "k2": r[1],
-        "k3": r[2],
-        "k4": r[3],
-        "k5": r[4],
-        "k6": r[5],
-        "k7": r[6],
+        "k1": r[0], "k2": r[1], "k3": r[2], "k4": r[3], "k5": r[4],
         "k5_input": inp["k5"]
     }
 
@@ -811,10 +744,94 @@ def _between(t, s, e=None):
         return ""
 
 
+def _phrases(t, prefix):
+    r, found = [], False
+    for line in t.split("\n"):
+        if prefix.lower() in line.lower():
+            found = True
+            continue
+        if found and line.strip().startswith(("- ", "• ", "* ", "1. ", "2. ")):
+            c = line.strip("- •*123456789. ").strip()
+            if c and len(c) > 3:
+                r.append(c)
+        elif found and line.strip() == "":
+            continue
+        elif found and not line.strip().startswith(("-", "•", "*")):
+            break
+    return r[:10]
 
 
+def _slider(t, lo, hi):
+    t = t.lower()
+    patterns = [
+        rf"{lo}[/-]{hi}[^\d]*(\d+)",
+        rf"{hi}[/-]{lo}[^\d]*(\d+)",
+        rf"(?:slider|scale)[^\d]*(\d+)[^\d]*(?:{lo}|{hi})",
+        rf"(?:{lo}|{hi})[^\d]*(\d+)(?:\s*%|\s*/\s*100)?",
+    ]
+    for pat in patterns:
+        m = re.search(pat, t)
+        if m:
+            val = int(m.group(1))
+            if re.search(rf"{hi}[^\d]*" + re.escape(m.group(0).split(str(val))[0][-10:]), t):
+                return min(100, max(0, val))
+            return min(100, max(0, 100 - val))
+    return 50
 
 
+def _clean_personality(k1, bname=None):
+    logger.info(f"[_clean_personality] Cleaning K1 output, length={len(k1)}")
+    stripped = k1.strip()
+
+    # FILTER 1: Drop the trailing block if it contains BUSINESS_FACTS-style data
+    if "MENU:" in stripped or "LOCATIONS:" in stripped or "HOURS:" in stripped:
+        parts = stripped.split("BUSINESS_FACTS:")
+        if len(parts) > 1:
+            stripped = parts[0].strip()
+            logger.info("[_clean_personality] Stripped BUSINESS_FACTS section")
+
+    # FILTER 2: Discard if K1 came back as a numbered list / markdown dump
+    if re.search(r'^\d+\.', stripped, re.M) and stripped.count('\n') > 5:
+        fallback = f"{bname or 'Thương hiệu'} tự hào mang đến trải nghiệm đẳng cấp với sự tận tâm và chất lượng vượt trội."
+        logger.warning("[_clean_personality] K1 is numbered list, using fallback")
+        return fallback
+
+    # FILTER 3: Discard if mostly meaningless repeated words
+    words = stripped.lower().split()
+    if len(words) > 20:
+        unique_ratio = len(set(words)) / len(words)
+        if unique_ratio < 0.3:
+            fallback = f"{bname or 'Thương hiệu'} mang đến trải nghiệm chất lượng, độc đáo và đáng nhớ cho khách hàng."
+            logger.warning(f"[_clean_personality] Low unique ratio ({unique_ratio:.2f}), using fallback")
+            return fallback
+
+    paras = [p.strip() for p in stripped.split("\n\n") if len(p.strip()) > 80]
+    if not paras:
+        paras = [p.strip() for p in stripped.split("\n") if len(p.strip()) > 80]
+
+    best = ""
+    best_score = -1
+    for p in paras:
+        p_words = p.lower().split()
+        if len(p_words) < 10:
+            continue
+        unique_ratio = len(set(p_words)) / len(p_words)
+        repeats = sum(1 for c in Counter(p_words).values() if c > 3)
+        score = unique_ratio - (repeats * 0.1)
+        if score > best_score:
+            best_score = score
+            best = p
+
+    if best_score < 0.5 or not best:
+        s = re.search(
+            r'([^.]*(?:tự hào|linh hồn|khác biệt|điều đặc biệt|đam mê|tâm huyết)[^.]{50,300}\.)',
+            stripped, re.I
+        )
+        best = s.group(1).strip() if s else f"{bname or 'Thương hiệu'} tự hào mang đến trải nghiệm đẳng cấp."
+        logger.info(f"[_clean_personality] Using regex extraction, best_score={best_score}")
+
+    logger.info(f"[_clean_personality] Final personality length={len(best[:800])}")
+    return best[:800]
 
 
 # ═══════════════════════════════════════════════════
@@ -831,7 +848,62 @@ def _pronouns(t):
     return r
 
 
+def _tone_base(t):
+    t = t.lower()
+    sp = ["proud", "humble", "warm", "precise", "grateful", "excited", "passionate", "earnest", "dignified"]
+    found = [w for w in sp if w in t]
+    if found:
+        return [w.title() for w in found[:3]]
+    r = []
+    if any(x in t for x in ["michelin", "vinh danh", "tự hào", "vinh dự", "ngôi sao", "bệ phóng", "đích đến"]):
+        r.append("Proud")
+    if any(x in t for x in ["humble", "khiêm tốn", "tri ân", "cảm ơn", "gật đầu"]):
+        r.append("Humble")
+    if any(x in t for x in ["warm", "ấm cúng", "chào đón", "nhà mộc"]):
+        r.append("Warm")
+    if any(x in t for x in ["grateful", "tri ân", "cảm ơn sâu sắc", "đồng hành"]):
+        r.append("Grateful")
+    if any(x in t for x in ["precise", "chính xác", "chi tiết", "tuyệt đối"]):
+        r.append("Precise")
+    if any(x in t for x in ["excited", "hào hứng", "bùng nổ", "rộn ràng"]):
+        r.append("Excited")
+    return r if r else ["Earnest", "Warm"]
 
+
+def _sig_phrases(k1, k3):
+    logger.info("[_sig_phrases] Extracting signature phrases...")
+    # K1: find lines that start and end with a double quote
+    k1_lines = [
+        l.strip() for l in k1.strip().split("\n")
+        if l.strip().startswith('"') and l.strip().endswith('"')
+    ]
+    q = [l.strip('"') for l in k1_lines if len(l.strip('"')) > 10]
+    logger.info(f"[_sig_phrases] From K1 quotes: {len(q)}")
+
+    # Fallback: try K3 item 8 (signature phrases)
+    if not q:
+        sig_sec = _between(k3, "8.", "9.") or _between(k3, "signature phrases", None) or ""
+        sig_sec = "\n".join(sig_sec.split("\n")[-20:])
+        q = re.findall(r'"([^"]{10,80})"', sig_sec)
+        logger.info(f"[_sig_phrases] From K3: {len(q)}")
+
+    # Last resort: any quoted text inside K1
+    if not q:
+        q = re.findall(r'"([^"]{10,80})"', k1)
+        logger.info(f"[_sig_phrases] From K1 regex: {len(q)}")
+
+    # Deduplicate
+    seen, uniq = set(), []
+    for p in q:
+        cl = p.strip().lower()
+        if any(bad in cl for bad in ["signature", "top 5", "không bao giờ", "dùng:", "phrases:"]):
+            continue
+        if cl not in seen and len(p) > 15:
+            seen.add(cl)
+            uniq.append(p.strip())
+
+    logger.info(f"[_sig_phrases] Final unique phrases: {len(uniq[:5])}")
+    return uniq[:5]
 
 
 def _format_rules(k3):
@@ -861,6 +933,123 @@ _HEADER_LINE_MARKERS = [
 ]
 
 
+def _avoid(k1, k2, k3):
+    logger.info("[_avoid] Extracting words to avoid...")
+    s = (
+        _between(k3, "7.", "8.") or
+        _between(k3, "không bao giờ", "signature") or
+        _between(k3, "avoid", "signature") or
+        ""
+    )
+
+    if not s:
+        for text in [k1, k2]:
+            m = re.search(r'(?:không bao giờ|tránh|không nên|không dùng)[^\n]{10,200}', text, re.I)
+            if m:
+                s = m.group(0)
+                break
+
+    w = []
+    for l in (s or "").split("\n"):
+        # "+" added to the strip set: model sometimes uses "+" as a bullet marker
+        c = l.strip("- •*+123456789. \"'").strip()
+        if not c or len(c) > 30 or len(c) < 3:
+            continue
+        if c.endswith(":"):
+            continue
+        if any(bad in c.lower() for bad in _HEADER_LINE_MARKERS):
+            continue
+        words = c.split()
+        if len(words) >= 1 and all(word[0].isupper() and word.isalpha() for word in words):
+            continue
+        w.append(c)
+
+    if not w:
+        w = ["giá rẻ", "buffet", "khuyến mãi", "sale", "giảm giá sâu"]
+        logger.warning(f"[_avoid] No words found, using fallback: {w}")
+    else:
+        logger.info(f"[_avoid] Found words to avoid: {w}")
+    return w
+
+
+def _cta_phrases(k4):
+    logger.info("[_cta_phrases] Extracting CTA phrases...")
+    CTA_KEYWORDS = ["đặt bàn", "hotline", "inbox", "gọi điện", "đặt ngay", "liên hệ"]
+    r = []
+    # Pattern 1: Quotes with CTA keywords
+    quotes = re.findall(r'"([^"]{5,50})"', k4)
+    for q in quotes:
+        if any(m in q.lower() for m in CTA_KEYWORDS):
+            r.append(q)
+
+    # Pattern 2: Lines with CTA keywords
+    for line in k4.split("\n"):
+        line = line.strip()
+        if line.startswith("**") or line.startswith("- ") or line.startswith("* "):
+            continue
+        low = line.lower()
+        if any(m in low for m in CTA_KEYWORDS):
+            clean = re.sub(r'\*\*([^*]+)\*\*', r'\1', line)
+            clean = clean.strip("- •*+123456789. ").strip()
+            if len(clean) > 60:
+                # Keep the window AROUND the actual CTA keyword instead of
+                # blindly truncating at the first comma (which used to chop
+                # off the real CTA text, e.g. "Nhìn chung, hãy gọi điện..."
+                # was getting truncated down to just "Nhìn chung").
+                low_clean = clean.lower()
+                kw = next((m for m in CTA_KEYWORDS if m in low_clean), None)
+                if kw:
+                    idx = low_clean.find(kw)
+                    start = max(0, idx - 15)
+                    clean = clean[start:start + 60].strip()
+                else:
+                    clean = clean[:60].strip()
+            if 5 < len(clean) < 60:
+                r.append(clean)
+
+    seen, uniq = set(), []
+    for p in r:
+        cl = p.lower().strip('"')
+        if cl not in seen:
+            seen.add(cl)
+            uniq.append(p.strip('"'))
+
+    result = uniq[:5] if uniq else ["Đặt bàn ngay", "Gọi Hotline để giữ chỗ", "Inbox Fanpage"]
+    logger.info(f"[_cta_phrases] Found {len(result)} CTA phrases")
+    return result
+
+
+def _extract_purpose(k1, bname):
+    s = re.search(
+        r'([^.]*(?:tự hào|cam kết|mang đến|sứ mệnh|điều đặc biệt|linh hồn)[^.]{30,200}\.)',
+        k1, re.I
+    )
+    if s:
+        return s.group(1).strip()
+    paras = [p.strip() for p in k1.split("\n\n") if len(p.strip()) > 50]
+    if paras:
+        return paras[0][:200]
+    return f"{bname} mang đến trải nghiệm chất lượng cho khách hàng"
+
+
+# Lines that are about the BRAND'S PRONOUN USAGE rather than about WHO the
+# audience actually is must be excluded — otherwise _extract_audience can
+# return a sentence describing "chúng tôi"/"bạn" pronoun patterns instead of
+# a real audience description.
+_AUDIENCE_EXCLUDE_MARKERS = ["ngôi thứ", "pronoun", "xưng hô"]
+
+
+def _extract_audience(k1, k2):
+    for t in [k1, k2]:
+        for m in re.finditer(
+            r'([^.]*(?:khách hàng|thực khách|đối tượng|target|ai đang tìm|phục vụ)[^.]{30,150}\.)',
+            t, re.I
+        ):
+            candidate = m.group(1).strip()
+            if any(bad in candidate.lower() for bad in _AUDIENCE_EXCLUDE_MARKERS):
+                continue
+            return candidate
+    return "Khách hàng tìm kiếm trải nghiệm chất lượng và đẳng cấp"
 
 
 def _phrases_to_avoid(k1, k2, k3):
@@ -1037,258 +1226,80 @@ def _parse_topics(k3_text: str) -> list:
     return topics[:5]
 
 
-def safe_int(v, default=50):
-    try:
-        if v is None:
-            return default
-
-        if isinstance(v, int):
-            return max(0, min(100, v))
-
-        s = str(v).strip()
-
-        if not s:
-            return default
-
-        m = re.search(r"\d+", s)
-        if not m:
-            return default
-
-        return max(0, min(100, int(m.group())))
-    except Exception:
-        return default
-    
 # ═══════════════════════════════════════════════════
 # CELL 6: AGGREGATOR — Enforce schema
 # ═══════════════════════════════════════════════════
 
-def aggregate(
-    k1,
-    k2,
-    k3,
-    k4,
-    k5,
-    k6,
-    k7,
-    bid,
-    bname,
-    fb=None,
-    k5_input=None
-):
+def aggregate(k1, k2, k3, k4, k5, bid, bname, fb=None, k5_input=None):
     logger.info("[aggregate] === STARTING AGGREGATION ===")
+    logger.info(f"[aggregate] k1 type={type(k1)}, length={len(k1)}")
+    logger.info(f"[aggregate] k2 type={type(k2)}, length={len(k2)}")
+    logger.info(f"[aggregate] k3 type={type(k3)}, length={len(k3)}")
+    logger.info(f"[aggregate] k4 type={type(k4)}, length={len(k4)}")
+    logger.info(f"[aggregate] k5 type={type(k5)}, length={len(k5)}")
+    logger.info(f"[aggregate] k5_input type={type(k5_input)}")
 
     fb = fb or {}
     now = datetime.now(timezone.utc).isoformat()
-
+    sig = _sig_phrases(k1, k3)
+    personality = _clean_personality(k1, bname)[:500]
     bc = _parse_business_context(k5, k5_input)
+    topics = _parse_topics(k3)
 
     result = {
         "id": "05ecf6ad-eb61-45e0-b3f8-6bf2bc916914",
-
-        # ==================================================
-        # CORE
-        # ==================================================
-
         "business_id": bid,
         "name": bname,
-
-        # ==================================================
-        # K1 BRAND DNA
-        # ==================================================
-
-        "purpose":
-            parse_section(k1, "PURPOSE"),
-
-        "personality":
-            parse_section(k1, "PERSONALITY"),
-
-        "taglines":
-            parse_list(k1, "TAGLINES"),
-
-        # ==================================================
-        # K2 AUDIENCE
-        # ==================================================
-
-        "desired_tone":
-            parse_section(k2, "DESIRED_TONE"),
-
-        "target_audience":
-            parse_section(k2, "AUDIENCE"),
-
-        # ==================================================
-        # K3 CONTENT SYSTEM
-        # ==================================================
-
-        "channels":
-            _channels(k3, k4),
-
-        # ==================================================
-        # K5 BUSINESS FACTS
-        # ==================================================
-
-        "business_facts":
-            bc,
-
-        # ==================================================
-        # K6 TONE
-        # ==================================================
-
+        "purpose": "",
+        "channels": _channels(k3, k4),
+        "desired_tone": " ".join(_tone_base(k2)),
+        "target_audience": "",
+        "personality": "",
+        "taglines": sig[:5],
+        "business_facts": bc,
         "tone": {
-            "base":
-                parse_list(k6, "TONE_BASE"),
-
-            "overrides": {
-                "blog_web":
-                    parse_list(k6, "TONE_TRAITS")
-            }
+            "base": _tone_base(k2),
+            "overrides": {"blog_web": _tone_base(k2)}
         },
-
         "style": {
             "sentenceLength": "medium",
             "voice": "active",
             "perspective": "first",
-            "pronouns": {
-                "ai": "Chúng tôi",
-                "reader": "Bạn"
-            }
+            "pronouns": _pronouns(k2)
         },
-
-        # ==================================================
-        # K7 VOCABULARY
-        # ==================================================
-
         "vocabulary": {
-
-            "wordsToUse":
-                parse_list(k7, "WORDS_TO_USE"),
-
-            "wordsToAvoid":
-                parse_list(k7, "WORDS_TO_AVOID"),
-
-            "phrasesToUse":
-                parse_list(k7, "PHRASES_TO_USE"),
-
-            "phrasesToAvoid":
-                parse_list(k7, "PHRASES_TO_AVOID"),
-
-            "topicsToAvoid":
-                parse_list(k7, "TOPICS_TO_AVOID")
+            "wordsToUse": _words_to_use(k1, k3, bname),
+            "wordsToAvoid": _avoid(k1, k2, k3),
+            "phrasesToUse": sig[:5],
+            "phrasesToAvoid": _phrases_to_avoid(k1, k2, k3),
+            "topicsToAvoid": topics
         },
-
-        # ==================================================
-        # FORMAT RULES (K3)
-        # ==================================================
-
-        "format_rules": {
-            "paragraphMaxSentences": 5,
-            "useEmoji":
-                "emoji" in k3.lower(),
-
-            "useHashtags":
-                "hashtag" in k3.lower(),
-
-            "bulletPointStyle":
-                "dash"
-        },
-
-        # ==================================================
-        # CTA (K4)
-        # ==================================================
-
+        "format_rules": _format_rules(k3),
         "cta_style": {
-            "style":
-                parse_section(k4, "CTA_STYLE"),
-
-            "phrases":
-                parse_list(k4, "CTA_PHRASES")
+            "style": "direct" if any(x in k4.lower() for x in ["direct", "mạnh mẽ", "ngay"]) else "mixed",
+            "phrases": _cta_phrases(k4)
         },
-
-        # ==================================================
-        # EXAMPLES
-        # ==================================================
-
         "examples": [{
-            "input":
-                f"Tìm kiếm thông tin về {bname}",
-
-            "output":
-                parse_section(k1, "EXAMPLE_OUTPUT"),
-
-            "contentType":
-                "blog_web"
+            "input": f"Tìm kiếm nhà hàng hải sản tại {bname}",
+            "output": f"{bname.title()} chào đón bạn! {sig[0] if sig else ''} Liên hệ ngay để trải nghiệm hải sản tươi sống.",
+            "contentType": "blog_web"
         }],
-
-        # ==================================================
-        # META
-        # ==================================================
-
-        "website_url":
-            fb.get("url"),
-
+        "website_url": fb.get("url") if fb else None,
         "uploaded_files": [],
-
-        # ==================================================
-        # SLIDERS (K6)
-        # ==================================================
-
-        "tone_funny_serious":
-            safe_int(
-                parse_section(k6, "FUNNY_SERIOUS"),
-                50
-            ),
-
-        "tone_formal_casual":
-            safe_int(
-                parse_section(k6, "FORMAL_CASUAL"),
-                50
-            ),
-
-        "tone_respectful_irreverent":
-            safe_int(
-                parse_section(k6, "RESPECTFUL_IRREVERENT"),
-                50
-            ),
-
-        "tone_enthusiastic_matter_of_fact":
-            safe_int(
-                parse_section(
-                    k6,
-                    "ENTHUSIASTIC_MATTER_OF_FACT"
-                ),
-                50
-            ),
-
-        # ==================================================
-        # SYSTEM
-        # ==================================================
-
+        "tone_funny_serious": _slider(k2, "funny", "serious"),
+        "tone_formal_casual": _slider(k2, "formal", "casual"),
+        "tone_respectful_irreverent": _slider(k2, "irreverent", "respectful"),
+        "tone_enthusiastic_matter_of_fact": _slider(k2, "matter of fact", "enthusiastic"),
         "is_default": "0",
-
         "created_at": now,
         "updated_at": now
     }
 
     logger.info("[aggregate] === AGGREGATION COMPLETE ===")
-
-    logger.info(
-        f"[aggregate] purpose={result['purpose'][:100]}"
-        if result["purpose"] else
-        "[aggregate] purpose empty"
-    )
-
-    logger.info(
-        f"[aggregate] audience={result['target_audience'][:100]}"
-        if result["target_audience"] else
-        "[aggregate] audience empty"
-    )
-
-    logger.info(
-        f"[aggregate] tone_base={result['tone']['base']}"
-    )
-
-    logger.info(
-        f"[aggregate] wordsToUse={len(result['vocabulary']['wordsToUse'])}"
-    )
+    logger.info(f"[aggregate] Result keys: {list(result.keys())}")
+    logger.info(f"[aggregate] business_facts: {result['business_facts']}")
+    logger.info(f"[aggregate] taglines: {result['taglines']}")
+    logger.info(f"[aggregate] tone: {result['tone']}")
 
     return result
 
@@ -1337,15 +1348,6 @@ async def extract_brand_voice(research_record):
 
     ko = await run_kiens(data)
     logger.info("[extract_brand_voice] Kiens complete, aggregating...")
-
-    logger.info("[run_kiens] === run_kiens ===")
-    logger.info(f"K1:\n{ko['k1']}")
-    logger.info(f"K2:\n{ko['k2']}")
-    logger.info(f"K3:\n{ko['k3']}")
-    logger.info(f"K4:\n{ko['k4']}")
-    logger.info(f"K6:\n{ko['k6']}")
-    logger.info(f"K7:\n{ko['k7']}")
-    logger.info("[run_kiens] === run_kiens ===")
 
     st = aggregate(
         ko["k1"], ko["k2"], ko["k3"], ko["k4"], ko["k5"],

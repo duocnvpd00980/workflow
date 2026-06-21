@@ -121,73 +121,115 @@ class WorkflowService:
 
         return session_id
 
+
     async def check_request_ambiguity(
         self,
         request_text: str,
-        brand_id: Optional[str] = None,
-        db: Optional[AsyncSession] = None,
-    ) -> tuple[bool, Optional[dict[str, Any]]]:
-        if _is_trivially_meaningless(request_text):
+        brand_id: str | None = None,
+        db: AsyncSession | None = None,
+        ) -> tuple[bool, dict[str, Any] | None]:
+
+
+        text = (request_text or "").strip()
+
+        # Fast reject bằng rule
+        if _is_trivially_meaningless(text):
             return True, _FALLBACK_CLARIFICATION
 
-        db_session = db or getattr(self, "db", None)
         brand_context = ""
-        if brand_id and db_session:
-            try:
-                from app.brand.brand_voice_prompt import get_brand_context_summary
-                brand_context = await get_brand_context_summary(brand_id, db_session)
-            except Exception as e:
-                logger.warning(f"[AMBIGUITY CHECK] Không lấy được brand context: {e}")
-                brand_context = ""
+        try:
+            db_session = db or getattr(self, "db", None)
 
-        context_block = (
-            f'Bối cảnh thương hiệu: {brand_context}\n\n'
-            if brand_context else ""
-        )
+            if brand_id and db_session:
+                from app.brand.brand_voice_prompt import (
+                    get_brand_context_summary,
+                )
 
-        validation_prompt = f"""
-Bạn là bộ phân loại input.
+                brand_context = (
+                    await get_brand_context_summary(
+                        brand_id,
+                        db_session,
+                    )
+                )
+        except Exception:
+            logger.exception(
+                "[AMBIGUITY] load brand context failed"
+            )
 
-{context_block}
+        prompt = f"""
+        ```
 
-Input:
-"{request_text}"
+        Bạn là bộ phân loại.
 
-NHIỆM VỤ:
-1. Nếu input là chuỗi vô nghĩa, gõ bậy, ký tự ngẫu nhiên => is_vague = true
-2. Nếu input quá ngắn, rỗng, chỉ số hoặc ký tự đặc biệt => is_vague = true
-3. Nếu input là chủ đề, khái niệm, sản phẩm, dịch vụ có thể nhận diện => is_vague = false
-4. Nếu không chắc chắn => is_vague = true
+        {f"Context: {brand_context}" if brand_context else ""}
 
-Chỉ trả về JSON. Không giải thích. Không markdown.
+        Input:
+        {text}
 
-Nếu is_vague = false: {{"is_vague": false}}
-Nếu is_vague = true: {{"is_vague": true, "message": "...", "options": []}}
-"""
+        Luật:
+
+        * VAGUE → vô nghĩa, ký tự rác, không có chủ đề
+        * CLEAR → có thể tạo nội dung dù thiếu chi tiết
+
+        Ví dụ:
+        viết blog về biển -> CLEAR
+        quảng bá spa -> CLEAR
+        123### -> VAGUE
+
+        CHỈ trả:
+        CLEAR
+
+        hoặc
+
+        VAGUE|<message>
+        """.strip()
+
 
         try:
-            groq_response = call_groq(prompt=validation_prompt, max_tokens=500)
-            if groq_response.startswith("[ERROR:"):
-                return True, _FALLBACK_CLARIFICATION
+            import asyncio
 
-            clean_json_str = groq_response.strip()
-            if clean_json_str.startswith("```json"):
-                clean_json_str = clean_json_str.split("```json")[1].split("```")[0].strip()
-            elif clean_json_str.startswith("```"):
-                clean_json_str = clean_json_str.split("```")[1].split("```")[0].strip()
+            resp = await asyncio.to_thread(
+                call_groq,
+                prompt=prompt,
+                max_tokens=60,
+            )
 
-            suggestion_data = json.loads(clean_json_str)
+            result = (resp or "").strip()
 
-            if suggestion_data.get("is_vague") is True:
-                options = suggestion_data.get("options") or _FALLBACK_CLARIFICATION["options"]
-                message = suggestion_data.get("message") or _FALLBACK_CLARIFICATION["message"]
-                return True, {"message": message, "options": options}
+            logger.info(
+                "[AMBIGUITY] input=%s result=%s",
+                text,
+                result,
+            )
+
+            if result.upper().startswith("VAGUE"):
+                parts = result.split("|", 1)
+
+                return (
+                    True,
+                    {
+                        "message": (
+                            parts[1].strip()
+                            if len(parts) > 1
+                            else _FALLBACK_CLARIFICATION["message"]
+                        ),
+                        "options": (
+                            _FALLBACK_CLARIFICATION["options"]
+                        ),
+                    },
+                )
 
             return False, None
 
-        except Exception as e:
-            logger.error(f"[AMBIGUITY CHECK ERROR] {e}")
-            return True, _FALLBACK_CLARIFICATION
+        except Exception:
+            logger.exception(
+                "[AMBIGUITY CHECK FAILED]"
+            )
+
+            return False, None
+
+
+
         
     async def _run_workflow_background(
         self,
@@ -233,43 +275,34 @@ Nếu is_vague = true: {{"is_vague": true, "message": "...", "options": []}}
         finally:
             loop.close()
 
+
     async def _async_run_workflow(
         self,
         session_id: str,
         thread_id: str,
         request: str,
         brand_id: str,
-        group: str,  # ✅ Thêm group
-        function: str,  # ✅ Thêm function
+        group: str,
+        function: str,
         auto_mode: bool,
     ) -> None:
         """
         Logic chạy workflow thực tế.
         """
-        # ✅ Chọn graph động theo group
         graph = get_graph(group)
-        
+
         config = {
-            "configurable": {
-                "thread_id": thread_id
-            },
+            "configurable": {"thread_id": thread_id},
             "run_name": f"{group}_{function}",
-            "tags": [
-                "marketing",
-                group
-            ],
-            "metadata": {
-                "session_id": session_id,
-                "brand_id": brand_id
-            }
+            "tags": ["marketing", group],
+            "metadata": {"session_id": session_id, "brand_id": brand_id},
         }
 
-        logger.info(
-            f"[LANGSMITH] invoke graph | session={session_id}"
-        )
-        draft, status, usage = None, "running", {}
+        logger.info(f"[LANGSMITH] invoke graph | session={session_id}")
 
-        # ✅ State mới theo graph được chọn
+        draft, status, usage = None, "running", {}
+        final_state = {}  # ✅ capture state cuối từ graph
+
         initial_state = {
             "session_id": session_id,
             "brand_id": brand_id,
@@ -318,59 +351,73 @@ Nếu is_vague = true: {{"is_vague": true, "message": "...", "options": []}}
 
         try:
             async for event in graph.astream(initial_state, config=config):
+
+                # ✅ Luôn capture state mới nhất từ mỗi node output
+                for node_name, node_output in event.items():
+                    if node_name != "__interrupt__" and isinstance(node_output, dict):
+                        final_state = node_output
+
                 if "__interrupt__" in event:
                     if auto_mode:
-                        status = "running"
                         result_auto = await graph.ainvoke(
                             Command(resume={"action": "approve"}),
-                            config=config
+                            config=config,
                         )
-                        draft = result_auto.get("draft")
-                        usage = result_auto.get("usage", {})
+                        draft  = result_auto.get("draft")
+                        usage  = result_auto.get("usage", {})
                         status = "completed" if result_auto.get("publish_status") == "published" else "paused"
                         break
 
                     status = "paused"
+                    data   = event["__interrupt__"][0].value
+                    draft  = data.get("draft")
+                    usage  = data.get("usage", {})
 
-                    data = event["__interrupt__"][0].value
-
-                    draft = data.get("draft")
-                    usage = data.get("usage", {})
-
-                    # Lấy state thật từ graph
                     current_state = await graph.aget_state(config)
-
                     if draft:
-                        draft["_graph_state"] = {
-                            **current_state.values
-                        }
-
+                        draft["_graph_state"] = {**current_state.values}
                     break
 
         except Exception as e:
-            status = "error"
+            status    = "error"
             error_msg = str(e)[:50]
 
             async with AsyncSessionLocal() as db:
-                stmt = select(WorkflowSession).filter_by(id=session_id)
+                stmt   = select(WorkflowSession).filter_by(id=session_id)
                 result = await db.execute(stmt)
-                s = result.scalars().first()
+                s      = result.scalars().first()
                 if s:
                     s.status = "error"
-                    s.error = error_msg
+                    s.error  = error_msg
                     await db.commit()
 
             async with AsyncSessionLocal() as db:
                 await fail_task(db, bg_task_id, error_message=error_msg)
             return
 
+        # ✅ Graph kết thúc không qua interrupt → đọc status thật từ final_state
+        if status == "running":
+            graph_status = final_state.get("status")
+            graph_error  = final_state.get("error")
+
+            if graph_status == "failed" or graph_error:
+                status = "failed"
+            else:
+                status = "completed"
+
+            draft = final_state.get("draft")
+            usage = final_state.get("usage", {})
+
         # Cập nhật kết quả cuối cùng
         async with AsyncSessionLocal() as db:
-            stmt = select(WorkflowSession).filter_by(id=session_id)
+            stmt   = select(WorkflowSession).filter_by(id=session_id)
             result = await db.execute(stmt)
-            s = result.scalars().first()
+            s      = result.scalars().first()
             if s:
-                s.status = status
+                # ✅ Không ghi đè nếu blog_handle_error đã set failed/error trước rồi
+                if s.status not in ("failed", "error"):
+                    s.status = status
+
                 s.draft = draft
                 if s.usage:
                     s.usage.update(usage or {})
@@ -379,13 +426,22 @@ Nếu is_vague = true: {{"is_vague": true, "message": "...", "options": []}}
                 flag_modified(s, "usage")
                 await db.commit()
 
+        # Cập nhật background task log
         async with AsyncSessionLocal() as db:
             if status == "paused":
                 await update_task(db, bg_task_id, status="paused", steps_done=2, steps_total=2)
             elif status == "completed":
                 await finish_task(db, bg_task_id, steps_done=2)
-            elif status == "error":
-                await fail_task(db, bg_task_id, error_message=error_msg)
+            elif status in ("failed", "error"):
+                await fail_task(
+                    db,
+                    bg_task_id,
+                    error_message=final_state.get("error") or status,
+                )
+
+
+
+
 
     async def start(self, request: str, brand_id: str, group: str = "blog_web", function: str = "blog_post", auto_mode: bool = False) -> dict:
         """Giữ lại cho backward compatibility."""

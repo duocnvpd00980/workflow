@@ -14,7 +14,7 @@ from langgraph.types import interrupt
 from app.llm_clients import call_gemini_imagen, call_groq
 from app.db import AsyncSessionLocal
 from app.brand.brand_voice_prompt import get_brand_prompt_by_id
-
+from datetime import datetime
 
 # ── IMPORT TẤT CẢ MODELS TRƯỚC KHI DÙNG ──────────────────────────
 import app.business.models
@@ -55,8 +55,6 @@ def _merge_usage(current: dict, tokens: int, node: str) -> dict:
     }
 
 
-
-
 async def _get_brand_prompt_async(brand_id: str, content_type: str, user_input: dict):
     """Helper async để gọi get_brand_prompt_by_id."""
     from app.db import AsyncSessionLocal
@@ -70,11 +68,49 @@ async def _get_brand_prompt_async(brand_id: str, content_type: str, user_input: 
             db=db,
         )
     
+def _compress_research_for_prompt_sync(research_data: dict, max_chars: int = 3200) -> str:
+    """
+    Nén research data thành context string để inject vào prompt.
+    Sync version — gọi được từ bất kỳ đâu.
+    """
+    if not research_data:
+        return ""
     
+    parts = []
+    
+    # SERP insights
+    serp = research_data.get("result", {}).get("serp_data", {})
+    if serp.get("keyword_cluster"):
+        parts.append(f"Từ khóa khách tìm: {', '.join(serp['keyword_cluster'][:5])}")
+    if serp.get("intent"):
+        parts.append(f"Search intent: {', '.join(serp['intent'][:3])}")
+    
+    # Top posts summary
+    posts = research_data.get("posts", [])
+    top_posts = sorted(posts, key=lambda p: len(p.get("content", "")), reverse=True)[:2]
+    for p in top_posts:
+        content = p.get("content", "")[:200].replace("\n", " ")
+        parts.append(f"Bài viết tham khảo: {content}...")
+    
+    # FB brand info
+    fb = research_data.get("result", {}).get("fb_brand", {})
+    if fb.get("intro"):
+        intro = fb["intro"][:300].replace("\n", " ")
+        parts.append(f"Giới thiệu brand: {intro}")
+    
+    result = " | ".join(parts)
+    if len(result) > max_chars:
+        result = result[:max_chars]
+    
+    return result
+
+
+
+
 # ══════════════════════════════════════════════════════════════
 #  BLOG NODES — với LOG chi tiết
 # ══════════════════════════════════════════════════════════════
-_ALLOWED_FUNCTIONS = {"blog_web", "email_sale", "social_media"}
+_ALLOWED_FUNCTIONS = {"blog_post", "email_sale", "social_media"}
 
 
 def blog_prepare(state: dict) -> dict:
@@ -100,7 +136,9 @@ def blog_prepare(state: dict) -> dict:
     image_map  = {"blog_post": True, "product_description": True, "website_copy": False}
     needs_image = image_map.get(function, False)
 
+    
     try:
+        research_context = _compress_research_for_prompt_sync(state.get("research_data", {}))
         user_input = {"topic": user_request, "length": selected_length, "tone": selected_tone}
         
         # Chạy async function trong sync context
@@ -117,6 +155,12 @@ def blog_prepare(state: dict) -> dict:
                 system_prompt = future.result()
         except RuntimeError:
             # Không có event loop → chạy trực tiếp
+            if research_context:
+                user_input["additional_instructions"] = (
+                    user_input.get("additional_instructions", "") 
+                    + f"\n\nNGỮ CẢNH TỪ RESEARCH: {research_context}"
+                )
+
             system_prompt = asyncio.run(_get_brand_prompt_async(brand_id, function, user_input))
         
         print(f"✅ get_brand_prompt_by_id success | prompt length: {len(system_prompt)}")
@@ -129,7 +173,7 @@ def blog_prepare(state: dict) -> dict:
 
     elapsed = round(time.time() - started, 3)
     print(f"⏱️  Elapsed: {elapsed}s | needs_image={needs_image}")
-
+    print(f"------------------------------{system_prompt}---------------------")
     return {
         **state,
         "function":      function,
@@ -143,26 +187,39 @@ def blog_prepare(state: dict) -> dict:
 
 
 
+
+
 def execute_blog_content(state: dict) -> dict:
-    """Viết nội dung — chỉ dùng system_prompt từ blog_prepare."""
+    """Viết nội dung — handle error chuẩn hóa từ Groq."""
+
     print("\n" + "="*60)
     print("🟢 NODE: execute_blog_content")
     print("="*60)
 
-    function       = state.get("function", "blog_post")
-    request        = state.get("request", "")
-    system_prompt  = state.get("system_prompt", "")
+    function = state.get("function", "blog_post")
+    request = state.get("request", "")
+    system_prompt = state.get("system_prompt", "")
     enriched_topic = state.get("enriched_topic", request)
 
     if not system_prompt:
         return {
             **state,
+            "status": "failed",
             "error": "missing_system_prompt",
-            "draft": {"content": "Lỗi: Không có brand prompt.", "metadata": {"type": function, "status": "error"}, "version": 0},
+            "draft": {
+                "content": "",
+                "metadata": {"status": "error"},
+                "version": 0,
+            },
+            "needs_image": False,
         }
 
     if function not in _ALLOWED_FUNCTIONS:
-        return {**state, "error": f"invalid_function: {function}"}
+        return {
+            **state,
+            "status": "failed",
+            "error": f"invalid_function: {function}",
+        }
 
     prompt = _render_prompt(
         f"blog_{function}.j2",
@@ -170,42 +227,86 @@ def execute_blog_content(state: dict) -> dict:
         system_prompt=system_prompt,
     )
 
-    print(f"📝 PROMPT ({len(prompt)} chars):\n{'='*60}\n{prompt}\n{'='*60}")
+    print(f"📝 PROMPT LENGTH: {len(prompt)}")
 
-    raw_text = call_groq(prompt, max_tokens=2000)
+    # 🔥 IMPORTANT: HANDLE EXCEPTION HERE
+    try:
+        raw_text = call_groq(prompt)
 
-    if raw_text.startswith("[ERROR:"):
-        return {**state, "error": raw_text[7:-1]}
+    except PermissionError as e:
+        return {
+            **state,
+            "status": "failed",
+            "error": str(e),
+            "error_type": "auth",
+            "needs_image": False,
+            "draft": {
+                "content": "",
+                "metadata": {"status": "error", "type": "auth"},
+                "version": 0,
+            },
+        }
 
-    # Parse title
+    except TimeoutError as e:
+        return {
+            **state,
+            "status": "failed",
+            "error": str(e),
+            "error_type": "timeout",
+            "needs_image": False,
+        }
+
+    except RuntimeError as e:
+        return {
+            **state,
+            "status": "failed",
+            "error": str(e),
+            "error_type": "runtime",
+            "needs_image": False,
+        }
+
+    # =========================
+    # parse normal output
+    # =========================
+
     title = None
-    for line in raw_text.strip().split('\n'):
+    for line in raw_text.split("\n"):
         s = line.strip()
-        if s.startswith('# '):
-            title = s[2:].strip(); break
-        if s.startswith('## '):
-            title = s[3:].strip(); break
+        if s.startswith("# "):
+            title = s[2:]
+            break
+        if s.startswith("## "):
+            title = s[3:]
+            break
+
     if not title:
-        for line in raw_text.strip().split('\n'):
-            if line.strip():
-                title = line.strip()[:100]; break
+        title = raw_text.strip().split("\n")[0][:100]
 
     images = re.findall(r"\[IMAGE:\s*(.*?)\]", raw_text)
-    print(f"✅ title: {title} | images: {len(images)}")
 
     return {
         **state,
-        "title":   title,
+        "status": "success",
+        "title": title,
         "content": raw_text.strip(),
         "draft": {
             "content": raw_text.strip(),
-            "title":   title,
-            "metadata": {"type": function, "word_count": len(raw_text.split()), "images": images},
+            "title": title,
+            "metadata": {
+                "type": function,
+                "word_count": len(raw_text.split()),
+                "images": images,
+            },
             "version": (state.get("draft") or {}).get("version", 0) + 1,
         },
-        "usage": _merge_usage(state.get("usage", {}), len(raw_text.split()), f"blog_{function}"),
+        "error": None,
+        "error_type": None,
+        "usage": _merge_usage(
+            state.get("usage", {}),
+            len(raw_text.split()),
+            f"blog_{function}"
+        ),
     }
-
 
 
 def execute_blog_image(state: dict) -> dict:
@@ -382,11 +483,11 @@ def blog_save(state: dict) -> dict:
 
 # ── Conditional Edges ───────────────────────────────────────
 
-def blog_needs_visual(state: dict) -> Literal["needs_image", "no_image"]:
-    """Check có cần sinh ảnh không."""
-    needs = state.get("needs_image", False)
-    print(f"🔀 EDGE: blog_needs_visual → {'needs_image' if needs else 'no_image'}")
-    return "needs_image" if needs else "no_image"
+def blog_needs_visual(state: dict):
+    if state.get("status") == "failed":
+        return "error"
+
+    return "needs_image" if state.get("needs_image") else "no_image"
 
 
 def blog_route_after_review(state: dict) -> Literal["approve", "revise"]:
@@ -399,3 +500,64 @@ def blog_route_after_review(state: dict) -> Literal["approve", "revise"]:
         return "revise"
     print(f"🔀 EDGE: blog_route_after_review → approve (fallback)")
     return "approve"
+
+
+async def blog_handle_error(state: dict) -> dict:
+    print("\n" + "="*60)
+    print("🔴 NODE: blog_handle_error")
+    print("="*60)
+
+    session_id = state.get("session_id")
+    error      = state.get("error", "unknown_error")
+    error_type = state.get("error_type", "unknown")
+
+    print(f"   - session_id: {session_id}")
+    print(f"   - error: {error}")
+    print(f"   - error_type: {error_type}")
+
+    # ✅ error column là String(50) — chỉ lưu short code
+    ERROR_CODES = {
+        "GROQ_AUTH_401: Invalid API key or unauthorized": "auth_failed",
+        "missing_system_prompt":  "missing_prompt",
+        "missing_brand_id":       "missing_brand",
+        "brand_db_error":         "db_error",
+        "GROQ_TIMEOUT":           "timeout",
+        "GROQ_RATE_LIMIT":        "rate_limit",
+    }
+    error_code = ERROR_CODES.get(error, error[:50])  # truncate đến 50 ký tự
+
+    if session_id:
+        try:
+            from sqlalchemy import text
+            async with AsyncSessionLocal() as db:
+                await db.execute(
+                    text("""
+                        UPDATE workflow_sessions
+                        SET status         = :status,
+                            error          = :error,
+                            publish_status = :publish_status,
+                            updated_at     = :updated_at
+                        WHERE id = :id
+                    """),
+                    {
+                        "status":         "failed",
+                        "error":          error_code,
+                        "publish_status": "failed",
+                        "updated_at":     datetime.now(),
+                        "id":             session_id,
+                    }
+                )
+                await db.commit()
+                print(f"✅ DB updated: status=failed | error={error_code}")
+        except Exception as e:
+            logger.exception(f"[blog_handle_error] DB update failed: {e}")
+
+    return {
+        **state,
+        "status":         "failed",
+        "publish_status": "failed",
+        "error":          error_code,  # trả về code ngắn
+        "draft":          None,
+    }
+
+

@@ -22,7 +22,6 @@ router = APIRouter(prefix="/marketing", tags=["marketing"])
 service = WorkflowService()
 
 
-
 # ── Helpers ───────────────────────────────────────────────
 
 def _sse(gen) -> StreamingResponse:
@@ -105,16 +104,20 @@ async def create_session():
         200: {"model": ClarificationResponse, "description": "Mơ hồ, trả về các gợi ý."},
     }
 )
-async def start(body: StartRequest, service: WorkflowService = Depends()):
+async def start(body: StartRequest, db: AsyncSession = Depends(get_db)):
     """
     Nhận yêu cầu tạo content và điều hướng luồng xử lý thông qua Service.
     """
-    user_request = body.request.strip()
+    user_request = (body.request or "").strip()
     
     # BƯỚC 1: Gọi Service kiểm tra tính mơ hồ (chỉ chạy ở Lượt 1 khi chưa có option chọn trước)
     if not body.selected_option_text:
-        is_vague, suggestion_data = await service.check_request_ambiguity(user_request)
-        
+        is_vague, suggestion_data = await service.check_request_ambiguity(
+            request_text=user_request,
+            brand_id=body.brand_id,
+            db=db,
+        )
+                
         if is_vague and suggestion_data:
             options = suggestion_data.get("options") or []
             return JSONResponse(

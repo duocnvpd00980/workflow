@@ -35,7 +35,6 @@ from .schemas import (
     BrandListOut,
     BrandOut,
     BrandUpdate,
-    VoiceConfigIn,
 )
 
 logger = logging.getLogger(__name__)
