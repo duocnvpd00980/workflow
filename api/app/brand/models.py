@@ -12,82 +12,54 @@ def _utcnow() -> datetime:
 
 
 class Brand(Base):
-    # Dùng lại tên bảng cũ "brands" để 10 nơi khác (như workflow_sessions) không bị lỗi
     __tablename__ = "brands"
 
-    # ── Primary key ───────────────────────────────────────────────
-    # Dùng lại tên cột "id" thay vì "brand_id" để khớp với Foreign Key cũ
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
-
     business_id = Column(
         String(36),
         ForeignKey("businesses.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
-    metadata_info = Column(JSON, default=dict)
-    
-    # ── Voice config (user nhập) ──────────────────────────────────
-    name            = Column(String(255), nullable=False)   # "Nike Sporty"
-    purpose         = Column(String(500), nullable=False)   # "Bán giày chạy"
-    channels        = Column(JSON,        default=list)     # ["social", "blog"]
-    desired_tone    = Column(String(100), nullable=False)   # "energetic"
-    target_audience = Column(String(500), nullable=False)   # "Runner 20-30 tuổi"
-
-    # ── NEW: Website URL ──────────────────────────────────────────
+    metadata_info = Column(JSON, default=dict, nullable=False)
+    name            = Column(String(255), nullable=False)   
+    purpose = Column(Text, nullable=False)   
+    channels        = Column(JSON,        default=list)     
+    desired_tone    = Column(String(100), nullable=False)   
+    target_audience = Column(Text, nullable=False)  
     website_url = Column(String(2048), nullable=True)
-    
-    # ── 8 fields (LLM extract) ────────────────────────────────────
-    personality  = Column(Text, nullable=False)
-    tone         = Column(JSON, nullable=False)
-    style        = Column(JSON, nullable=False)
-    vocabulary   = Column(JSON, nullable=False)
-    format_rules = Column(JSON, nullable=False)
-    cta_style    = Column(JSON, nullable=False)
-    examples     = Column(JSON, default=list)
-
-    # ── NEW: Brand Voice Enhancement ──────────────────────────────
-    taglines        = Column(JSON, nullable=True)
+    k1_brand_foundation   = Column(Text, nullable=True)  
+    k2_customer_insights  = Column(Text, nullable=True)  
+    k3_content_patterns   = Column(Text, nullable=True)  
+    k4_behavior_rules     = Column(Text, nullable=True)
+    k5_examples           = Column(Text, nullable=True)
+    k6_tone_analysis      = Column(Text, nullable=True)
+    k7_vocabulary_rules   = Column(Text, nullable=True)
+    taglines = Column(JSON, default=list, nullable=True)
     business_facts  = Column(JSON, default=dict, nullable=True)
-
-
-
-    # ── 4 Trục khẩu khí định lượng (0 -> 100) phục vụ Radar & Sliders ──
     tone_funny_serious               = Column(Integer, default=50, nullable=False)
     tone_formal_casual               = Column(Integer, default=50, nullable=False)
     tone_respectful_irreverent       = Column(Integer, default=50, nullable=False)
     tone_enthusiastic_matter_of_fact = Column(Integer, default=50, nullable=False)
-
-    
-    # ── Meta ──────────────────────────────────────────────────────
-    is_default = Column(String(1), default="0")       # "1" = default voice for business
-
+    is_default = Column(String(1), default="0") 
     created_at = Column(DateTime(timezone=True), default=_utcnow, nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
-        default=_utcnow,           # ← Thêm default
-        onupdate=_utcnow,          # ← Sửa onupdate
-        nullable=False,            # ← Thêm nullable=False
+        default=_utcnow,
+        onupdate=_utcnow,
+        nullable=False,
     )
     deleted_at = Column(DateTime(timezone=True), nullable=True)
-
-    # ── Relationships ─────────────────────────────────────────────
-    # Đồng bộ lại back_populates trỏ về "brands" ở phía Business nếu cần
     business = relationship("Business", back_populates="brands")
-
-    # ── Indexes ───────────────────────────────────────────────────
     __table_args__ = (
         Index("idx_bv_business_default", "business_id", "is_default"),
         Index("idx_bv_business_deleted", "business_id", "deleted_at"),
     )
-
-    # ── SQLite: bật CASCADE DELETE via PRAGMA foreign_keys ────────
     @staticmethod
     def _set_sqlite_pragma(connection: Connection, _record) -> None:
         connection.execute("PRAGMA foreign_keys=ON")
 
 
-# ── Helper: đăng ký PRAGMA cho aiosqlite engine ───────────────────
 def register_sqlite_fk_pragma(engine) -> None:
     from sqlalchemy import event as sa_event
 

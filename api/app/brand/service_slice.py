@@ -1,15 +1,10 @@
-# ═══════════════════════════════════════════════════
-# service_slice_fixed.py
-# Refactored & hardened for meta-llama/llama-4-scout-17b-16e-instruct (Groq)
-# ═══════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════
 # CELL 1: IMPORTS
 # ═══════════════════════════════════════════════════
 import json, asyncio, re, logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime, timezone
-from collections import Counter
 from app.llm_clients import call_groq
 
 # Setup logging
@@ -50,9 +45,7 @@ def _is_vietnamese(text: str, min_ratio: float = 0.01) -> bool:
 
 async def _call_with_language_guard(prompt_builder, i, max_tokens, label, retries=1):
     """Call the LLM and force one retry with a stronger Vietnamese reminder
-    if the response comes back predominantly in English. This is the safety
-    net on top of the Vietnamese-anchor prompting technique used in the
-    _pk1..._pk4 builders themselves."""
+    if the response comes back predominantly in English."""
     prompt = prompt_builder(i)
     result = _strip_invisible(call_groq(prompt, max_tokens=max_tokens))
 
@@ -73,27 +66,64 @@ async def _call_with_language_guard(prompt_builder, i, max_tokens, label, retrie
         logger.error(f"[{label}] Still English after {retries} retries, keeping anyway.")
     return result
 
-# ═══════════════════════════════════════════════════
 
-import re
+# ═══════════════════════════════════════════════════
+# CELL 1B: GENERIC LABEL PARSERS
+# Dùng để đọc section "LABEL:\n..." từ output thô của LLM, RỒI render lại
+# thành "# HEADER" Markdown — không build JSON lồng nhau, không mapping
+# phức tạp.
+# ═══════════════════════════════════════════════════
 
 def parse_section(text, section):
     p = rf"{section}:\s*(.*?)(?=\n[A-Z_]+:|\Z)"
     m = re.search(p, text, re.S)
     return m.group(1).strip() if m else ""
 
+
 def parse_list(text, section):
     content = parse_section(text, section)
-
     items = []
-
     for line in content.split("\n"):
         line = line.strip()
-
         if line.startswith("-"):
             items.append(line[1:].strip())
-
     return items
+
+
+def safe_int(v, default=50):
+    try:
+        if v is None:
+            return default
+        if isinstance(v, int):
+            return max(0, min(100, v))
+        s = str(v).strip()
+        if not s:
+            return default
+        m = re.search(r"\d+", s)
+        if not m:
+            return default
+        return max(0, min(100, int(m.group())))
+    except Exception:
+        return default
+
+
+def _bullets(items: List[str]) -> str:
+    """Render 1 list Python -> bullet list Markdown. Rỗng -> chuỗi rỗng."""
+    if not items:
+        return ""
+    return "\n".join(f"- {x}" for x in items)
+
+
+def _render_markdown(blocks: List[tuple]) -> str:
+    """blocks: list[(header, content)] -> 1 Markdown document hoàn chỉnh.
+    Section rỗng bị bỏ qua (không in '# HEADER' rỗng)."""
+    parts = []
+    for header, content in blocks:
+        content = (content or "").strip()
+        if not content:
+            continue
+        parts.append(f"# {header.upper()}\n\n{content}")
+    return "\n\n".join(parts).strip()
 
 
 # ═══════════════════════════════════════════════════
@@ -228,6 +258,7 @@ def prepare_kien_inputs(data):
         },
 
         "k3": {
+            "posts": posts[:10],
             "minimal": m3,
             "full": f3,
             "kc": serp.get("keyword_cluster", []),
@@ -254,14 +285,12 @@ def prepare_kien_inputs(data):
             "name": data.get("task", {}).get("business_name", "")
         },
 
-        # NEW
         "k6": {
             "posts": posts[:20],
             "comments": mc[:20],
             "name": data.get("task", {}).get("business_name", "")
         },
 
-        # NEW
         "k7": {
             "posts": posts[:20],
             "fb": fb_clean[:1000],
@@ -295,10 +324,11 @@ def prepare_kien_inputs(data):
 # tuned mostly on English data and parses structure/instructions more
 # reliably in English. Vietnamese is used as a "language anchor" planted at
 # two strategic points: right after <task> opens (sets the dominant language
-# channel early) and as the very LAST line of the prompt (primes the model
-# right before it starts generating, which matters more than repeating the
-# rule abstractly). All parsing anchors (funny-serious:, PRONOUNS:,
-# LOCATIONS:, "9." + "CHỦ ĐỀ", etc.) are kept verbatim so regex never breaks.
+# channel early) and as the very LAST line of the prompt. All parsing
+# anchors (PURPOSE:, AUDIENCE:, etc.) are kept verbatim — they're consumed
+# by parse_section/parse_list below to build the K1-K7 Markdown documents,
+# so the labels must never change without updating the corresponding
+# _build_kN_markdown() function.
 # ═══════════════════════════════════════════════════
 def _pk1(i):
     fb_text = _strip_invisible(i.get("fb", ""))[:500]
@@ -475,11 +505,11 @@ def _pk4(i):
     return f"""
 ROLE
 
-CTA System Agent
+CTA & Behaviour Rules Agent
 
 MISSION
 
-Extract CTA behaviour.
+Extract how the brand asks readers to take action (CTA behaviour rules).
 
 DATA
 
@@ -520,29 +550,29 @@ def _pk5(i: dict) -> dict:
     fb_intro = fb_brand_data.get("intro", "")
 
     locations = []
-    
+
     if fb_intro:
         # Tìm tất cả các khối bắt đầu bằng dấu ghim cơ sở
         # Quét cho tới khi gặp dấu ghim tiếp theo hoặc các phần text phân tách của FB
         blocks = re.findall(r"(📍\s*Cơ sở.*?)(?=📍|Page|Open now|$)", fb_intro, re.DOTALL)
-        
+
         for block in blocks:
             lines = [line.strip() for line in block.split("\n") if line.strip()]
             if not lines:
                 continue
-                
+
             # Dòng đầu tiên chứa thông tin Cơ sở và Địa chỉ
             addr_line = lines[0]
             # Loại bỏ phần "📍 Cơ sở 1:" hoặc "📍 Cơ sở 2:" để lấy địa chỉ tinh khiết
             addr_clean = re.sub(r"📍\s*Cơ sở\s*\d+\s*:\s*", "", addr_line, flags=re.I).strip()
-            
+
             # Xác định thành phố dựa trên text địa chỉ
             city = ""
             if "Đà Nẵng" in addr_clean or "Da Nang" in addr_clean:
                 city = "Đà Nẵng"
             elif "Nha Trang" in addr_clean:
                 city = "Nha Trang"
-                
+
             # Dòng thứ hai (nếu có) thường chứa Hotline của cơ sở đó
             hotline_clean = ""
             if len(lines) > 1 and "hotline" in lines[1].lower():
@@ -666,10 +696,9 @@ END
 
 
 # ═══════════════════════════════════════════════════
-# CELL 4: RUN 5 KIENS IN PARALLEL
-# max_tokens explicitly set per-call. K1-K4 go through the Vietnamese
-# language guard (prompt-anchor + automatic retry if response drifts into
-# English). K5 is a structured-extraction task, lower risk, no guard needed.
+# CELL 4: RUN 7 KIENS IN PARALLEL
+# K1-K4, K6, K7 go through the Vietnamese language guard. K5 is a
+# structured local-extraction (regex on FB intro), no LLM/guard needed.
 # ═══════════════════════════════════════════════════
 
 async def _k1(i):
@@ -702,53 +731,40 @@ async def _k4(i):
 
 
 async def _k5(i):
+    """Business facts — local regex extraction, không cần LLM.
+    Kết quả vẫn nạp vào cột JSON `business_facts` riêng (không phải Markdown K5)."""
     try:
         extracted_data = _pk5(i)
-        fb_intro = (i.get("fb_brand") or i if isinstance(i, dict) else {}).get("intro", "")
-        hours_match = re.search(r"Giờ mở cửa:\s*([^\n]+)", fb_intro, re.I)
-        hours_str = hours_match.group(1).strip() if hours_match else "10:30AM – 23:45PM"
         locations_json = json.dumps(extracted_data.get("LOCATIONS", []), ensure_ascii=False)
-        
+
         simulated_llm_response = (
             f"LOCATIONS: {locations_json}\n"
-            f"HOURS: {hours_str}\n"
-            f"MENU_HIGHLIGHTS: [\"Hải sản tươi sống\", \"Món ăn đặc sản\"]\n"
-            f"USP: [\"Michelin Guide Recommended\"]\n"
         )
-        
+
         logger.info(f"[_k5] Local extraction complete. Text length: {len(simulated_llm_response)}")
         return simulated_llm_response
 
     except Exception as e:
         logger.error(f"[_k5] Error during local extraction: {str(e)}. Using safe fallback.")
-        return "LOCATIONS: []\nHOURS: \nMENU_HIGHLIGHTS: []\nUSP: []\n"
+        return """
+                LOCATIONS: []
+                """
 
 
 async def _k6(i):
     logger.info("[_k6] Calling LLM...")
-    result = await _call_with_language_guard(
-        _pk6,
-        i,
-        1000,
-        "_k6"
-    )
+    result = await _call_with_language_guard(_pk6, i, 1000, "_k6")
     return result
 
 
 async def _k7(i):
     logger.info("[_k7] Calling LLM...")
-    result = await _call_with_language_guard(
-        _pk7,
-        i,
-        1000,
-        "_k7"
-    )
+    result = await _call_with_language_guard(_pk7, i, 1000, "_k7")
     return result
 
 
-
 async def run_kiens(data):
-    logger.info("[run_kiens] === STARTING 5 KIENS ===")
+    logger.info("[run_kiens] === STARTING 7 KIENS ===")
     inp = prepare_kien_inputs(data)
     logger.info(
         f"[run_kiens] K1:{len(inp['k1']['posts'])} "
@@ -776,136 +792,65 @@ async def run_kiens(data):
         "k5": r[4],
         "k6": r[5],
         "k7": r[6],
-        "k5_input": inp["k5"]
+        "k5_input": inp["k5"],
     }
 
-    logger.info("[run_kiens] === ALL 5 KIENS COMPLETE ===")
-    for k in ["k1", "k2", "k3", "k4", "k5"]:
+    logger.info("[run_kiens] === ALL 7 KIENS COMPLETE ===")
+    for k in ["k1", "k2", "k3", "k4", "k5", "k6", "k7"]:
         logger.info(
             f"[run_kiens] {k} output type={type(result[k])}, "
             f"length={len(result[k]) if isinstance(result[k], str) else 'N/A'}"
         )
-    logger.info(
-        f"[run_kiens] k5_input type={type(result['k5_input'])}, "
-        f"keys={list(result['k5_input'].keys()) if isinstance(result['k5_input'], dict) else 'N/A'}"
-    )
 
     return result
 
 
 # ═══════════════════════════════════════════════════
-# CELL 5A: AGGREGATOR HELPERS — String utils
+# CELL 5: BUSINESS FACTS PARSER (cột JSON riêng, không phải K-doc)
 # ═══════════════════════════════════════════════════
 
-def _between(t, s, e=None):
-    try:
-        i = t.lower().find(s.lower())
-        if i == -1:
-            return ""
-        i += len(s)
-        if e:
-            j = t.lower().find(e.lower(), i)
-            return t[i:j].strip() if j != -1 else t[i:].strip()
-        return t[i:].strip()
-    except Exception:
-        return ""
+def _parse_business_context(k5_text: str, k5_input: dict = None) -> dict:
+    """Parse business facts from K5 local-extraction output + k5_input thô."""
+    logger.info(f"[_parse_business_context] Parsing k5_text length={len(k5_text)}, k5_input type={type(k5_input)}")
 
+    result = {"locations": [], "hours": ""}
 
+    if k5_input:
+        phones = k5_input.get("phones", []) if isinstance(k5_input, dict) else []
+        emails = k5_input.get("emails", []) if isinstance(k5_input, dict) else []
+        domains = k5_input.get("domains", []) if isinstance(k5_input, dict) else []
+    else:
+        phones = emails = domains = []
 
+    if not k5_text:
+        logger.warning("[_parse_business_context] Empty k5_text!")
+        result.update({"phones": phones, "emails": emails, "domains": domains})
+        return result
 
+    loc_match = re.search(r'LOCATIONS:\s*(\[.*?\])', k5_text, re.DOTALL)
+    if loc_match:
+        try:
+            result["locations"] = json.loads(loc_match.group(1))
+        except Exception as e:
+            logger.error(f"[_parse_business_context] Failed to parse locations: {e}")
 
+    usp_match = re.search(r'USP:\s*(\[.*?\])', k5_text, re.DOTALL)
+    if usp_match:
+        try:
+            result["usp"] = json.loads(usp_match.group(1))
+        except Exception as e:
+            logger.error(f"[_parse_business_context] Failed to parse usp: {e}")
 
+    result["phones"] = phones
+    result["emails"] = emails
+    result["domains"] = domains
+    logger.info(f"[_parse_business_context] Final result keys: {list(result.keys())}")
 
-
-# ═══════════════════════════════════════════════════
-# CELL 5B: AGGREGATOR HELPERS — Extractors
-# ═══════════════════════════════════════════════════
-
-def _pronouns(t):
-    t = t.lower()
-    r = {"ai": "Chúng tôi", "reader": "Bạn"}
-    if t.count("nhà mộc") > 2:
-        r["brand_ref"] = "nhà Mộc"
-    elif t.count("mộc quán") > 2:
-        r["brand_ref"] = "Mộc Quán"
-    return r
-
-
-
-
-
-def _format_rules(k3):
-    t = k3.lower()
-    emo_match = re.search(r'(\d+)\s*post.*emoji', t)
-    emo_count = int(emo_match.group(1)) if emo_match else t.count("emoji")
-    hash_match = re.search(r'(\d+)\s*post.*hash', t)
-    hash_count = int(hash_match.group(1)) if hash_match else t.count("hash")
-    bull_match = re.search(r'(\d+)\s*post.*bull', t)
-    bull_count = int(bull_match.group(1)) if bull_match else t.count("bull")
-    result = {
-        "paragraphMaxSentences": 5,
-        "useEmoji": emo_count > 0,
-        "useHashtags": hash_count > 0,
-        "bulletPointStyle": "dash" if bull_count > 0 or "dash" in t or "-" in t else "none"
-    }
-    logger.info(f"[_format_rules] emoji={emo_count>0}, hashtags={hash_count>0}, bullets={bull_count>0}")
     return result
 
 
-# Markers for lines that are headers/preambles the model sometimes leaks
-# into list-style answers (e.g. "Dựa trên dữ liệu ngành:", "Từ không được
-# sử dụng:") instead of pure list items. These must NOT be treated as data.
-_HEADER_LINE_MARKERS = [
-    "không bao giờ", "dùng:", "dụng:", "signature", "top 5", "words", "tránh",
-    "dựa trên", "based on", "từ không", "danh sách", "sau đây", "dưới đây",
-]
-
-
-
-
-def _phrases_to_avoid(k1, k2, k3):
-    logger.info("[_phrases_to_avoid] Extracting phrases to avoid...")
-    for text in [k3, k1, k2]:
-        s = (
-            _between(text, "không bao giờ", "signature") or
-            _between(text, "tránh", "\n\n") or
-            _between(text, "avoid", "\n\n") or
-            ""
-        )
-        if s:
-            phrases = []
-            for l in s.split("\n"):
-                c = l.strip("- •*+123456789. \"'").strip()
-                if not c or not (3 < len(c) < 40):
-                    continue
-                if c.endswith(":"):
-                    continue
-                if any(bad in c.lower() for bad in _HEADER_LINE_MARKERS):
-                    continue
-                phrases.append(c)
-            if phrases:
-                logger.info(f"[_phrases_to_avoid] Found {len(phrases[:5])} phrases")
-                return phrases[:5]
-
-    for text in [k1, k2]:
-        found = re.findall(r'(?:không|tránh)\s+([a-zA-ZÀ-ỹ\s]{3,25})', text, re.I)
-        if found:
-            return [f.strip() for f in found[:5] if len(f.strip()) > 3]
-
-    logger.warning("[_phrases_to_avoid] No phrases found")
-    return []
-
-
-def _words_to_use(k1, k3, bname):
-    sig = _sig_phrases(k1, k3)
-    words = [w for w in sig if len(w.split()) <= 2 and len(w) > 3]
-    if words:
-        return words[:5]
-    return [bname.split()[0] if bname else "thương hiệu"]
-
-
-def _channels(k3, k4):
-    t = (k3 + k4).lower()
+def _channels(k3_raw: str, k4_raw: str) -> List[str]:
+    t = (k3_raw + k4_raw).lower()
     ch = []
     if any(w in t for w in ["facebook", "fanpage", "social", "fb"]):
         ch.append("social")
@@ -918,383 +863,241 @@ def _channels(k3, k4):
     return ch or ["social", "blog"]
 
 
-def _parse_business_context(k5_text: str, k5_input: dict = None) -> dict:
-    """Parse business facts from K5 output + structured k5_input data."""
-    logger.info(f"[_parse_business_context] Parsing k5_text length={len(k5_text)}, k5_input type={type(k5_input)}")
-
-    result = {"locations": [], "hours": "", "menu_highlights": [], "usp": []}
-
-    if k5_input:
-        logger.info(f"[_parse_business_context] k5_input keys: {list(k5_input.keys()) if isinstance(k5_input, dict) else 'N/A'}")
-        phones = k5_input.get("phones", []) if isinstance(k5_input, dict) else []
-        emails = k5_input.get("emails", []) if isinstance(k5_input, dict) else []
-        domains = k5_input.get("domains", []) if isinstance(k5_input, dict) else []
-    else:
-        phones = emails = domains = []
-
-    if not k5_text:
-        logger.warning("[_parse_business_context] Empty k5_text!")
-        result.update({"phones": phones, "emails": emails, "domains": domains})
-        return result
-
-    # Parse LOCATIONS
-    loc_match = re.search(r'LOCATIONS:\s*(\[.*?\])', k5_text, re.DOTALL)
-    if loc_match:
-        try:
-            result["locations"] = json.loads(loc_match.group(1))
-            logger.info(f"[_parse_business_context] Parsed locations: {result['locations']}")
-        except Exception as e:
-            logger.error(f"[_parse_business_context] Failed to parse locations: {e}")
-    else:
-        logger.warning("[_parse_business_context] No LOCATIONS found in k5_text")
-
-    # Parse HOURS
-    hours_match = re.search(r'HOURS:\s*(.+?)(?:\n|$)', k5_text)
-    if hours_match:
-        result["hours"] = hours_match.group(1).strip()
-        logger.info(f"[_parse_business_context] Parsed hours: {result['hours']}")
-    else:
-        logger.warning("[_parse_business_context] No HOURS found in k5_text")
-
-    # Parse MENU_HIGHLIGHTS
-    menu_match = re.search(r'MENU_HIGHLIGHTS:\s*(\[.*?\])', k5_text, re.DOTALL)
-    if menu_match:
-        try:
-            result["menu_highlights"] = json.loads(menu_match.group(1))
-            logger.info(f"[_parse_business_context] Parsed menu: {result['menu_highlights']}")
-        except Exception as e:
-            logger.error(f"[_parse_business_context] Failed to parse menu: {e}")
-    else:
-        logger.warning("[_parse_business_context] No MENU_HIGHLIGHTS found in k5_text")
-
-    # Parse USP
-    usp_match = re.search(r'USP:\s*(\[.*?\])', k5_text, re.DOTALL)
-    if usp_match:
-        try:
-            result["usp"] = json.loads(usp_match.group(1))
-            logger.info(f"[_parse_business_context] Parsed usp: {result['usp']}")
-        except Exception as e:
-            logger.error(f"[_parse_business_context] Failed to parse usp: {e}")
-    else:
-        logger.warning("[_parse_business_context] No USP found in k5_text")
-
-    # Add phones/emails/domains from k5_input
-    result["phones"] = phones
-    result["emails"] = emails
-    result["domains"] = domains
-    logger.info(f"[_parse_business_context] Final result keys: {list(result.keys())}")
-
-    return result
-
-
-def _parse_topics(k3_text: str) -> list:
-    """Parse topicsToAvoid from K3 item 9.
-
-    Termination is explicit: the section ends as soon as we hit another
-    numbered heading (e.g. '10.') or two consecutive blank lines, so we
-    never keep ingesting unrelated trailing content.
-    """
-    logger.info("[_parse_topics] Extracting topics to avoid...")
-    lines = k3_text.split("\n")
-    topics = []
-    in_section = False
-    blank_streak = 0
-
-    for line in lines:
-        if "9." in line and "CHỦ ĐỀ" in line:
-            in_section = True
-            blank_streak = 0
-            continue
-
-        if not in_section:
-            continue
-
-        stripped = line.strip()
-
-        # Stop at the next numbered heading (e.g. "10. ...")
-        if re.match(r'^\d+\.\s', stripped):
-            break
-
-        # Stop after two consecutive blank lines (clear end-of-section signal)
-        if not stripped:
-            blank_streak += 1
-            if blank_streak >= 2:
-                break
-            continue
-        blank_streak = 0
-
-        # "+" added to the strip set: model sometimes uses "+" as a bullet marker
-        clean = stripped.strip("- •*+123456789. ").strip()
-        if clean.endswith(":"):
-            continue
-        if clean and 3 < len(clean) < 100:
-            if any(bad in clean.lower() for bad in
-                   ["chủ đề tuyệt đối", "dưới đây là", "không được nhắc", "dựa trên"]):
-                continue
-            topics.append(clean)
-
-    logger.info(f"[_parse_topics] Found {len(topics[:5])} topics")
-    return topics[:5]
-
-
-def safe_int(v, default=50):
-    try:
-        if v is None:
-            return default
-
-        if isinstance(v, int):
-            return max(0, min(100, v))
-
-        s = str(v).strip()
-
-        if not s:
-            return default
-
-        m = re.search(r"\d+", s)
-        if not m:
-            return default
-
-        return max(0, min(100, int(m.group())))
-    except Exception:
-        return default
-    
 # ═══════════════════════════════════════════════════
-# CELL 6: AGGREGATOR — Enforce schema
+# CELL 6: K1 → K7 MARKDOWN BUILDERS
+# Mỗi hàm nhận raw LLM output (label-based) và trả về 1 Markdown document
+# hoàn chỉnh — KHÔNG build JSON lồng nhau, KHÔNG mapping field phức tạp.
+# ═══════════════════════════════════════════════════
+
+def _build_k1_markdown(k1_raw: str) -> tuple:
+    """K1 — Brand Foundation: PURPOSE / PERSONALITY / PRODUCTS / TAGLINES."""
+    purpose = parse_section(k1_raw, "PURPOSE")
+    personality = parse_section(k1_raw, "PERSONALITY")
+    products = parse_list(k1_raw, "PRODUCTS_SERVICES")
+    taglines = parse_list(k1_raw, "TAGLINES")
+
+    md = _render_markdown([
+        ("PURPOSE", purpose),
+        ("PERSONALITY", personality),
+        ("PRODUCTS", _bullets(products)),
+        ("TAGLINES", _bullets(taglines)),
+    ])
+    return md, purpose, taglines
+
+
+def _build_k2_markdown(k2_raw: str) -> tuple:
+    """K2 — Customer Insights: AUDIENCE / PAIN POINTS / CUSTOMER REQUESTS."""
+    audience = parse_section(k2_raw, "AUDIENCE")
+    pain_points = parse_list(k2_raw, "PAIN_POINTS")
+    customer_requests = parse_list(k2_raw, "CUSTOMER_REQUESTS")
+    customer_topics = parse_list(k2_raw, "CUSTOMER_TOPICS")
+    customer_sentiment = parse_list(k2_raw, "CUSTOMER_SENTIMENT")
+
+    md = _render_markdown([
+        ("AUDIENCE", audience),
+        ("PAIN POINTS", _bullets(pain_points)),
+        ("CUSTOMER REQUESTS", _bullets(customer_requests)),
+        ("CUSTOMER TOPICS", _bullets(customer_topics)),
+        ("CUSTOMER SENTIMENT", _bullets(customer_sentiment)),
+    ])
+    return md, audience
+
+
+def _build_k3_markdown(k3_raw: str) -> str:
+    """K3 — Content Patterns: CONTENT TOPICS / CTA PATTERNS / CONTENT FORMATS."""
+    content_topics = parse_list(k3_raw, "CONTENT_TOPICS")
+    cta_patterns = parse_list(k3_raw, "COMMON_CTA")
+    content_formats = parse_list(k3_raw, "CONTENT_FORMATS")
+    content_patterns = parse_list(k3_raw, "CONTENT_PATTERNS")
+    format_rules = parse_section(k3_raw, "FORMAT_RULES")
+
+    return _render_markdown([
+        ("CONTENT TOPICS", _bullets(content_topics)),
+        ("CTA PATTERNS", _bullets(cta_patterns)),
+        ("CONTENT FORMATS", _bullets(content_formats)),
+        ("CONTENT PATTERNS", _bullets(content_patterns)),
+        ("FORMAT RULES", format_rules),
+    ])
+
+
+def _build_k4_markdown(k4_raw: str) -> str:
+    """K4 — Behavior Rules: cách brand kêu gọi hành động (CTA behaviour)."""
+    cta_style = parse_section(k4_raw, "CTA_STYLE")
+    cta_phrases = parse_list(k4_raw, "CTA_PHRASES")
+    contact_actions = parse_list(k4_raw, "CONTACT_ACTIONS")
+    most_repeated = parse_section(k4_raw, "MOST_REPEATED_CTA")
+
+    return _render_markdown([
+        ("CTA STYLE", cta_style),
+        ("CTA PHRASES", _bullets(cta_phrases)),
+        ("CONTACT ACTIONS", _bullets(contact_actions)),
+        ("MOST REPEATED CTA", most_repeated),
+    ])
+
+
+def _build_k5_examples_markdown(posts: list, max_examples: int = 5) -> str:
+    """K5 — Examples: lấy NGUYÊN VĂN các post tiêu biểu nhất của brand làm
+    ví dụ thật, không qua LLM (tránh bịa nội dung không có thật)."""
+    chosen = _k1_posts(posts)[:max_examples]
+    if not chosen:
+        return ""
+
+    parts = ["# EXAMPLES"]
+    for idx, p in enumerate(chosen, start=1):
+        content = _strip_invisible(p.get("content", "")).strip()
+        if not content:
+            continue
+        parts.append(f"\n## Example {idx}\n\n{content}")
+
+    return "\n".join(parts).strip()
+
+
+def _build_k6_markdown(k6_raw: str) -> tuple:
+    """K6 — Tone Analysis: TONE_BASE / TONE_TRAITS / 4 trục slider."""
+    tone_base = parse_list(k6_raw, "TONE_BASE")
+    tone_traits = parse_list(k6_raw, "TONE_TRAITS")
+
+    funny_serious = safe_int(parse_section(k6_raw, "FUNNY_SERIOUS"))
+    formal_casual = safe_int(parse_section(k6_raw, "FORMAL_CASUAL"))
+    respectful_irreverent = safe_int(parse_section(k6_raw, "RESPECTFUL_IRREVERENT"))
+    enthusiastic_matter_of_fact = safe_int(parse_section(k6_raw, "ENTHUSIASTIC_MATTER_OF_FACT"))
+
+    sliders_md = (
+        f"- Funny ↔ Serious: {funny_serious}\n"
+        f"- Formal ↔ Casual: {formal_casual}\n"
+        f"- Respectful ↔ Irreverent: {respectful_irreverent}\n"
+        f"- Enthusiastic ↔ Matter-of-fact: {enthusiastic_matter_of_fact}"
+    )
+
+    md = _render_markdown([
+        ("TONE BASE", _bullets(tone_base)),
+        ("TONE TRAITS", _bullets(tone_traits)),
+        ("TONE SLIDERS", sliders_md),
+    ])
+
+    sliders = {
+        "tone_funny_serious": funny_serious,
+        "tone_formal_casual": formal_casual,
+        "tone_respectful_irreverent": respectful_irreverent,
+        "tone_enthusiastic_matter_of_fact": enthusiastic_matter_of_fact,
+    }
+    return md, tone_base, sliders
+
+
+def _build_k7_markdown(k7_raw: str) -> str:
+    """K7 — Vocabulary Rules: WORDS_TO_USE / WORDS_TO_AVOID / PHRASES_*."""
+    words_to_use = parse_list(k7_raw, "WORDS_TO_USE")
+    words_to_avoid = parse_list(k7_raw, "WORDS_TO_AVOID")
+    phrases_to_use = parse_list(k7_raw, "PHRASES_TO_USE")
+    phrases_to_avoid = parse_list(k7_raw, "PHRASES_TO_AVOID")
+
+    return _render_markdown([
+        ("WORDS TO USE", _bullets(words_to_use)),
+        ("WORDS TO AVOID", _bullets(words_to_avoid)),
+        ("PHRASES TO USE", _bullets(phrases_to_use)),
+        ("PHRASES TO AVOID", _bullets(phrases_to_avoid)),
+    ])
+
+
+# ═══════════════════════════════════════════════════
+# CELL 7: AGGREGATOR — Brand Markdown-first schema
 # ═══════════════════════════════════════════════════
 
 def aggregate(
-    k1,
-    k2,
-    k3,
-    k4,
-    k5,
-    k6,
-    k7,
-    bid,
-    bname,
+    k1, k2, k3, k4, k5, k6, k7,
+    bid, bname,
     fb=None,
-    k5_input=None
-):
-    logger.info("[aggregate] === STARTING AGGREGATION ===")
+    k5_input=None,
+    posts=None,
+) -> Dict[str, Any]:
+    """Build dict đúng schema Brand mới: K1-K7 Markdown + field có cấu trúc
+    (purpose/target_audience/desired_tone/channels/taglines/business_facts/
+    4 trục tone). Không build JSON lồng nhau cho voice (personality/style/
+    vocabulary/format_rules/cta_style/examples) — các field đó đã bị xoá."""
+    logger.info("[aggregate] === STARTING AGGREGATION (Markdown-first) ===")
 
     fb = fb or {}
+    posts = posts or []
     now = datetime.now(timezone.utc).isoformat()
 
-    bc = _parse_business_context(k5, k5_input)
+    # ── K1: Brand Foundation ────────────────────────────────────────
+    k1_md, purpose, taglines = _build_k1_markdown(k1)
+
+    # ── K2: Customer Insights ───────────────────────────────────────
+    k2_md, audience = _build_k2_markdown(k2)
+
+    # ── K3: Content Patterns ─────────────────────────────────────────
+    k3_md = _build_k3_markdown(k3)
+
+    # ── K4: Behavior Rules ───────────────────────────────────────────
+    k4_md = _build_k4_markdown(k4)
+
+    # ── K5: Examples (verbatim post thật, không qua LLM) ─────────────
+    k5_md = _build_k5_examples_markdown(posts)
+
+    # ── K6: Tone Analysis + 4 trục slider ────────────────────────────
+    k6_md, tone_base, sliders = _build_k6_markdown(k6)
+
+    # ── K7: Vocabulary Rules ──────────────────────────────────────────
+    k7_md = _build_k7_markdown(k7)
+
+    # ── Business facts (JSON field riêng, không phải K-doc) ──────────
+    business_facts = _parse_business_context(k5, k5_input)
+
+    # ── Channels (dựa trên raw text K3 + K4, giữ logic cũ) ────────────
+    channels = _channels(k3, k4)
+
+    # ── desired_tone: tóm tắt ngắn từ TONE_BASE (K6) ──────────────────
+    desired_tone = ", ".join(tone_base[:3]) if tone_base else "Chuyên nghiệp"
 
     result = {
-        "id": "05ecf6ad-eb61-45e0-b3f8-6bf2bc916914",
-
-        # ==================================================
-        # CORE
-        # ==================================================
-
         "business_id": bid,
         "name": bname,
 
-        # ==================================================
-        # K1 BRAND DNA
-        # ==================================================
+        # ── Structured fields (giữ lại) ───────────────────────────────
+        "purpose": purpose or "Tăng trưởng kinh doanh và nhận diện thương hiệu",
+        "target_audience": audience or "Khách hàng mục tiêu",
+        "desired_tone": desired_tone,
+        "channels": channels,
+        "taglines": taglines,
+        "business_facts": business_facts,
 
-        "purpose":
-            parse_section(k1, "PURPOSE"),
+        "website_url": fb.get("url"),
 
-        "personality":
-            parse_section(k1, "PERSONALITY"),
+        # ── K1 → K7: AI Knowledge Base (Markdown) ─────────────────────
+        "k1_brand_foundation": k1_md or None,
+        "k2_customer_insights": k2_md or None,
+        "k3_content_patterns": k3_md or None,
+        "k4_behavior_rules": k4_md or None,
+        "k5_examples": k5_md or None,
+        "k6_tone_analysis": k6_md or None,
+        "k7_vocabulary_rules": k7_md or None,
 
-        "taglines":
-            parse_list(k1, "TAGLINES"),
+        # ── 4 trục tone (Radar & Sliders) ──────────────────────────────
+        **sliders,
 
-        # ==================================================
-        # K2 AUDIENCE
-        # ==================================================
-
-        "desired_tone":
-            parse_section(k2, "DESIRED_TONE"),
-
-        "target_audience":
-            parse_section(k2, "AUDIENCE"),
-
-        # ==================================================
-        # K3 CONTENT SYSTEM
-        # ==================================================
-
-        "channels":
-            _channels(k3, k4),
-
-        # ==================================================
-        # K5 BUSINESS FACTS
-        # ==================================================
-
-        "business_facts":
-            bc,
-
-        # ==================================================
-        # K6 TONE
-        # ==================================================
-
-        "tone": {
-            "base":
-                parse_list(k6, "TONE_BASE"),
-
-            "overrides": {
-                "blog_web":
-                    parse_list(k6, "TONE_TRAITS")
-            }
-        },
-
-        "style": {
-            "sentenceLength": "medium",
-            "voice": "active",
-            "perspective": "first",
-            "pronouns": {
-                "ai": "Chúng tôi",
-                "reader": "Bạn"
-            }
-        },
-
-        # ==================================================
-        # K7 VOCABULARY
-        # ==================================================
-
-        "vocabulary": {
-
-            "wordsToUse":
-                parse_list(k7, "WORDS_TO_USE"),
-
-            "wordsToAvoid":
-                parse_list(k7, "WORDS_TO_AVOID"),
-
-            "phrasesToUse":
-                parse_list(k7, "PHRASES_TO_USE"),
-
-            "phrasesToAvoid":
-                parse_list(k7, "PHRASES_TO_AVOID"),
-
-            "topicsToAvoid":
-                parse_list(k7, "TOPICS_TO_AVOID")
-        },
-
-        # ==================================================
-        # FORMAT RULES (K3)
-        # ==================================================
-
-        "format_rules": {
-            "paragraphMaxSentences": 5,
-            "useEmoji":
-                "emoji" in k3.lower(),
-
-            "useHashtags":
-                "hashtag" in k3.lower(),
-
-            "bulletPointStyle":
-                "dash"
-        },
-
-        # ==================================================
-        # CTA (K4)
-        # ==================================================
-
-        "cta_style": {
-            "style":
-                parse_section(k4, "CTA_STYLE"),
-
-            "phrases":
-                parse_list(k4, "CTA_PHRASES")
-        },
-
-        # ==================================================
-        # EXAMPLES
-        # ==================================================
-
-        "examples": [{
-            "input":
-                f"Tìm kiếm thông tin về {bname}",
-
-            "output":
-                parse_section(k1, "EXAMPLE_OUTPUT"),
-
-            "contentType":
-                "blog_web"
-        }],
-
-        # ==================================================
-        # META
-        # ==================================================
-
-        "website_url":
-            fb.get("url"),
-
-        "uploaded_files": [],
-
-        # ==================================================
-        # SLIDERS (K6)
-        # ==================================================
-
-        "tone_funny_serious":
-            safe_int(
-                parse_section(k6, "FUNNY_SERIOUS"),
-                50
-            ),
-
-        "tone_formal_casual":
-            safe_int(
-                parse_section(k6, "FORMAL_CASUAL"),
-                50
-            ),
-
-        "tone_respectful_irreverent":
-            safe_int(
-                parse_section(k6, "RESPECTFUL_IRREVERENT"),
-                50
-            ),
-
-        "tone_enthusiastic_matter_of_fact":
-            safe_int(
-                parse_section(
-                    k6,
-                    "ENTHUSIASTIC_MATTER_OF_FACT"
-                ),
-                50
-            ),
-
-        # ==================================================
-        # SYSTEM
-        # ==================================================
-
+        # ── System ──────────────────────────────────────────────────────
         "is_default": "0",
-
         "created_at": now,
-        "updated_at": now
+        "updated_at": now,
     }
 
-    logger.info("[aggregate] === AGGREGATION COMPLETE ===")
-
+    logger.info("[aggregate] === AGGREGATION COMPLETE (Markdown-first) ===")
+    logger.info(f"[aggregate] purpose={result['purpose'][:100]}")
+    logger.info(f"[aggregate] target_audience={result['target_audience'][:100]}")
+    logger.info(f"[aggregate] channels={result['channels']}")
     logger.info(
-        f"[aggregate] purpose={result['purpose'][:100]}"
-        if result["purpose"] else
-        "[aggregate] purpose empty"
+        f"[aggregate] K-docs lengths: "
+        f"k1={len(k1_md)} k2={len(k2_md)} k3={len(k3_md)} k4={len(k4_md)} "
+        f"k5={len(k5_md)} k6={len(k6_md)} k7={len(k7_md)}"
     )
-
-    logger.info(
-        f"[aggregate] audience={result['target_audience'][:100]}"
-        if result["target_audience"] else
-        "[aggregate] audience empty"
-    )
-
-    logger.info(
-        f"[aggregate] tone_base={result['tone']['base']}"
-    )
-
-    logger.info(
-        f"[aggregate] wordsToUse={len(result['vocabulary']['wordsToUse'])}"
-    )
+    logger.info(f"[aggregate] sliders={sliders}")
 
     return result
 
 
 # ═══════════════════════════════════════════════════
-# CELL 7: MAIN — Run from data → brand_voice_state
+# CELL 8: MAIN — Run from data → Brand fields (K1-K7 Markdown)
 # ═══════════════════════════════════════════════════
 
 async def extract_brand_voice(research_record):
@@ -1302,7 +1105,6 @@ async def extract_brand_voice(research_record):
 
     result = research_record["result"]
     logger.info(f"[extract_brand_voice] result type={type(result)}")
-    logger.info(f"[extract_brand_voice] result keys={list(result.keys()) if isinstance(result, dict) else 'N/A'}")
 
     data = {
         "task": {
@@ -1338,27 +1140,19 @@ async def extract_brand_voice(research_record):
     ko = await run_kiens(data)
     logger.info("[extract_brand_voice] Kiens complete, aggregating...")
 
-    logger.info("[run_kiens] === run_kiens ===")
-    logger.info(f"K1:\n{ko['k1']}")
-    logger.info(f"K2:\n{ko['k2']}")
-    logger.info(f"K3:\n{ko['k3']}")
-    logger.info(f"K4:\n{ko['k4']}")
-    logger.info(f"K6:\n{ko['k6']}")
-    logger.info(f"K7:\n{ko['k7']}")
-    logger.info("[run_kiens] === run_kiens ===")
-
     st = aggregate(
-        ko["k1"], ko["k2"], ko["k3"], ko["k4"], ko["k5"],
+        ko["k1"], ko["k2"], ko["k3"], ko["k4"], ko["k5"], ko["k6"], ko["k7"],
         data["task"]["business_id"],
         data["task"]["business_name"],
         data["result"].get("fb_brand", {}),
-        ko.get("k5_input")
+        ko.get("k5_input"),
+        data["posts"],
     )
 
     logger.info("[extract_brand_voice] === COMPLETE ===")
     logger.info(
-        f"[extract_brand_voice] Tone: {st['tone']['base']} | "
-        f"Sliders: f={st['tone_funny_serious']} fo={st['tone_formal_casual']} "
+        f"[extract_brand_voice] Sliders: "
+        f"f={st['tone_funny_serious']} fo={st['tone_formal_casual']} "
         f"r={st['tone_respectful_irreverent']} e={st['tone_enthusiastic_matter_of_fact']}"
     )
 
