@@ -1,13 +1,13 @@
 """
 services/brand_voice_prompt.py
 ────────────────────────────────
-Build system prompt cho content generation từ Brand data.
+Build system prompt cho content generation từ Brand data phẳng (Flat DB Model).
 
 Usage:
     from app.brand_voice.services.brand_voice_prompt import build_system_prompt
 
     prompt = await build_system_prompt(
-        brand_voice=bv_dict,
+        brand_voice=bv_flat_dict,
         content_type="blog_web",
         user_input={"topic": "Ra mắt sản phẩm mới", "keywords": ["bền vững", "đột phá"]},
     )
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 _TEMPLATE_DIR = os.path.join(os.path.dirname(__file__))
 _TEMPLATE_FILE = "brand_voice_prompt.j2"
 
-ContentType = Literal["blog_web", "email_sale", "social_media", "ad","landing_page", "other"] 
+ContentType = Literal["blog_web", "email_sale", "social_media", "ad", "landing_page", "other"] 
 
 
 @lru_cache(maxsize=1)
@@ -52,93 +52,119 @@ def _get_template() -> Template:
 
 
 # ═══════════════════════════════════════════════════════════════════
-# HELPER — normalize brand_voice dict
+# HELPER PARSER — Bóc tách danh sách từ Markdown thô (K4, K7)
 # ═══════════════════════════════════════════════════════════════════
 
-def _normalize_brand_voice(brand_voice: Dict[str, Any]) -> Dict[str, Any]:
+def _parse_markdown_list(markdown_text: str | None, section_title: str) -> list[str]:
+    """Tìm tiêu đề trong chuỗi Markdown và bóc các dòng dấu gạch đầu dòng (-) bên dưới."""
+    if not markdown_text:
+        return []
+    lines = markdown_text.split("\n")
+    result = []
+    in_section = False
+
+    for line in lines:
+        cleaned = line.strip()
+        if cleaned.startswith("#") or cleaned.startswith("##") or cleaned.startswith("**"):
+            if section_title.upper() in cleaned.upper():
+                in_section = True
+                continue
+            else:
+                in_section = False
+        
+        if in_section and cleaned.startswith("-"):
+            item = cleaned.replace("-", "", 1).strip()
+            if item:
+                result.append(item.strip('"').strip("'"))
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════
+# DATA PIPELINE — Chuẩn hóa Flat Dict trực tiếp từ DB
+# ═══════════════════════════════════════════════════════════════════
+
+def _normalize_flat_brand_voice(bv_flat: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Đảm bảo brand_voice dict có đúng shape mà template cần.
-    Hỗ trợ cả Pydantic model (.model_dump()) lẫn raw dict từ DB (JSON columns).
+    Pipeline xử lý dữ liệu phẳng (Flat Data). No more nested JSON dict loops!
+    Nhận vào flat dict từ DB Model và map mượt mà sang đầu ra cho Jinja2.
     """
-    bv = dict(brand_voice)
+    # 1. Bóc tách tập từ vựng từ phân hệ K7 Markdown
+    k7 = bv_flat.get("k7_vocabulary_rules")
+    bv_flat["words_to_use"] = _parse_markdown_list(k7, "WORDS TO USE")
+    bv_flat["words_to_avoid"] = _parse_markdown_list(k7, "WORDS TO AVOID")
+    bv_flat["phrases_to_use"] = _parse_markdown_list(k7, "PHRASES TO USE")
+    bv_flat["phrases_to_avoid"] = _parse_markdown_list(k7, "PHRASES TO AVOID")
+    bv_flat["topics_to_avoid"] = _parse_markdown_list(k7, "TOPICS TO AVOID")
+    
+    # 2. Bóc tách các câu kêu gọi hành động mẫu từ phân hệ K4 Markdown
+    bv_flat["cta_phrases"] = _parse_markdown_list(bv_flat.get("k4_behavior_rules"), "CTA PHRASES")
 
-    # tone.overrides phải là dict, không phải None
-    tone = bv.get("tone") or {}
-    if not isinstance(tone.get("overrides"), dict):
-        tone["overrides"] = {}
-    bv["tone"] = tone
+    # 3. Chuẩn hóa desired_tone chuỗi thô từ DB thành List để Jinja2 dễ loop/join
+    dt = bv_flat.get("desired_tone")
+    if isinstance(dt, str) and dt:
+        bv_flat["base_tones"] = [t.strip() for t in dt.split(",") if t.strip()]
+    else:
+        bv_flat["base_tones"] = [dt] if dt else ["Thân thiện"]
 
-    # style defaults
-    style = bv.get("style") or {}
-    style.setdefault("sentenceLength", "medium")
-    style.setdefault("voice", "active")
-    style.setdefault("perspective", "second")
-    style.setdefault("pronouns", {"ai": "Chúng tôi", "reader": "Quý khách"})
-    bv["style"] = style
+    # 4. Chuẩn hóa triệt để cấu trúc business_facts['locations'] dạng đa hình (String hoặc Dict)
+    bf = bv_flat.get("business_facts") or {}
+    if not isinstance(bf, dict):
+        bf = {}
+    
+    raw_locations = bf.get("locations") or []
+    normalized_locs = []
+    brand_phones = bf.get("phones") or []
+    primary_hotline = brand_phones[0] if (isinstance(brand_phones, list) and brand_phones) else ""
 
-    # vocabulary defaults
-    vocab = bv.get("vocabulary") or {}
-    for key in ("wordsToUse", "wordsToAvoid", "phrasesToUse", "phrasesToAvoid", "topicsToAvoid"):  # ← thêm topicsToAvoid
-        vocab.setdefault(key, [])
-    bv["vocabulary"] = vocab
+    for loc in raw_locations:
+        if isinstance(loc, str):
+            normalized_locs.append({"address": loc.strip(), "city": "", "hotline": primary_hotline})
+        elif isinstance(loc, dict):
+            normalized_locs.append({
+                "address": loc.get("address") or loc.get("raw_text") or "",
+                "city": loc.get("city") or "",
+                "hotline": loc.get("hotline") or primary_hotline
+            })
+    bf["locations"] = normalized_locs
+    bv_flat["business_facts"] = bf
 
-    # format_rules defaults
-    fmt = bv.get("format_rules") or {}
-    fmt.setdefault("paragraphMaxSentences", 4)
-    fmt.setdefault("useEmoji", False)
-    fmt.setdefault("useHashtags", False)
-    fmt.setdefault("bulletPointStyle", "none")
-    bv["format_rules"] = fmt
+    # 5. Tự động bật/tắt định dạng theo đặc thù kênh truyền thông (channels)
+    channels_str = str(bv_flat.get("channels") or []).upper()
+    bv_flat["is_social_channel"] = any(x in channels_str for x in ["FACEBOOK", "SOCIAL", "INSTAGRAM", "TIKTOK"])
 
-    # cta_style defaults
-    cta = bv.get("cta_style") or {}
-    cta.setdefault("style", "none")
-    cta.setdefault("phrases", [])
-    bv["cta_style"] = cta
-
-    # examples: list of dicts with contentType
-    bv.setdefault("examples", [])
-    bv.setdefault("personality", "")
-
-    # ═══════════════════════════════════════════════════════════════════
-    # TẦNG DỊCH THUẬT (TRANSLATION LAYER) — Trả ra mảng string cho Jinja2
-    # ═══════════════════════════════════════════════════════════════════
-        # ═══════════════════════════════════════════════════════════════════
-    # TẦNG DỊCH THUẬT (TRANSLATION LAYER) — MANDATES cho Jinja2
-    # ═══════════════════════════════════════════════════════════════════
+    # 6. TẦNG DỊCH THUẬT (TRANSLATION LAYER) — THIẾT LẬP MANDATES THEO TRỤC SẮC THÁI PHẲNG
     slider_mandates = []
+    
+    # Trục 1: Chuyên nghiệp vs Hài hước
+    val_fs = bv_flat.get("tone_funny_serious", 50)
+    if val_fs >= 65:
+        slider_mandates.append("MANDATE: Sắc thái 'Chuyên nghiệp' (Serious). Văn phong nghiêm túc, chuẩn mực chuyên gia, không dùng câu đùa hay từ cảm thán.")
+    elif val_fs <= 35:
+        slider_mandates.append("MANDATE: Sắc thái 'Hài hước & Dí dỏm' (Funny). Văn phong dí dỏm, mang tính giải trí cao, bắt trend thông minh.")
 
-    # 1. Trục Hài hước vs Nghiêm túc (0=funny, 100=serious)
-    funny_serious_val = bv.get("tone_funny_serious", 50)
-    if funny_serious_val >= 65:
-        slider_mandates.append("MANDATE: HÀNH VĂN PHẢI CỰC KỲ NGHIÊM TÚC, TRANG TRỌNG, CHUẨN MỰC CHUYÊN GIA. TUYỆT ĐỐI KHÔNG DÙNG CÂU ĐÙA HAY TỪ CẢM THÁN.")
-    elif funny_serious_val <= 35:
-        slider_mandates.append("MANDATE: HÀNH VĂN HÀI HƯỚC, DÍ DỎM, SỬ DỤNG CÂU ĐÙA VÀ TỪ LÓNG BẮT TREND.")
+    # Trục 2: Trang trọng vs Thân thiện & Gần gũi
+    val_fc = bv_flat.get("tone_formal_casual", 50)
+    if val_fc >= 65:
+        slider_mandates.append("MANDATE: Sắc thái 'Thân thiện & Gần gũi' (Casual). Phong cách bình dân, tự nhiên như cuộc trò chuyện đời thường.")
+    elif val_fc <= 35:
+        slider_mandates.append("MANDATE: Sắc thái 'Trang trọng & Quy chuẩn' (Formal). Phong cách chính thống, tôn nghiêm, cấu trúc câu gãy gọn.")
 
-    # 2. Trục Trang trọng vs Bình dân (0=formal, 100=casual)
-    formal_casual_val = bv.get("tone_formal_casual", 50)
-    if formal_casual_val >= 65:
-        slider_mandates.append("MANDATE: PHONG CÁCH DIỄN ĐẠT BÌNH DÂN, GIẢN DỊ, TỰ NHIÊN NHƯ CUỘC TRÒ CHUYỆN ĐỜI THƯỜNG.")
-    elif formal_casual_val <= 35:
-        slider_mandates.append("MANDATE: PHONG CÁCH DIỄN ĐẠT TRANG TRỌNG, CHÍNH THỐNG, SỬ DỤNG THUẬT NGỮ CHUYÊN MÔN CHÍNH XÁC.")
+    # Trục 3: Tôn trọng vs Táo bạo & Phá cách
+    val_ri = bv_flat.get("tone_respectful_irreverent", 50)
+    if val_ri >= 65:
+        slider_mandates.append("MANDATE: Sắc thái 'Tôn trọng & Lịch sự' (Respectful). Thể hiện sự mực thước tối đa, lịch sự, sử dụng kính ngữ đầy đủ.")
+    elif val_ri <= 35:
+        slider_mandates.append("MANDATE: Sắc thái 'Táo bạo & Phá cách' (Irreverent). Văn phong sắc sảo, châm biếm hóm hỉnh, phá vỡ lối mòn tư duy.")
 
-    # 3. Trục Tôn trọng vs Phá cách (0=irreverent, 100=respectful)
-    respectful_irreverent_val = bv.get("tone_respectful_irreverent", 50)
-    if respectful_irreverent_val >= 65:
-        slider_mandates.append("MANDATE: THỂ HIỆN SỰ TÔN TRỌNG TỐI ĐA ĐỐI VỚI NGƯỜI ĐỌC, LỊCH SỰ, SỬ DỤNG KÍNH NGỮ ĐẦY ĐỦ.")
-    elif respectful_irreverent_val <= 35:
-        slider_mandates.append("MANDATE: PHONG CÁCH PHÁ CÁCH, TÁO BẠO, HÓM HỈNH CHÂM BIẾM ĐỂ GÂY ẤN TƯỢNG MẠNH.")
+    # Trục 4: Thực tế vs Nhiệt huyết
+    val_em = bv_flat.get("tone_enthusiastic_matter_of_fact", 50)
+    if val_em >= 65:
+        slider_mandates.append("MANDATE: Sắc thái 'Trực diện & Thực tế' (Fact-based). Tập trung tuyệt đối vào sự thật, đặc tính sản phẩm và số liệu thực tế, không thổi phồng cảm xúc.")
+    elif val_em <= 35:
+        slider_mandates.append("MANDATE: Sắc thái 'Nhiệt huyết & Sôi nổi' (Enthusiastic). Giọng điệu tràn đầy năng lượng, truyền cảm hứng mạnh mẽ, kích thích hành động.")
 
-    # 4. Trục Nhiệt huyết vs Thực tế (0=enthusiastic, 100=matter-of-fact)
-    enthusiastic_matter_val = bv.get("tone_enthusiastic_matter_of_fact", 50)
-    if enthusiastic_matter_val >= 65:
-        slider_mandates.append("MANDATE: GIỌNG ĐIỆU KHÁCH QUAN TUYỆT ĐỐI, CHỈ TẬP TRUNG VÀO SỰ THẬT VÀ SỐ LIỆU. KHÔNG THỔI PHỒNG CẢM XÚC.")
-    elif enthusiastic_matter_val <= 35:
-        slider_mandates.append("MANDATE: GIỌNG ĐIỆU TRÀN ĐẦY NĂNG LƯỢNG, NHIỆT HUYẾT, VĂN PHONG SÔI NỔI KÍCH THÍCH HÀNH ĐỘNG.")
-
-    bv["slider_mandates"] = slider_mandates
-
-    return bv
+    bv_flat["slider_mandates"] = slider_mandates
+    return bv_flat
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -150,28 +176,13 @@ async def build_system_prompt(
     content_type: ContentType,
     user_input: Dict[str, Any],
 ) -> str:
-    """
-    Render Jinja2 template → system prompt hoàn chỉnh cho content generation.
-
-    Args:
-        brand_voice:  dict từ Brand ORM hoặc BrandOut.model_dump()
-        content_type: loại nội dung — ["blog_web", "email_sale", "social_media", "ad","landing_page", "other"] ...
-        user_input:   {
-                        topic?: str,
-                        keywords?: List[str],
-                        length?: str,           # "500 từ", "short", ...
-                        additional_instructions?: str,
-                      }
-
-    Returns:
-        System prompt string sẵn sàng truyền vào LLM.
-    """
-    normalized = _normalize_brand_voice(brand_voice)
+    """Render Jinja2 template → system prompt hoàn chỉnh cho content generation từ cấu trúc phẳng."""
+    normalized = _normalize_flat_brand_voice(brand_voice)
     template = _get_template()
 
     try:
         prompt = template.render(
-            brand_voice=normalized,
+            bv=normalized, # Đổi tên biến truyền vào gọn hơn thành `bv` đại diện cho Brand Voice phẳng
             content_type=content_type,
             user_input=user_input,
         )
@@ -179,46 +190,7 @@ async def build_system_prompt(
         logger.error("Jinja2 render failed: %s", exc)
         raise RuntimeError(f"Không thể build system prompt: {exc}") from exc
 
-    logger.debug(
-        "build_system_prompt | content_type=%s | prompt_chars=%d",
-        content_type, len(prompt),
-    )
     return prompt.strip()
-
-
-async def get_brand_context_summary(
-    brand_id: str,
-    db: AsyncSession,
-) -> str:
-    from app.brand.models import Brand
-
-    brand = (
-        await db.execute(
-            select(Brand)
-            .where(
-                Brand.id == brand_id,
-                Brand.deleted_at.is_(None),
-            )
-        )
-    ).scalars().first()
-
-    if not brand:
-        return ""
-
-    parts = []
-
-    if brand.name:
-        parts.append(f"Brand={brand.name}")
-
-    if brand.purpose:
-        parts.append(f"Business={brand.purpose}")
-
-    if brand.target_audience:
-        parts.append(
-            f"Audience={brand.target_audience}"
-        )
-
-    return " | ".join(parts)
 
 
 async def get_brand_prompt_by_id(
@@ -229,54 +201,57 @@ async def get_brand_prompt_by_id(
 ) -> str:
     """
     Hàm Service tích hợp cho LangGraph Workflow:
-    Truy vấn Brand từ ID, bóc tách dữ liệu và render thẳng ra System Prompt.
+    Đọc trực tiếp cấu trúc phẳng (Flat Dict) từ SQLAlchemy DB và render ra Prompt.
     """
-    # 1. Query DB kiểm tra bản ghi active
     from app.brand.models import Brand 
     
-    bv = (await db.execute(
+    brand = (await db.execute(
         select(Brand)
-        .where(
-            Brand.id == brand_id,
-            Brand.deleted_at.is_(None),
-        )
+        .where( Brand.id == brand_id, Brand.deleted_at.is_(None) )
         .limit(1)
     )).scalars().one_or_none()
 
-    if not bv or not bv.personality:
-        logger.warning("Brand voice ID=%s chưa hoàn tất extraction hoặc không tồn tại. Dùng fallback default.", brand_id)
-        # Tạo bản dict mặc định an toàn để hệ thống không bị crash
-        brand_voice_dict = {
-            "personality": "Chuyên gia nội dung",
-            "tone": {"base": ["Chuyên nghiệp"], "overrides": {}},
-            "style": {"sentenceLength": "medium", "voice": "active", "perspective": "second"},
-            "vocabulary": {"wordsToUse": [], "wordsToAvoid": [], "phrasesToUse": [], "phrasesToAvoid": []},
-            "format_rules": {"paragraphMaxSentences": 4, "useEmoji": True, "useHashtags": True, "bulletPointStyle": "dot"},
-            "cta_style": {"style": "soft", "phrases": ["Khám phá ngay"]},
-            "examples": [],
-            "taglines": [],
-            "business_facts": {},
+    if not brand:
+        logger.warning("Brand voice ID=%s không tồn tại. Dùng fallback default.", brand_id)
+        fallback_flat = {
+            "name": "Mặc định",
+            "purpose": "Viết nội dung chất lượng",
+            "desired_tone": "Chuyên nghiệp",
+            "tone_funny_serious": 50, "tone_formal_casual": 50,
+            "tone_respectful_irreverent": 50, "tone_enthusiastic_matter_of_fact": 50,
         }
-    else:
-        brand_voice_dict = {
-            "personality":                      bv.personality,
-            "tone":                             bv.tone,
-            "style":                            bv.style,
-            "vocabulary":                       bv.vocabulary,
-            "format_rules":                     bv.format_rules,
-            "cta_style":                        bv.cta_style,
-            "examples":                         bv.examples or [],
-            "tone_funny_serious":               bv.tone_funny_serious,
-            "tone_formal_casual":               bv.tone_formal_casual,
-            "tone_respectful_irreverent":       bv.tone_respectful_irreverent,
-            "tone_enthusiastic_matter_of_fact": bv.tone_enthusiastic_matter_of_fact,
-            "taglines":                         bv.taglines or [],
-            "business_facts":                   bv.business_facts or {},
-        }
+        return await build_system_prompt(fallback_flat, content_type, user_input)
 
-    # 4. Gọi hàm build có sẵn Jinja2 để sinh ra chuỗi prompt hoàn chỉnh
+    # Chuyển đổi bản ghi DB SQLAlchemy sang Flat Dict thuần túy, y hệt như cấu trúc `result` của bộ Crawl
+    brand_flat_dict = {
+        "business_id":                      brand.business_id,
+        "name":                             brand.name,
+        "purpose":                          brand.purpose,
+        "target_audience":                  brand.target_audience,
+        "desired_tone":                     brand.desired_tone,
+        "channels":                         brand.channels,
+        "taglines":                         brand.taglines or [],
+        "business_facts":                   brand.business_facts or {},
+        "website_url":                      brand.website_url,
+        
+        # Đổ nguyên văn chuỗi Markdown Base K1 -> K7 phẳng từ DB
+        "k1_brand_foundation":              brand.k1_brand_foundation,
+        "k2_customer_insights":             brand.k2_customer_insights,
+        "k3_content_patterns":              brand.k3_content_patterns,
+        "k4_behavior_rules":                brand.k4_behavior_rules,
+        "k5_examples":                      brand.k5_examples,
+        "k6_tone_analysis":                 brand.k6_tone_analysis,
+        "k7_vocabulary_rules":              brand.k7_vocabulary_rules,
+        
+        # 4 trục sliders số phẳng
+        "tone_funny_serious":               brand.tone_funny_serious,
+        "tone_formal_casual":               brand.tone_formal_casual,
+        "tone_respectful_irreverent":       brand.tone_respectful_irreverent,
+        "tone_enthusiastic_matter_of_fact": brand.tone_enthusiastic_matter_of_fact,
+    }
+
     return await build_system_prompt(
-        brand_voice=brand_voice_dict,
+        brand_voice=brand_flat_dict,
         content_type=content_type,
         user_input=user_input,
     )

@@ -544,44 +544,44 @@ END
 """
 
 
+import re
+
 def _pk5(i: dict) -> dict:
-    # Đảm bảo lấy an toàn dù cấu trúc dữ liệu truyền vào là record thô hay bọc trong dict k5
+    """
+    Làm sạch sơ bộ và đóng gói trọn vẹn dữ liệu từ bản ghi Fanpage thô.
+    Đảm bảo KHÔNG LÀM MẤT trường intro và bổ sung thêm cấu trúc LOCATIONS nếu quét trúng.
+    """
     fb_brand_data = i.get("fb_brand") or i if isinstance(i, dict) else {}
     fb_intro = fb_brand_data.get("intro", "")
 
     locations = []
 
     if fb_intro:
-        # Tìm tất cả các khối bắt đầu bằng dấu ghim cơ sở
-        # Quét cho tới khi gặp dấu ghim tiếp theo hoặc các phần text phân tách của FB
-        blocks = re.findall(r"(📍\s*Cơ sở.*?)(?=📍|Page|Open now|$)", fb_intro, re.DOTALL)
+        # Sử dụng Regex linh hoạt hơn: Bắt mọi khối bắt đầu bằng dấu ghim 📍
+        blocks = re.findall(r"(📍.*?)(?=📍|Page|About|Open now|$)", fb_intro, re.DOTALL)
 
         for block in blocks:
             lines = [line.strip() for line in block.split("\n") if line.strip()]
             if not lines:
                 continue
 
-            # Dòng đầu tiên chứa thông tin Cơ sở và Địa chỉ
             addr_line = lines[0]
-            # Loại bỏ phần "📍 Cơ sở 1:" hoặc "📍 Cơ sở 2:" để lấy địa chỉ tinh khiết
-            addr_clean = re.sub(r"📍\s*Cơ sở\s*\d+\s*:\s*", "", addr_line, flags=re.I).strip()
+            # Loại bỏ linh hoạt các tiền tố như "📍 Cơ sở 1:", "📍 Địa chỉ:", "📍 CS1:"
+            addr_clean = re.sub(r"^📍\s*(?:Cơ sở|Địa chỉ|CS)?\s*\d*\s*:?\s*", "", addr_line, flags=re.I).strip()
 
-            # Xác định thành phố dựa trên text địa chỉ
             city = ""
-            if "Đà Nẵng" in addr_clean or "Da Nang" in addr_clean:
+            if any(kw in addr_clean.lower() for kw in ["đà nẵng", "da nang"]):
                 city = "Đà Nẵng"
-            elif "Nha Trang" in addr_clean:
+            elif "nha trang" in addr_clean.lower():
                 city = "Nha Trang"
+            elif "hồ chí minh" in addr_clean.lower() or "hcm" in addr_clean.lower():
+                city = "Hồ Chí Minh"
 
-            # Dòng thứ hai (nếu có) thường chứa Hotline của cơ sở đó
             hotline_clean = ""
-            if len(lines) > 1 and "hotline" in lines[1].lower():
-                # Trích xuất chuỗi số điện thoại giữ nguyên định dạng hiển thị
-                hotline_match = re.search(r"(?:Hotline.*?:\s*)(.*)", lines[1], re.I)
-                if hotline_match:
-                    hotline_clean = hotline_match.group(1).strip()
-                else:
-                    hotline_clean = lines[1].strip()
+            # Nếu dòng tiếp theo chứa dấu hiệu của số điện thoại liên hệ
+            if len(lines) > 1 and any(kw in lines[1].lower() for kw in ["hotline", "sđt", "liên hệ", "tel"]):
+                hotline_match = re.search(r"(?:hotline|sđt|liên hệ)\s*[^:]*:\s*(.*)", lines[1], re.I)
+                hotline_clean = hotline_match.group(1).strip() if hotline_match else lines[1].strip()
 
             locations.append({
                 "city": city,
@@ -589,18 +589,20 @@ def _pk5(i: dict) -> dict:
                 "hotline": hotline_clean
             })
 
-    # Hàm lọc dọn dẹp danh sách
     def _clean_list(lst):
         if not lst: return []
         return list(sorted(set([str(item).strip() for item in lst if item])))
 
+    # 🚨 QUAN TRỌNG: Trả về đầy đủ cả key viết hoa lẫn trường intro gốc để tầng dưới xài
     return {
-        "LOCATIONS": locations,
-        "PHONES": _clean_list(fb_brand_data.get("phones", [])),
-        "EMAILS": _clean_list(fb_brand_data.get("emails", [])),
-        "DOMAINS": _clean_list(fb_brand_data.get("domains", [])),
-        "OG_IMAGE": fb_brand_data.get("og_image", "")
+        "intro": fb_intro,  # <--- BẮT BUỘC PHẢI GIỮ LẠI TRƯỜNG NÀY!
+        "locations": locations,
+        "phones": _clean_list(fb_brand_data.get("phones", [])),
+        "emails": _clean_list(fb_brand_data.get("emails", [])),
+        "domains": _clean_list(fb_brand_data.get("domains", [])),
+        "og_image": fb_brand_data.get("og_image", "")
     }
+
 
 def _pk6(i):
 
@@ -731,24 +733,24 @@ async def _k4(i):
 
 
 async def _k5(i):
-    """Business facts — local regex extraction, không cần LLM.
-    Kết quả vẫn nạp vào cột JSON `business_facts` riêng (không phải Markdown K5)."""
+    """
+    Business facts — local extraction từ dữ liệu thô Fanpage, không cần LLM.
+    Kết quả trả về chuỗi JSON dump của toàn bộ object fb_brand để hàm parse tầng dưới xử lý động.
+    """
     try:
-        extracted_data = _pk5(i)
-        locations_json = json.dumps(extracted_data.get("LOCATIONS", []), ensure_ascii=False)
-
-        simulated_llm_response = (
-            f"LOCATIONS: {locations_json}\n"
-        )
+        # Giả định _pk5(i) trả về dict chứa thông tin page cào về (gồm cả intro, phones, domains,...)
+        extracted_data = _pk5(i) or {}
+        
+        # Nhét toàn bộ dict dữ liệu thô này vào JSON String để đảm bảo đồng bộ pipeline lưu trữ
+        simulated_llm_response = json.dumps(extracted_data, ensure_ascii=False)
 
         logger.info(f"[_k5] Local extraction complete. Text length: {len(simulated_llm_response)}")
         return simulated_llm_response
 
     except Exception as e:
         logger.error(f"[_k5] Error during local extraction: {str(e)}. Using safe fallback.")
-        return """
-                LOCATIONS: []
-                """
+        # Fallback trả về chuỗi JSON của một dict rỗng để không làm lỗi tầng json.loads phía sau
+        return "{}"
 
 
 async def _k6(i):
@@ -808,45 +810,133 @@ async def run_kiens(data):
 # ═══════════════════════════════════════════════════
 # CELL 5: BUSINESS FACTS PARSER (cột JSON riêng, không phải K-doc)
 # ═══════════════════════════════════════════════════
+import re
+import json
+import logging
+from typing import Any, Dict, List
+
+logger = logging.getLogger(__name__)
 
 def _parse_business_context(k5_text: str, k5_input: dict = None) -> dict:
-    """Parse business facts from K5 local-extraction output + k5_input thô."""
-    logger.info(f"[_parse_business_context] Parsing k5_text length={len(k5_text)}, k5_input type={type(k5_input)}")
+    """
+    Chắt lọc động 100% dữ liệu từ thuộc tính của fb_brand (k5_input).
+    Tuyệt đối không hardcode, tự động thích ứng theo text thô của từng Fanpage.
+    """
+    logger.info("[_parse_business_context] Bắt đầu trích xuất động dữ liệu từ Fanpage.")
 
-    result = {"locations": [], "hours": ""}
+    # Khởi tạo khung dữ liệu chuẩn cho Jinja2 prompt
+    result = {
+        "locations": [],
+        "hours": "",
+        "usp": [],
+        "menu_highlights": [],
+        "phones": [],
+        "emails": [],
+        "domains": []
+    }
 
-    if k5_input:
-        phones = k5_input.get("phones", []) if isinstance(k5_input, dict) else []
-        emails = k5_input.get("emails", []) if isinstance(k5_input, dict) else []
-        domains = k5_input.get("domains", []) if isinstance(k5_input, dict) else []
+    # Đảm bảo đồng bộ mớ dữ liệu phẳng có sẵn từ metadata hệ thống cào về trước
+    if k5_input and isinstance(k5_input, dict):
+        result["phones"] = [str(p).strip() for p in k5_input.get("phones", []) if str(p).strip()]
+        result["emails"] = [e.strip() for e in k5_input.get("emails", []) if e.strip()]
+        result["domains"] = [d.strip() for d in k5_input.get("domains", []) if d.strip()]
+        intro_text = k5_input.get("intro", "")
     else:
-        phones = emails = domains = []
+        intro_text = ""
 
-    if not k5_text:
-        logger.warning("[_parse_business_context] Empty k5_text!")
-        result.update({"phones": phones, "emails": emails, "domains": domains})
-        return result
+    if not intro_text:
+        logger.warning("[_parse_business_context] Thuộc tính 'intro' của Fanpage trống!")
+        # Nếu không có intro, quay về parse từ k5_text thô dự phòng
+        return _fallback_regex_parser(k5_text, result)
 
-    loc_match = re.search(r'LOCATIONS:\s*(\[.*?\])', k5_text, re.DOTALL)
-    if loc_match:
-        try:
-            result["locations"] = json.loads(loc_match.group(1))
-        except Exception as e:
-            logger.error(f"[_parse_business_context] Failed to parse locations: {e}")
+    # 1. ⏰ TRÍCH XUẤT ĐỘNG GIỜ MỞ CỬA (Bóc theo emoji hoặc từ khóa chung)
+    # Quét dòng chứa biểu tượng đồng hồ hoặc cụm từ 'Giờ mở cửa', 'Giờ phục vụ', 'Open'
+    hours_patterns = [
+        r'(?:⏰|⏳)\s*(?:Giờ mở cửa|Giờ phục vụ|Opening hours)?:\s*([^\n]+)',
+        r'(?:Giờ mở cửa|Giờ phục vụ):\s*([^\n]+)'
+    ]
+    for pattern in hours_patterns:
+        hours_match = re.search(pattern, intro_text, re.IGNORECASE)
+        if hours_match:
+            result["hours"] = hours_match.group(1).strip()
+            # Kiểm tra xem dòng ngay tiếp theo có phải là note bổ sung trong ngoặc đơn không
+            next_line_match = re.search(re.escape(hours_match.group(0)) + r'\n\s*(\([^\n\)]+\))', intro_text)
+            if next_line_match:
+                result["hours"] += f" {next_line_match.group(1).strip()}"
+            break
 
-    usp_match = re.search(r'USP:\s*(\[.*?\])', k5_text, re.DOTALL)
-    if usp_match:
-        try:
-            result["usp"] = json.loads(usp_match.group(1))
-        except Exception as e:
-            logger.error(f"[_parse_business_context] Failed to parse usp: {e}")
+    # 2. 📍 TRÍCH XUẤT ĐỘNG DANH SÁCH CHI NHÁNH VÀ HOTLINE ĐI KÈM
+    # Tách đoạn intro thành từng dòng để duyệt tuyến tính, tránh đè lấn địa chỉ lên nhau
+    lines = [line.strip() for line in intro_text.split('\n') if line.strip()]
+    
+    current_location = None
 
-    result["phones"] = phones
-    result["emails"] = emails
-    result["domains"] = domains
-    logger.info(f"[_parse_business_context] Final result keys: {list(result.keys())}")
+    for i, line in enumerate(lines):
+        # Dấu hiệu nhận biết một dòng Địa chỉ (Bắt đầu bằng emoji ghim vị trí hoặc từ khóa Cơ sở)
+        if line.startswith('📍') or re.match(r'^(?:Cơ sở|Địa chỉ|CS)\s*\d*\s*:', line, re.IGNORECASE):
+            # Làm sạch tiền tố
+            address_clean = re.sub(r'^(?:📍|Cơ sở|Địa chỉ|CS)\s*\d*\s*:?\s*', '', line, flags=re.IGNORECASE).strip()
+            
+            # Cố gắng phán đoán thành phố từ chuỗi địa chỉ
+            city = "Đà Nẵng" if "Đà Nẵng" in address_clean else ("Nha Trang" if "Nha Trang" in address_clean else "Hồ Chí Minh" if "Hồ Chí Minh" in address_clean else "")
+            
+            current_location = {
+                "address": address_clean,
+                "city": city,
+                "hotline": ""
+            }
+            result["locations"].append(current_location)
+            continue
+        
+        # Nếu dòng hiện tại chứa từ khóa Hotline và ngay trước đó vừa tìm thấy một địa chỉ
+        if current_location and ("hotline" in line.lower() or "sđt" in line.lower() or "liên hệ" in line.lower()):
+            phone_numbers = re.sub(r'^(?:Hotline|SĐT|Liên hệ)\s*[^:]*:\s*', '', line, flags=re.IGNORECASE).strip()
+            current_location["hotline"] = phone_numbers
+            # Xử lý xong thì giải phóng biến tạm để tránh dòng hotline phía dưới bám nhầm vào chi nhánh cũ
+            current_location = None
 
+    # Nếu quét theo dòng thất bại (do định dạng page không dùng emoji chuẩn), bóc thô dòng Page Vị Trí của FB
+    if not result["locations"]:
+        # Tìm dòng có định dạng: [Số nhà, Tên đường], [Tên Thành Phố], Vietnam
+        geo_match = re.search(r'([^\n,]+,\s*[^\n,]+),\s*([^\n,]+),\s*Vietnam', intro_text, re.IGNORECASE)
+        if geo_match:
+            result["locations"].append({
+                "address": geo_match.group(1).strip(),
+                "city": geo_match.group(2).strip(),
+                "hotline": result["phones"][0] if result["phones"] else ""
+            })
+
+    # 3. 🌐 TỰ ĐỘNG THIẾT LẬP USP TỪ DANH TIẾNG DOMAIN CÀO VỀ
+    # AI sẽ dựa vào các chứng chỉ uy tín từ tên miền để tăng sức thuyết phục cho bài viết
+    for domain in result["domains"]:
+        if "guide.michelin.com" in domain.lower():
+            result["usp"].append("Thương hiệu đạt chứng nhận danh giá từ tổ chức Michelin Guide.")
+        if "tripadvisor.com" in domain.lower():
+            result["usp"].append("Nằm trong danh sách các địa điểm có lượt đề xuất cao trên TripAdvisor.")
+
+    # 4. BÓC TÁCH ĐỘNG CÁC ĐỀ XUẤT/RATING (Nếu có)
+    recommend_match = re.search(r'(\d+%\s*recommend[^\n]*)', intro_text, re.IGNORECASE)
+    if recommend_match:
+        result["usp"].append(recommend_match.group(1).strip())
+
+    logger.info(f"[_parse_business_context] Trích xuất động hoàn tất. Phát hiện {len(result['locations'])} chi nhánh.")
     return result
+
+
+def _fallback_regex_parser(k5_text: str, default_struct: dict) -> dict:
+    """Bộ bóc tách dự phòng từ k5_text nếu cục json thô bị lỗi cấu trúc hoàn toàn."""
+    if not k5_text:
+        return default_struct
+    try:
+        loc_match = re.search(r'LOCATIONS:\s*(\[.*?\])', k5_text, re.DOTALL)
+        if loc_match:
+            default_struct["locations"] = json.loads(loc_match.group(1))
+        usp_match = re.search(r'USP:\s*(\[.*?\])', k5_text, re.DOTALL)
+        if usp_match:
+            default_struct["usp"] = json.loads(usp_match.group(1))
+    except Exception:
+        pass
+    return default_struct
 
 
 def _channels(k3_raw: str, k4_raw: str) -> List[str]:

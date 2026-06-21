@@ -21,6 +21,7 @@ GEMINI_MODEL = _s.GEMINI_MODEL
 groq_client = Groq(api_key=_s.GROQ_API_KEY)
 async_groq_client = AsyncGroq(api_key=_s.GROQ_API_KEY)
 GROQ_MODEL = _s.GROQ_MODEL
+GROQ_MODEL_GPT = _s.GROQ_MODEL_GPT
 
 LLM_TIMEOUT = 30
 MEDIA_ROOT = Path("app/media")
@@ -28,11 +29,12 @@ MEDIA_ROOT = Path("app/media")
 
 # ── Groq ──────────────────────────────────────────────────
 
-def call_groq(prompt: str, max_tokens: int = 1500, temperature: float = 0.2) -> str:
+def call_groq(prompt: str, max_tokens: int = 1500, temperature: float = 0.2, gpt: bool = False) -> str:
     """Gọi Groq sync, tự động dọn dẹp format và raise exception chuẩn hóa."""
+    selected_model = GROQ_MODEL_GPT if gpt else GROQ_MODEL
     try:
         msg = groq_client.chat.completions.create(
-            model=GROQ_MODEL,
+            model=selected_model,
             messages=[
                 # Thêm System hoặc bổ sung chỉ thị ngắn để ép Llama không lảm nhảm Step 1, Step 2
                 {"role": "user", "content": prompt}

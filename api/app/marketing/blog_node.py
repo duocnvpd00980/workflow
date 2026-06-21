@@ -231,7 +231,7 @@ def execute_blog_content(state: dict) -> dict:
 
     # 🔥 IMPORTANT: HANDLE EXCEPTION HERE
     try:
-        raw_text = call_groq(prompt)
+        raw_text = call_groq(prompt, max_tokens=3000, temperature=0.7, gpt=True)
 
     except PermissionError as e:
         return {

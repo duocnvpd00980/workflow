@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     # Bảo mật: Không nên để key thật ở đây, chỉ để chuỗi rỗng
     GROQ_API_KEY: str = "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"
     GROQ_MODEL: str = "meta-llama/llama-4-scout-17b-16e-instruct"
+    GROQ_MODEL_GPT: str = "openai/gpt-oss-120b"
 
     POLLINATIONS_API_KEY: str = "sk_J68kYhDowZ8FTDPupSlolhNEcnqsWZ1P"
 
