@@ -62,7 +62,7 @@ app.mount("/media", StaticFiles(directory="app/media"), name="media")
 # 6. Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:8000"],
+    allow_origins=["http://localhost:5173", "http://localhost:8000", "https://viable-superb-basilisk.ngrok-free.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

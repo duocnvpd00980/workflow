@@ -10,8 +10,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearch, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CreateBrandModal } from "./CreateBrandModal";
+import { API_BASE } from "@/config";
 
-const API_BASE = import.meta.env.VITE_API_BASE ?? "http://localhost:8000/api/v1";
 
 type BrandOptionResponse = {
   id: string;

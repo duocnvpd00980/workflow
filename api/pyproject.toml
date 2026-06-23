@@ -3,7 +3,7 @@ name = "workflow"
 version = "0.1.0"
 description = "FastAPI + LangGraph agent"
 readme = "README.md"
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.12,<3.13"
 dependencies = [
     "fastapi>=0.136.3",
     "uvicorn[standard]>=0.48.0",
@@ -30,8 +30,8 @@ dependencies = [
     "openpyxl>=3.1.5",
     "psutil>=7.2.2",
     "tokenizers>=0.22.0,<=0.23.0",
-    "torch>=2.12.0",
-    "transformers>=5.9.0",
+    "torch>=2.6.0",
+    "transformers>=4.41.0,<5.0.0",
     "sentence-transformers>=5.5.1",
     "pymupdf>=1.27.2.3",
     "pytesseract>=0.3.13",
@@ -43,12 +43,14 @@ dependencies = [
     "groq>=1.4.0",
     "easyocr>=1.7.2",
     "numpy>=2.4.6",
-    "torchvision>=0.27.0",
+    "torchvision>=0.16.0",
     "sentencepiece>=0.2.1",
     "alembic>=1.18.4",
     "pandas>=3.0.3",
     "google-genai>=2.7.0",
     "pyautogui>=0.9.54",
+    "einops>=0.8.2",
+    "timm>=1.0.27",
 ]
 
 [dependency-groups]
@@ -60,9 +62,10 @@ dev = [
     "ruff>=0.15.15",
 ]
 
+
 [[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
+name = "pytorch-cu124"
+url = "https://download.pytorch.org/whl/cu124"
 explicit = true
 
 [[tool.uv.index]]
@@ -70,5 +73,8 @@ url = "https://pypi.org/simple"
 default = true
 
 [tool.uv.sources]
-torch = { index = "pytorch-cpu" }
-torchvision = { index = "pytorch-cpu" }
+torch = { index = "pytorch-cu124" }
+torchvision = { index = "pytorch-cu124" }
+
+[tool.uv]
+environments = ["sys_platform == 'linux'"]

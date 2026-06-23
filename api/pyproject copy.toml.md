@@ -1,0 +1,76 @@
+[project]
+name = "workflow"
+version = "0.1.0"
+description = "FastAPI + LangGraph agent"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "fastapi>=0.136.3",
+    "uvicorn[standard]>=0.48.0",
+    "langgraph>=1.2.2",
+    "langchain-core>=1.4.0",
+    "langchain-google-genai>=4.2.4",
+    "langgraph-checkpoint-sqlite>=3.1.0",
+    "sqlalchemy>=2.0.50",
+    "aiosqlite>=0.22.1",
+    "pydantic-settings>=2.14.1",
+    "python-dotenv>=1.2.2",
+    "httpx>=0.28.1",
+    "pyyaml>=6.0.2",
+    "jinja2>=3.1.4",
+    "instructor>=1.15.1",
+    "langchain-ollama>=1.1.0",
+    "faiss-cpu>=1.14.2",
+    "fastembed>=0.8.0",
+    "rank-bm25>=0.2.2",
+    "python-multipart>=0.0.29",
+    "trafilatura>=2.0.0",
+    "pypdf>=6.12.2",
+    "python-docx>=1.2.0",
+    "openpyxl>=3.1.5",
+    "psutil>=7.2.2",
+    "tokenizers>=0.22.0,<=0.23.0",
+    "torch>=2.1.0",
+    "transformers>=4.41.0,<5.0.0",
+    "sentence-transformers>=5.5.1",
+    "pymupdf>=1.27.2.3",
+    "pytesseract>=0.3.13",
+    "pillow>=12.2.0",
+    "crawl4ai>=0.8.6",
+    "ddgs>=9.14.4",
+    "nodriver>=0.50.3",
+    "beautifulsoup4>=4.14.3",
+    "groq>=1.4.0",
+    "easyocr>=1.7.2",
+    "numpy>=2.4.6",
+    "torchvision>=0.27.0",
+    "sentencepiece>=0.2.1",
+    "alembic>=1.18.4",
+    "pandas>=3.0.3",
+    "google-genai>=2.7.0",
+    "pyautogui>=0.9.54",
+    "einops>=0.8.2",
+    "timm>=1.0.27",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.2.0",
+    "ipywidgets>=8.1.8",
+    "jupyterlab>=4.5.7",
+    "jupyterlab-widgets>=3.0.16",
+    "ruff>=0.15.15",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+default = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }

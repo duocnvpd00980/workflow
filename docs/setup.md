@@ -76,3 +76,20 @@ sudo systemctl status fastapi
 sudo systemctl enable fastapi
 sudo journalctl -u fastapi.service -f
 sudo systemctl stop fastapi
+
+
+
+comfyui
+python main.py --listen 127.0.0.1 --port 8188
+
+
+
+
+
+https://developers.buffer.com/
+https://publish.buffer.com/settings/api
+mLsaw1srstOY_V-WP2GdVpNwdPdybSfKC2fBhVUz8jR
+
+
+
+https://www.canva.dev/docs/?utm_source=chatgpt.com

@@ -14,6 +14,7 @@ import {
 import {
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer
 } from "recharts"
+import { API_BASE } from "@/config"
 
 // ĐỒNG BỘ INTERFACE THEO ĐÚNG CẤU TRÚC JSON API THỰC TẾ
 export interface BrandVoice {
@@ -60,7 +61,6 @@ export interface BrandVoice {
   updated_at: string
 }
 
-const API_BASE = "http://localhost:8000/api/v1/brand-voices"
 
 function generateChartData(bv?: BrandVoice) {
   if (!bv) return []

@@ -536,6 +536,8 @@ class RAG:
 IMAGE_EMBED_MODEL = "google/siglip-base-patch16-224"
 IMAGE_DIM = 768
 IMAGE_PERSIST_DIR = Path(__file__).parent.parent.parent / "rag_storage" / "image"
+CAPTION_MODEL = "/home/duoc/models/florence-2-large"
+ENABLE_IMAGE_CAPTION = True
 
 class ImageEmbedder:
     def __init__(self):
@@ -580,6 +582,84 @@ class ImageEmbedder:
 
         return await loop.run_in_executor(None, _run)
 
+# ── Image Store ───────────────────────────────────────────────────────────────
+
+class ImageCaptioner:
+    def __init__(self):
+        self._processor = None
+        self._model = None
+
+    def _load(self):
+        if self._model is not None:
+            return
+
+        from transformers import AutoProcessor, AutoModelForCausalLM
+
+        log.info(f"[caption] loading {CAPTION_MODEL}...")
+
+        self._processor = AutoProcessor.from_pretrained(
+            CAPTION_MODEL,
+            trust_remote_code=True,
+            local_files_only=True,
+            attn_implementation="eager"
+        )
+
+        self._model = AutoModelForCausalLM.from_pretrained(
+            CAPTION_MODEL,
+            trust_remote_code=True,
+            local_files_only=True,
+            attn_implementation="eager",
+            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+        )
+
+        if torch.cuda.is_available():
+            self._model = self._model.cuda()
+
+        self._model.eval()
+
+        log.info("[caption] loaded")
+
+    async def caption(self, image: "Image.Image") -> str:
+        self._load()
+
+        loop = asyncio.get_running_loop()
+
+        def _run():
+            prompt = "<MORE_DETAILED_CAPTION>"
+
+            inputs = self._processor(
+                text=prompt,
+                images=image,
+                return_tensors="pt"
+            )
+
+            if torch.cuda.is_available():
+                inputs = {
+                    k: v.cuda() if hasattr(v, "cuda") else v
+                    for k, v in inputs.items()
+                }
+
+            with torch.no_grad():
+                generated_ids = self._model.generate(
+                    **inputs,
+                    max_new_tokens=128,
+                    do_sample=False
+                )
+
+            result = self._processor.batch_decode(
+                generated_ids,
+                skip_special_tokens=False
+            )[0]
+
+            parsed = self._processor.post_process_generation(
+                result,
+                task=prompt,
+                image_size=image.size
+            )
+
+            return parsed.get(prompt, "").strip()
+
+        return await loop.run_in_executor(None, _run)
 
 # ── Image Store ───────────────────────────────────────────────────────────────
 
@@ -690,6 +770,7 @@ class ImageStore:
 class ImageRAG:
     def __init__(self):
         self._embed = ImageEmbedder()
+        self._captioner = ImageCaptioner() if ENABLE_IMAGE_CAPTION else None
         self._store: Optional[ImageStore] = None
 
     async def _lazy_init(self):
@@ -697,8 +778,22 @@ class ImageRAG:
             self._store = ImageStore(self._embed)
             self._store._load()
 
+    async def caption(self, image: "Image.Image") -> str:
+        if not self._captioner:
+            return ""
+
+        return await self._captioner.caption(image)
+
     async def add(self, image: "Image.Image", image_id: str, **meta) -> str:
         await self._lazy_init()
+
+        if self._captioner:
+            try:
+                caption = await self._captioner.caption(image)
+                meta["caption"] = caption
+            except Exception as e:
+                log.warning(f"[caption] failed: {e}")
+
         return await self._store.add(image, image_id, **meta)
 
     async def search(self, image: "Image.Image", k: int = 5) -> List[dict]:
