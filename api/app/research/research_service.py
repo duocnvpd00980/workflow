@@ -324,6 +324,110 @@ def _parse_serp(soup: BeautifulSoup, query: str) -> dict:
     }
 
 
+
+async def lay_20_anh_tu_tab_photos(fb_tab):
+    """
+    Click vào tab "Photos" của page, kéo xuống 2 lần,
+    rồi lấy 20 ảnh đầu tiên (src chứa 'scontent').
+    """
+
+    print("📷 Tìm tab Photos...")
+
+    try:
+        clicked = await fb_tab.evaluate(
+            """
+            (() => {
+                const links = Array.from(
+                    document.querySelectorAll("a")
+                );
+
+                const target = links.find((a) => {
+                    const t = (a.innerText || "").trim();
+
+                    return (
+                        t === "Photos" ||
+                        t === "Ảnh" ||
+                        t === "Hình ảnh" ||
+                        (
+                            a.href &&
+                            a.href.includes("/photos")
+                        )
+                    );
+                });
+
+                if (target) {
+                    target.click();
+                    return true;
+                }
+
+                return false;
+            })();
+            """
+        )
+    except Exception as e:
+        print("Lỗi khi tìm tab Photos:", e)
+        clicked = False
+
+    if not clicked:
+        print("❌ Không tìm thấy tab Photos.")
+        return []
+
+    print("✅ Đã click tab Photos. Đợi tải...")
+
+    await asyncio.sleep(random.uniform(1.8, 2.6))
+
+    print("📜 Kéo xuống 2 lần để load thêm ảnh...")
+
+    for round_idx in range(2):
+        print(f"🔄 Scroll round {round_idx + 1}/2")
+
+        try:
+            await fb_tab.evaluate(
+                """
+                window.scrollBy(0, 3000);
+                """
+            )
+        except Exception:
+            pass
+
+        await asyncio.sleep(random.uniform(1.5, 2.5))
+
+    print("🖼️ Thu thập danh sách ảnh...")
+
+    try:
+        urls = await fb_tab.evaluate(
+            """
+            (() => {
+                const imgs = Array.from(
+                    document.querySelectorAll("img")
+                );
+
+                const srcs = imgs
+                    .map((img) => img.src)
+                    .filter(
+                        (src) =>
+                            src &&
+                            src.includes("scontent")
+                    );
+
+                return Array.from(
+                    new Set(srcs)
+                ).slice(0, 20);
+            })();
+            """
+        )
+    except Exception as e:
+        print("Lỗi khi lấy ảnh:", e)
+        urls = []
+
+    urls = urls or []
+
+
+    print(f"✅ Lấy được {len(urls)} ảnh.")
+
+    return urls
+
+
 async def node_serp(state: ResearchState, seq: list, headless: bool):
     print("\n" + "=" * 60)
     print("NODE 2: SERP SCRAPER")
@@ -577,11 +681,11 @@ async def _scrape_facebook(browser, fb_url: str, business_id: str):
     await asyncio.sleep(random.uniform(2.5, 3.0))
 
     html = await fb_tab.get_content()
-    page_path = f"fb_page_{business_id}.html"
+    page_path = f"fb_page.html"
     with open(page_path, "w", encoding="utf-8") as f:
         f.write(html)
 
-    popup_path = f"popup_{business_id}.html"
+    popup_path = f"popup_page.html"
     try:
         popup_html = await fb_tab.evaluate("""
             (() => {
@@ -597,7 +701,11 @@ async def _scrape_facebook(browser, fb_url: str, business_id: str):
     except Exception: 
         popup_path = None
 
-    return page_path, popup_path
+    photo_path = await lay_20_anh_tu_tab_photos(fb_tab)
+    await asyncio.sleep(random.uniform(0.5, 1.0))
+    
+
+    return page_path, popup_path, photo_path
 
 
 async def node_facebook(state: ResearchState, seq: list, headless: bool):
@@ -613,7 +721,8 @@ async def node_facebook(state: ResearchState, seq: list, headless: bool):
         UC_BROWSER = await uc.start(headless=headless, icon_mode=1)
 
     try:
-        page_path, popup_path = await _scrape_facebook(UC_BROWSER, state.fb_url, state.business_id)
+        page_path, popup_path, photo_path = await _scrape_facebook(UC_BROWSER, state.fb_url, state.business_id)
+
         if not page_path:
             raise RuntimeError("Thất bại khi trích xuất dữ liệu thô Facebook.")
 
@@ -633,12 +742,19 @@ async def node_facebook(state: ResearchState, seq: list, headless: bool):
             posts, comments, attachments_map = _extract_posts_comments(page_html)
 
         final_posts = posts if posts else brand["posts_from_text"]
+
+
+        if not photo_path:
+            raise RuntimeError("Thất bại khi trích xuất dữ liệu thô Facebook.")
+
+
         state.fb_data = {
             "brand": {
                 "page_info": brand["page_info"], "intro": brand["intro"], 
                 "phones": brand["phones"], "emails": brand["emails"],
                 "domains": brand["domains"], "og_image": brand.get("og_image", ""),
             },
+            "photo": photo_path,
             "posts": final_posts,
             "attachments_map": attachments_map if posts else [[] for _ in final_posts],
             "comments": comments,

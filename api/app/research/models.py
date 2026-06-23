@@ -196,6 +196,7 @@ class ResearchState:
         "brand": default_fb_brand(),
         "posts": [],
         "comments": [],
+        "photo": [],
     })
 
     # Node 4: Report

@@ -26,6 +26,111 @@ router = APIRouter(prefix="/rag", tags=["rag"])
 # DOCS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RAG INGESTION TEST (NEW)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/ingest/research")
+async def ingest_research_to_rag(
+    business_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    TEST ONLY: Ingest research data vào RAG (đồng bộ).
+    
+    - Lấy ResearchResult từ DB (business_id)
+    - Extract: suggestions_tagged, serp_data, fb_data
+    - Ingest vào RAG: keywords → posts → comments → images
+    - Return: stats (bao nhiêu item đã add)
+    
+    Cách dùng:
+        POST /rag/ingest/research?business_id=biz_001
+    """
+    from app.rag.services.ingest import trigger_rag_ingestion
+    
+    try:
+        if not business_id:
+            raise HTTPException(status_code=400, detail="business_id required")
+        
+        logger.info(f"[test] ingest research START: {business_id}")
+        
+        # Ingest (đồng bộ)
+        result = await trigger_rag_ingestion(db, business_id)
+        
+        logger.info(f"[test] ingest research DONE: {result}")
+        
+        return {
+            "status": result.get("status", "error"),
+            "business_id": business_id,
+            "ingested": {
+                "keywords": result.get("keywords", {}),
+                "posts": result.get("posts", {}),
+                "comments": result.get("comments", {}),
+                "images": result.get("images", {}),
+            },
+            "error": result.get("error", None),
+        }
+        
+    except Exception as e:
+        logger.error(f"[test] ingest error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/ingest/status/{business_id}")
+async def check_rag_ingestion_status(
+    business_id: str,
+    rag: RAG = Depends(get_rag),
+):
+    """
+    TEST ONLY: Xem RAG đã ingest gì cho business_id.
+    
+    Return: stats từ mỗi RAG type
+    - keywords count
+    - posts count
+    - comments count
+    - images count
+    
+    Cách dùng:
+        GET /rag/ingest/status/biz_001
+    """
+    try:
+        if not business_id:
+            raise HTTPException(status_code=400, detail="business_id required")
+        
+        logger.info(f"[test] check RAG status: {business_id}")
+        
+        # Get stats từ mỗi RAG service
+        from app.rag.services.keyword import KeywordRAG
+        from app.rag.services.comment import CommentRAG
+        from app.rag.services.social import SocialPostRAG
+        from app.rag.services.image_rag import ImageRAG
+        from app.rag.services.embedder import get_embedder
+        
+        krag = KeywordRAG()
+        crag = CommentRAG()
+        srag = SocialPostRAG()
+        embedder = get_embedder()
+        irag = ImageRAG(embedder)
+        
+        return {
+            "business_id": business_id,
+            "rag_stats": {
+                "keywords": krag.stats(),
+                "posts": srag.stats(),
+                "comments": crag.stats(),
+                "images": irag.stats() if irag._store else {"images": 0, "faiss_vectors": 0},
+            },
+            "message": "RAG stats (total across all businesses, not filtered by business_id)",
+        }
+        
+    except Exception as e:
+        logger.error(f"[test] status check error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+
+
 @router.get("/", response_model=list[DocOut])
 async def list_docs(db: AsyncSession = Depends(get_db)):
     rows = await db.execute(
