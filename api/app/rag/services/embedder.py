@@ -1,11 +1,13 @@
 """Embedder singleton — BAAI/bge-m3, normalize, async, dùng chung cho cả 3 RAG."""
 
 import asyncio
+import gc
 import logging
 import threading
 from typing import List
 
 import numpy as np
+import torch
 
 from .config import EMBED_MODEL
 
@@ -27,6 +29,16 @@ class Embedder:
                     inst._load_lock = threading.Lock()
                     cls._instance = inst
         return cls._instance
+
+    def unload(self):
+        """Giải phóng hoàn toàn model + VRAM."""
+        if self._model is not None:
+            self._model = None
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+            log.info("[embedder] đã unload")
 
     def _load(self):
         if self._model is not None:

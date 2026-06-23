@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from .models import (
+    FbPhoto,
     PipelineTask,
     PipelineEvent,
     ResearchResult,
@@ -149,17 +150,48 @@ async def _replace_fb_posts_comments(
         for c in state.fb_data["comments"]
     ])
 
+async def _replace_fb_photos(db: AsyncSession, state: ResearchState):
+    """Xóa cũ + ghi mới ảnh từ tab Photos và attachments."""
+    
+    await db.execute(
+        delete(FbPhoto).where(FbPhoto.business_id == state.business_id)
+    )
 
-async def save_after_node(
-    db: AsyncSession,
-    state: ResearchState,
-):
+    # Ảnh từ tab Photos
+    photo_urls = state.fb_data.get("photo", []) or []
+    db.add_all([
+        FbPhoto(
+            business_id=state.business_id,
+            url=url,
+            source="tab",
+        )
+        for url in photo_urls if isinstance(url, str)
+    ])
+
+    # Ảnh từ attachments của posts (optional)
+    attachments_map = state.fb_data.get("attachments_map", [])
+    for i, attachments in enumerate(attachments_map):
+        if attachments:
+            db.add_all([
+                FbPhoto(
+                    business_id=state.business_id,
+                    url=url,
+                    source="post",
+                    post_index=i,
+                )
+                for url in attachments if isinstance(url, str)
+            ])
+
+
+async def save_after_node(db: AsyncSession, state: ResearchState):
     await _upsert_task(db, state)
     await _replace_events(db, state)
     await _upsert_result(db, state)
     await _replace_fb_posts_comments(db, state)
-
+    await _replace_fb_photos(db, state) 
     await db.commit()
+
+
 
 
 # ═══════════════════════════════════════════════════════════════════════

@@ -144,6 +144,16 @@ class ResearchResult(Base):
 
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
+class FbPhoto(Base):
+    """Nhiều dòng / business — mỗi URL ảnh là 1 dòng (xóa cũ trước khi ghi mới)."""
+    __tablename__ = "fb_photos"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    business_id = Column(String(64), nullable=False, index=True)
+    url = Column(Text, nullable=False)           # URL ảnh
+    source = Column(String(32), default="tab")   # "tab" = tab Photos, "post" = trong post
+    post_index = Column(Integer, nullable=True)  # Nếu thuộc post nào (optional)
+    created_at = Column(DateTime, default=datetime.now)
 
 class FbPost(Base):
     """Nhiều dòng / business — mỗi bài post Facebook là 1 dòng (xóa cũ trước khi ghi mới)."""
@@ -196,7 +206,7 @@ class ResearchState:
         "brand": default_fb_brand(),
         "posts": [],
         "comments": [],
-        "photo": [],
+        
     })
 
     # Node 4: Report
