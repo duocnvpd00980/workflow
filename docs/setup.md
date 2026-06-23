@@ -93,3 +93,8 @@ mLsaw1srstOY_V-WP2GdVpNwdPdybSfKC2fBhVUz8jR
 
 
 https://www.canva.dev/docs/?utm_source=chatgpt.com
+
+
+
+setup: 306x306 - thay đổi kích thước-
+https://scontent.fdad3-6.fna.fbcdn.net/v/t51.82787-15/728156190_18174092326418097_4814652062547422421_n.jpg?stp=dst-jpg_tt6&cstp=mx3125x3125&ctp=s306x306&_nc_cat=104&ccb=1-7&_nc_sid=714c7a&_nc_ohc=iISA281JIQgQ7kNvwFbugTC&_nc_oc=AdpD3fZF8vMVSQ4Fwava-AV8Ew9ywk_UrAFpIG9g42MtY5nPI48q8aXqeQpmXMuWbaA&_nc_zt=23&_nc_ht=scontent.fdad3-6.fna&_nc_gid=wpWvPWoHhBBMOX6iapJelA&_nc_ss=7b289&oh=00_Af9Ms3OuXAcIxyehVDrtP7hnx2cwUYYV-1T81dRaFlhVJg&oe=6A400DD5
