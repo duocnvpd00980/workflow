@@ -30,17 +30,23 @@ MEDIA_ROOT = Path("app/media")
 # ── Groq ──────────────────────────────────────────────────
 
 def call_groq(prompt: str, max_tokens: int = 1500, temperature: float = 0.2, gpt: bool = False) -> str:
-    """Gọi Groq sync, tự động dọn dẹp format và raise exception chuẩn hóa."""
+    """Call Groq synchronously, automatically clean up format and raise normalized exceptions."""
+
+    # 1. Đặt giới hạn tối đa cho max_tokens để tránh lỗi tràn TPM
+    MAX_ALLOWED_TOKENS = 4000 
+    actual_max_tokens = min(max_tokens, MAX_ALLOWED_TOKENS)
+
+    # 2. Chọn model dựa trên tham số gpt (mặc định GROQ_MODEL, gpt=True lấy GROQ_MODEL_GPT)
     selected_model = GROQ_MODEL_GPT if gpt else GROQ_MODEL
+
     try:
         msg = groq_client.chat.completions.create(
             model=selected_model,
             messages=[
-                # Thêm System hoặc bổ sung chỉ thị ngắn để ép Llama không lảm nhảm Step 1, Step 2
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=max_tokens,
-            temperature=temperature,  # Hạ xuống để 5 kiến tuân thủ quy tắc tốt hơn
+            max_completion_tokens=actual_max_tokens,
+            temperature=temperature,
             top_p=1,
             stop=None,
             timeout=LLM_TIMEOUT,
@@ -50,12 +56,7 @@ def call_groq(prompt: str, max_tokens: int = 1500, temperature: float = 0.2, gpt
         if not content:
             raise RuntimeError("GROQ_EMPTY_RESPONSE")
             
-        # [💡 MẸO CHO DEV]: Loại bỏ các đoạn bộc bạch "Suy nghĩ của AI" nếu có
         content = content.strip()
-        if "---" in content and content.count('"') < 10: 
-            # Nếu phát hiện format lạ lùng, bạn có thể xử lý chuỗi ở đây trước khi return
-            pass
-
         return content
 
     except Exception as e:
@@ -77,8 +78,6 @@ def call_groq(prompt: str, max_tokens: int = 1500, temperature: float = 0.2, gpt
         raise RuntimeError(f"GROQ_FATAL_ERROR: {str(e)}")
     
     
-    
-
 async def call_groq_stream(prompt: str, max_tokens: int = 500):
     """Gọi Groq async streaming."""
     stream = await async_groq_client.chat.completions.create(
@@ -108,6 +107,7 @@ async def stream_groq(prompt: str, max_tokens: int = 2000):
         if content:
             yield content
 
+
 # ── Gemini ────────────────────────────────────────────────
 
 def call_gemini(prompt: str, max_tokens: int = 1000) -> str:
@@ -134,13 +134,13 @@ def call_gemini(prompt: str, max_tokens: int = 1000) -> str:
 
 
 def call_gemini_imagen(prompt_desc: str) -> bytes:
-    """Gọi Pollinations API bằng cách xác thực qua Header"""
+    """Gọi Pollinations API bằng cách xác thực qua Cấu hình hệ thống"""
     try:
         safe_prompt = prompt_desc.replace(" ", "%20")
         url = f"https://gen.pollinations.ai/image/{safe_prompt}?model=flux&width=1024&height=576&nologo=true"
         
         headers = {
-            "Authorization": "Bearer sk_J68kYhDowZ8FTDPupSlolhNEcnqsWZ1P"
+            "Authorization": f"Bearer {_s.POLLINATIONS_API_KEY}"
         }
         
         response = requests.get(url, headers=headers, timeout=30)
