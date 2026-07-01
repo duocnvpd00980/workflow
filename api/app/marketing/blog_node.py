@@ -11,7 +11,7 @@ from typing import Literal, Optional
 import jinja2
 from langgraph.types import interrupt
 
-from api.app.marketing.rag_context import fetch_rag_context
+from app.marketing.rag_context import fetch_rag_context
 from app.llm_clients import call_gemini_imagen, call_groq
 from app.db import AsyncSessionLocal
 from app.brand.brand_voice_prompt import get_brand_prompt_by_id

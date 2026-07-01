@@ -128,7 +128,7 @@ export default function BrandDetailPage() {
     queryKey: ["brand-voice-detail", contentId],
     queryFn: async () => {
       if (!contentId) throw new Error("Missing contentId")
-      const res = await fetch(`${API_BASE}/${contentId}`, {
+      const res = await fetch(`${API_BASE}/brand-voices/${contentId}`, {
         headers: { accept: "application/json" },
       })
       if (res.status === 404) throw new Error("NOT_FOUND")
