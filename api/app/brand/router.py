@@ -25,6 +25,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, s
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.brand.brand_voice_prompt import ContentType
 from app.brand.service_slice import extract_brand_voice
 from app.research.models import PipelineEvent
 from app.db import get_db
@@ -649,7 +650,42 @@ async def list_brand_voices(
         "items": items_result.scalars().all(),
         "total": count_result.scalar_one()
     }
+@router.get("/{brand_id}/preview-prompt", response_model=Dict[str, Any])
+async def preview_brand_prompt(
+    brand_id: str,
+    content_type: ContentType = Query(...),
+    topic: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    from app.brand.brand_voice_prompt import get_brand_prompt_by_id
+    from app.marketing.rag_context import fetch_rag_context  # debug trực tiếp
 
+    user_input: Dict[str, Any] = {"topic": topic or ""}
+
+    brand_row = (await db.execute(
+        select(Brand).where(Brand.id == brand_id, Brand.deleted_at.is_(None))
+    )).scalars().one_or_none()
+
+
+    # Debug: gọi thẳng fetch_rag_context để xem RAW output, tách biệt khỏi luồng build prompt
+    rag_raw_debug = None
+    try:
+        rag_raw_debug = await fetch_rag_context(business_id=brand_row.business_id, query=topic or "", top_k=5)
+    except Exception as exc:
+        rag_raw_debug = {"error": str(exc)}
+
+    prompt = await get_brand_prompt_by_id(
+        brand_id=brand_id, content_type=content_type, user_input=user_input, db=db,
+    )
+
+    return {
+        "brand_id": brand_id,
+        "brand_id_input": brand_id,
+        "brand_business_id_actual": brand_row.business_id if brand_row else None,
+        "rag_raw_debug": rag_raw_debug,   
+        "system_prompt": prompt,
+        "prompt_length": len(prompt),
+    }
 
 # ═══════════════════════════════════════════════════════════════════
 # GET /brand-voices/options — Lightweight API

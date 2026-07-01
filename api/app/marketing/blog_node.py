@@ -56,6 +56,7 @@ def _merge_usage(current: dict, tokens: int, node: str) -> dict:
     }
 
 
+
 async def _get_brand_prompt_async(brand_id: str, content_type: str, user_input: dict):
     """Helper async để gọi get_brand_prompt_by_id."""
     from app.db import AsyncSessionLocal
@@ -106,14 +107,6 @@ def _compress_research_for_prompt_sync(research_data: dict, max_chars: int = 320
     return result
 
 
-async def _prepare_async(brand_id: str, function: str, user_input: dict, user_request: str):
-    """Gộp: lấy brand prompt + RAG context trong 1 lượt async."""
-    import asyncio as _asyncio
-    system_prompt, rag_ctx = await _asyncio.gather(
-        _get_brand_prompt_async(brand_id, function, user_input),
-        fetch_rag_context(business_id=brand_id, query=user_request, top_k=5),
-    )
-    return system_prompt, rag_ctx
 
 
 # ══════════════════════════════════════════════════════════════
@@ -149,43 +142,29 @@ def blog_prepare(state: dict) -> dict:
     try:
         research_context = _compress_research_for_prompt_sync(state.get("research_data", {}))
         user_input = {"topic": user_request, "length": selected_length, "tone": selected_tone}
-
+        
+        # Chạy async function trong sync context
         import asyncio
         try:
             loop = asyncio.get_running_loop()
+            # Đang trong event loop → chạy trong thread mới
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 future = pool.submit(
                     asyncio.run,
-                    _prepare_async(brand_id, function, user_input, user_request)
+                    _get_brand_prompt_async(brand_id, function, user_input)
                 )
-                system_prompt, rag_ctx = future.result()
+                system_prompt = future.result()
         except RuntimeError:
-            system_prompt, rag_ctx = asyncio.run(
-                _prepare_async(brand_id, function, user_input, user_request)
-            )
+            # Không có event loop → chạy trực tiếp
+            if research_context:
+                user_input["additional_instructions"] = (
+                    user_input.get("additional_instructions", "") 
+                    + f"\n\nNGỮ CẢNH TỪ RESEARCH: {research_context}"
+                )
 
-        # Gộp RAG context vào additional_instructions (LLM đọc được)
-        rag_text_parts = []
-        if rag_ctx["keywords"]:
-            rag_text_parts.append("Từ khóa liên quan: " + ", ".join(rag_ctx["keywords"]))
-        if rag_ctx["comments"]:
-            rag_text_parts.append("Nhu cầu/insight khách hàng: " + " | ".join(rag_ctx["comments"][:3]))
-        if rag_ctx["posts"]:
-            rag_text_parts.append("Phong cách bài cũ tham khảo: " + " | ".join(rag_ctx["posts"][:2]))
-
-        rag_context_str = "\n".join(rag_text_parts)
-        if rag_context_str:
-            user_input["additional_instructions"] = (
-                user_input.get("additional_instructions", "")
-                + f"\n\nNGỮ CẢNH TỪ RAG:\n{rag_context_str}"
-            )
-        if research_context:
-            user_input["additional_instructions"] = (
-                user_input.get("additional_instructions", "")
-                + f"\n\nNGỮ CẢNH TỪ RESEARCH: {research_context}"
-            )
-
+            system_prompt = asyncio.run(_get_brand_prompt_async(brand_id, function, user_input))
+        
         print(f"✅ get_brand_prompt_by_id success | prompt length: {len(system_prompt)}")
     except Exception as e:
         logger.exception(f"[BLOG_PREPARE ERROR] brand_id={brand_id}: {e}")
@@ -195,13 +174,14 @@ def blog_prepare(state: dict) -> dict:
         return {**state, "error": "empty_system_prompt", "system_prompt": None, "needs_image": needs_image}
 
     elapsed = round(time.time() - started, 3)
+    print(f"⏱️  Elapsed: {elapsed}s | needs_image={needs_image}")
+    print(f"------------------------------{system_prompt}---------------------")
     return {
         **state,
         "function":      function,
         "needs_image":   needs_image,
         "system_prompt": system_prompt,
         "enriched_topic": user_request,
-        "rag_images":    rag_ctx.get("images", []),   # ← lưu lại để execute_blog_image dùng
         "usage":  state.get("usage") or {"total_tokens": 0, "total_cost": 0.0, "calls": []},
         "approved": False,
         "error":    None,
@@ -332,84 +312,80 @@ def execute_blog_content(state: dict) -> dict:
 
 
 def execute_blog_image(state: dict) -> dict:
+    """Tạo ảnh cho blog."""
     print("\n" + "="*60)
     print("🟢 NODE: execute_blog_image")
     print("="*60)
-
+    
     session_id = state.get("session_id", "default")
-    brand_id = state.get("brand_id")
     save_path = Path("app/media") / session_id
     os.makedirs(save_path, exist_ok=True)
-
+    
     draft = state.get("draft") or {"content": "", "metadata": {}, "version": 0}
     content = draft.get("content", "")
     title = state.get("title", "")
 
-    # ── Bước 1: tìm hết placeholder trước, prefetch match RAG 1 lần (batch) ──
-    placeholders = re.findall(r"\[(?:PLACEHOLDER_IMAGE_\d+|IMAGE):\s*(.*?)\]", content)
-
-    rag_matches: dict = {}
-    if placeholders and brand_id:
-        from app.marketing.rag_context import match_image_for_placeholder
-        import asyncio, concurrent.futures
-
-        async def _match_all():
-            results = {}
-            for desc in placeholders:
-                results[desc] = await match_image_for_placeholder(brand_id, desc)
-            return results
-
-        try:
-            loop = asyncio.get_running_loop()
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                future = pool.submit(asyncio.run, _match_all())
-                rag_matches = future.result()
-        except RuntimeError:
-            rag_matches = asyncio.run(_match_all())
+    print(f"📥 Input:")
+    print(f"   - session_id: {session_id}")
+    print(f"   - title: {title}")
+    print(f"   - content length: {len(content)}")
+    print(f"   - save_path: {save_path}")
 
     def generate_and_save(match):
         desc = match.group(1)
-
-        # Ưu tiên ảnh thật từ RAG nếu match đủ tốt
-        rag_hit = rag_matches.get(desc)
-        if rag_hit:
-            print(f"🖼️  Dùng ảnh RAG cho '{desc}' (score={rag_hit['score']:.2f})")
-            return f"![{desc}]({rag_hit['url']})"
-
-        # Fallback: generate bằng Gemini Imagen như cũ
-        print(f"🎨 Không match RAG, generate ảnh cho: '{desc}'")
+        print(f"🎨 Generating image for: '{desc}'")
         try:
             img_bytes = call_gemini_imagen(f"Professional marketing photo of: {desc}")
+            
             file_name = f"image_{uuid.uuid4().hex[:8]}.png"
             file_full_path = save_path / file_name
             with open(file_full_path, "wb") as f:
                 f.write(img_bytes)
+            
+            file_size = file_full_path.stat().st_size
+            print(f"✅ Image saved: {file_name} ({file_size} bytes)")
+                
             return f"![{desc}](/media/{session_id}/{file_name})"
+            
         except Exception as e:
             print(f"❌ Image gen failed: {e}")
             return f"[Ảnh minh họa: {desc}]"
 
+    # Match [IMAGE: ...] hoặc [PLACEHOLDER_IMAGE_X: ...]
     final_content = re.sub(
         r"\[(?:PLACEHOLDER_IMAGE_\d+|IMAGE):\s*(.*?)\]",
         generate_and_save,
         content
     )
-
+    
+    # Check if any replacement happened
     images_created = final_content != content
+    print(f"🖼️  Images created: {images_created}")
+
+    # Fallback: create thumbnail from title if no placeholders
     image_url = None
     if not images_created and title:
+        print(f"🎨 No placeholders, creating thumbnail from title...")
         try:
             img_bytes = call_gemini_imagen(f"Professional marketing thumbnail for: {title}")
             file_name = f"thumbnail_{uuid.uuid4().hex[:8]}.png"
             file_full_path = save_path / file_name
             with open(file_full_path, "wb") as f:
                 f.write(img_bytes)
+            
             image_url = f"/media/{session_id}/{file_name}"
+            print(f"✅ Thumbnail created: {image_url}")
         except Exception as e:
             print(f"❌ Thumbnail failed: {e}")
+            image_url = None
     else:
-        img_match = re.search(r'!\[.*?\]\((.*?)\)', final_content)
+        # Extract first image URL
+        img_match = re.search(r'!\[.*?\]\((/media/.*?)\)', final_content)
         image_url = img_match.group(1) if img_match else None
+        if image_url:
+            print(f"✅ Found image URL: {image_url}")
+
+    print(f"✅ Output: image_url={image_url}")
 
     return {
         **state,
@@ -417,7 +393,6 @@ def execute_blog_image(state: dict) -> dict:
         "draft": {**draft, "content": final_content},
         "usage": _merge_usage(state.get("usage", {}), 150, "blog_image"),
     }
-
 
 def blog_review_pause(state: dict) -> dict:
     """Human-in-the-loop: pause để user review."""

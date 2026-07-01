@@ -22,6 +22,7 @@ from sqlalchemy import select
 from typing import Any, Dict, Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 from jinja2 import Environment, FileSystemLoader, Template, select_autoescape
+from app.marketing.rag_context import fetch_rag_context
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,15 @@ def _get_template() -> Template:
 # ═══════════════════════════════════════════════════════════════════
 # HELPER PARSER — Bóc tách danh sách từ Markdown thô (K4, K7)
 # ═══════════════════════════════════════════════════════════════════
+
+def _truncate(text: str | None, max_chars: int = 800) -> str:
+    """Cắt bớt text dài (giữ nguyên nếu ngắn hơn max_chars), cắt ở ranh giới từ."""
+    if not text:
+        return ""
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rsplit(" ", 1)[0].rstrip() + "..."
+
 
 def _parse_markdown_list(markdown_text: str | None, section_title: str) -> list[str]:
     """Tìm tiêu đề trong chuỗi Markdown và bóc các dòng dấu gạch đầu dòng (-) bên dưới."""
@@ -88,6 +98,10 @@ def _normalize_flat_brand_voice(bv_flat: Dict[str, Any]) -> Dict[str, Any]:
     Pipeline xử lý dữ liệu phẳng (Flat Data). No more nested JSON dict loops!
     Nhận vào flat dict từ DB Model và map mượt mà sang đầu ra cho Jinja2.
     """
+    # 0. Giới hạn độ dài các trường Markdown tự do dài (nguồn tốn token chính, biến động theo brand)
+    bv_flat["k1_brand_foundation"] = _truncate(bv_flat.get("k1_brand_foundation"), 800)
+    bv_flat["k3_content_patterns"] = _truncate(bv_flat.get("k3_content_patterns"), 600)
+
     # 1. Bóc tách tập từ vựng từ phân hệ K7 Markdown
     k7 = bv_flat.get("k7_vocabulary_rules")
     bv_flat["words_to_use"] = _parse_markdown_list(k7, "WORDS TO USE")
@@ -175,6 +189,7 @@ async def build_system_prompt(
     brand_voice: Dict[str, Any],
     content_type: ContentType,
     user_input: Dict[str, Any],
+    rag: Dict[str, Any] | None = None,
 ) -> str:
     """Render Jinja2 template → system prompt hoàn chỉnh cho content generation từ cấu trúc phẳng."""
     normalized = _normalize_flat_brand_voice(brand_voice)
@@ -185,12 +200,14 @@ async def build_system_prompt(
             bv=normalized, # Đổi tên biến truyền vào gọn hơn thành `bv` đại diện cho Brand Voice phẳng
             content_type=content_type,
             user_input=user_input,
+            rag=rag or {},
         )
     except Exception as exc:
         logger.error("Jinja2 render failed: %s", exc)
         raise RuntimeError(f"Không thể build system prompt: {exc}") from exc
 
     return prompt.strip()
+
 
 
 async def get_brand_prompt_by_id(
@@ -249,9 +266,35 @@ async def get_brand_prompt_by_id(
         "tone_respectful_irreverent":       brand.tone_respectful_irreverent,
         "tone_enthusiastic_matter_of_fact": brand.tone_enthusiastic_matter_of_fact,
     }
+   
+    import asyncio
+
+    search_query = user_input.get("topic", "")
+
+    try:
+        loop = asyncio.get_running_loop()
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            future = pool.submit(
+                asyncio.run,
+                fetch_rag_context(business_id=brand_id, query=search_query, top_k=5),
+            )
+            rag_ctx = future.result()
+    except RuntimeError:
+        rag_ctx = asyncio.run(
+            fetch_rag_context(business_id=brand_id, query=search_query, top_k=5),
+        )
+
+    # Gộp RAG context vào additional_instructions (LLM đọc được)
+    rag_payload = {
+        "keywords": rag_ctx.get("keywords") or [],
+        "comments": [_truncate(c, 150) for c in (rag_ctx.get("comments") or [])[:3]],
+        "posts":    [_truncate(p, 150) for p in (rag_ctx.get("posts") or [])[:2]],
+    }
 
     return await build_system_prompt(
         brand_voice=brand_flat_dict,
         content_type=content_type,
         user_input=user_input,
+        rag=rag_payload,
     )

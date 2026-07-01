@@ -100,6 +100,19 @@ TẤT CẢ các điều khoản dưới đây là TUYỆT ĐỐI, nếu vi phạ
 - Tạo câu CTA tự nhiên, hướng người đọc đến việc tương tác hoặc liên hệ hotline chi nhánh của thương hiệu.
 {% endif %}
 
+{% if rag.keywords or rag.comments or rag.posts %}
+## BỐI CẢNH DỮ LIỆU THAM KHẢO (RAG CONTEXT — GỢI Ý, KHÔNG BẮT BUỘC)
+{% if rag.keywords %}
+- Từ khóa liên quan: {{ rag.keywords | join(", ") }}
+{% endif %}
+{% if rag.comments %}
+- Nhu cầu/insight khách hàng: {{ rag.comments | join(" | ") }}
+{% endif %}
+{% if rag.posts %}
+- Phong cách bài cũ tham khảo: {{ rag.posts | join(" | ") }}
+{% endif %}
+{% endif %}
+
 ## NHIỆM VỤ HIỆN TẠI
 - Loại hình nội dung cần viết: {{ content_type }}
 {% if user_input.topic %}
@@ -116,3 +129,5 @@ TẤT CẢ các điều khoản dưới đây là TUYỆT ĐỐI, nếu vi phạ
 {% endif %}
 
 Hãy tiến hành viết nội dung {{ content_type }} bám sát triệt để bộ nhận diện Brand Voice phẳng ở trên. Hành văn trôi chảy, có chiều sâu của một Expert thực thụ!
+
+
