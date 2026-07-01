@@ -204,6 +204,7 @@ class ResearchState:
     # fb_data = {"brand": {...5 key...}, "posts": [str,...], "comments": [{author,time,comment,replies},...]}
     fb_data: dict = field(default_factory=lambda: {
         "brand": default_fb_brand(),
+        "photos": [],
         "posts": [],
         "comments": [],
         

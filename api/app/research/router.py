@@ -6,6 +6,7 @@ from app.db import get_db
 from app.research.research_service import run_research
 
 from .models import (
+    FbPhoto,
     PipelineTask,
     PipelineEvent,
     ResearchResult,
@@ -170,6 +171,25 @@ async def get_comments(
         )
     ).scalars().all()
 
+
+# ─────────────────────────────────────────────
+# COMMENTS
+# ─────────────────────────────────────────────
+
+@router.get("/{business_id}/photos")
+async def get_photos(
+    business_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    return (
+        await db.execute(
+            select(FbPhoto)
+            .where(
+                FbPhoto.business_id
+                == business_id
+            )
+        )
+    ).scalars().all()
 
 # ─────────────────────────────────────────────
 # FULL

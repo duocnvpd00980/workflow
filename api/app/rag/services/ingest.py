@@ -75,12 +75,12 @@ async def trigger_rag_ingestion(db: AsyncSession, business_id: str) -> dict:
             "keywords": {"ok": 0, "error": 0},
             "posts": {"ok": 0, "error": 0},
             "comments": {"ok": 0, "error": 0},
-            "images": {"ok": 0, "error": 0},
+            "photos": {"ok": 0, "error": 0},
         }
         
         # ═════════════════════════════════════════════════════════════════
         # PHASE 1: Keywords (batch 10, load 1 lần)
-        # ═════════════════════════════════════════════════════════════════
+        # ════════════════════════════════════
         log.info("[rag] === PHASE 1: Keywords ===")
         kw_stats = await _ingest_keywords_phase(
             business_id,

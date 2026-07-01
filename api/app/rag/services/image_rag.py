@@ -267,6 +267,37 @@ class ImageStore:
 
     def stats(self) -> dict:
         return {"images": len(self._ids), "faiss_vectors": self._idx.ntotal}
+    
+    # trong ImageStore, dưới stats()
+    def list_all(self, business_id: Optional[str] = None, limit: int = 50, offset: int = 0) -> dict:
+        items = [{"image_id": iid, **meta} for iid, meta in zip(self._ids, self._metas)]
+        if business_id:
+            items = [i for i in items if i.get("business_id") == business_id]
+        total = len(items)
+        return {"total": total, "items": items[offset : offset + limit]}
+
+    # image_rag.py — ImageStore
+    async def search_by_store(self, text: str, k: int = 5, business_id: Optional[str] = None) -> List[dict]:
+        if not self._idx.ntotal:
+            return []
+        embs = await self._embed.encode([text])
+        v = np.array(embs, dtype=np.float32)
+        faiss.normalize_L2(v)
+        fetch_k = k * 5 if business_id else k
+        scores, ids = self._idx.search(v, min(fetch_k, self._idx.ntotal))
+
+        out = []
+        for s, i in zip(scores[0], ids[0]):
+            if i < 0 or s <= 0:
+                continue
+            meta = self._metas[i]
+            if business_id and meta.get("business_id") != business_id:
+                continue
+            out.append({"image_id": self._ids[i], "score": float(s), "meta": meta})
+            if len(out) >= k:
+                break
+        return out
+
 
     # ── Persist ──────────────────────────────────────────────────────────────
 
@@ -427,6 +458,16 @@ class ImageRAG:
         """Tìm ảnh bằng text query."""
         await self._lazy_init()
         return await self._store.search_by_text(text, k)
+    
+    # ImageRAG
+    async def search_by_store(self, text: str, k: int = 5, business_id: Optional[str] = None) -> List[dict]:
+        await self._lazy_init()
+        return await self._store.search_by_store(text, k, business_id)
 
     def stats(self) -> dict:
         return self._store.stats() if self._store else {"images": 0, "faiss_vectors": 0}
+    
+    # trong ImageRAG, dưới stats()
+    async def list_all(self, business_id: Optional[str] = None, limit: int = 50, offset: int = 0) -> dict:
+        await self._lazy_init()
+        return self._store.list_all(business_id, limit, offset)

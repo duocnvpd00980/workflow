@@ -131,6 +131,80 @@ async def check_rag_ingestion_status(
 
 
 
+@router.get("/data/{business_id}")
+async def list_rag_data(
+    business_id: str,
+    rag_type: Optional[str] = None,   # "keywords" | "posts" | "comments" | "images" | None = tất cả
+    chunk_type: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
+):
+    """
+    Xem dữ liệu THÔ đã ingest — không qua search/rerank.
+
+        GET /rag/data/biz_001
+        GET /rag/data/biz_001?rag_type=comments
+        GET /rag/data/biz_001?rag_type=posts&chunk_type=cta
+        GET /rag/data/biz_001?limit=20&offset=20
+    """
+    from app.rag.services.keyword import KeywordRAG
+    from app.rag.services.comment import CommentRAG
+    from app.rag.services.social import SocialPostRAG
+    from app.rag.services.image_rag import ImageRAG
+    from app.rag.services.embedder import get_embedder
+
+    result = {}
+    if rag_type in (None, "keywords"):
+        result["keywords"] = KeywordRAG().list_all(business_id, chunk_type, limit, offset)
+    if rag_type in (None, "posts"):
+        result["posts"] = SocialPostRAG().list_all(business_id, chunk_type, limit, offset)
+    if rag_type in (None, "comments"):
+        result["comments"] = CommentRAG().list_all(business_id, chunk_type, limit, offset)
+    if rag_type in (None, "images"):
+        irag = ImageRAG(get_embedder())
+        result["images"] = await irag.list_all(business_id, limit, offset)
+
+    return {"business_id": business_id, "data": result}
+
+
+
+@router.get("/search/{business_id}")
+async def search_rag_data(
+    business_id: str,
+    query: str,
+    rag_type: str,   # "keywords" | "posts" | "comments" | "images"
+    k: int = 5,
+):
+    """
+    Search thử — dùng đúng pipeline retrieve -> prefilter -> rerank có sẵn.
+
+        GET /rag/search/biz_001?query=giá+phòng&rag_type=comments&k=5
+    """
+    from app.rag.services.keyword import KeywordRAG
+    from app.rag.services.comment import CommentRAG
+    from app.rag.services.social import SocialPostRAG
+    from app.rag.services.image_rag import ImageRAG
+    from app.rag.services.embedder import get_embedder
+
+    if rag_type == "images":
+        irag = ImageRAG(get_embedder())
+        results = await irag.search_by_text(query, k=k)
+    elif rag_type == "keywords":
+        chunks = await KeywordRAG().search(query, business_id=business_id, top_k=k)
+        results = [c.to_dict() for c in chunks]
+    elif rag_type == "posts":
+        chunks = await SocialPostRAG().search(query, business_id=business_id, top_k=k)
+        results = [c.to_dict() for c in chunks]
+    elif rag_type == "comments":
+        chunks = await CommentRAG().search(query, business_id=business_id, top_k=k)
+        results = [c.to_dict() for c in chunks]
+    else:
+        raise HTTPException(status_code=400, detail="rag_type phải là: keywords | posts | comments | images")
+
+    return {"business_id": business_id, "rag_type": rag_type, "query": query, "results": results}
+
+
+
 @router.get("/", response_model=list[DocOut])
 async def list_docs(db: AsyncSession = Depends(get_db)):
     rows = await db.execute(

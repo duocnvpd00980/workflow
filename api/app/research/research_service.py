@@ -158,7 +158,7 @@ async def _replace_fb_photos(db: AsyncSession, state: ResearchState):
     )
 
     # Ảnh từ tab Photos
-    photo_urls = state.fb_data.get("photo", []) or []
+    photo_urls = state.fb_data.get("photos", []) or []
     db.add_all([
         FbPhoto(
             business_id=state.business_id,
@@ -631,7 +631,7 @@ async def _scrape_facebook(browser, fb_url: str, business_id: str):
     target_url = fb_url.strip().lower() + ("/" if not fb_url.strip().endswith("/") else "")
     clean_search_url = f'"{target_url}"'
     search_query = f"site:{target_url.replace('https://', '').replace('http://', '').replace('www.', '')}"
-
+    print(search_query)
     # Dùng hàm get trực tiếp trên browser dùng chung (không close tab bậy bạ)
     page = await browser.get(f"https://www.google.com/search?q={search_query}")
     await asyncio.sleep(1.5)
@@ -661,7 +661,7 @@ async def _scrape_facebook(browser, fb_url: str, business_id: str):
     await click_target.click()
     
     # Ép giãn cách 3s để nhận đúng Referer nguồn từ Google chuyển qua
-    await asyncio.sleep(3.0)
+    await asyncio.sleep(4.0)
 
     fb_tab = None
     for tab in browser.tabs:
@@ -786,7 +786,7 @@ async def node_facebook(state: ResearchState, seq: list, headless: bool):
                 "phones": brand["phones"], "emails": brand["emails"],
                 "domains": brand["domains"], "og_image": brand.get("og_image", ""),
             },
-            "photo": photo_path,
+            "photos": photo_path,
             "posts": final_posts,
             "attachments_map": attachments_map if posts else [[] for _ in final_posts],
             "comments": comments,
@@ -819,6 +819,7 @@ def node_report(state: ResearchState, seq: list):
         f"Business: {state.business_name}\n"
         f"Suggestions: {len(state.suggestions)}\n"
         f"SERP urls: {len(state.serp_data.get('top_urls', []))}\n"
+        f"FB photos: {len(state.fb_data.get('photos', []))}\n"
         f"FB posts: {len(state.fb_data.get('posts', []))}\n"
         f"FB comments: {len(state.fb_data.get('comments', []))}\n"
     )

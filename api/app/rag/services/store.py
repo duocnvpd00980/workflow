@@ -300,6 +300,7 @@ class FaissMetaStore:
         self._result_cache[key] = value
         self._result_cache_order.append(key)
 
+    
     # ── pipeline: retrieve -> prefilter -> rerank -> final ────────────────
 
     async def search(
@@ -334,3 +335,19 @@ class FaissMetaStore:
             "faiss_vectors": self._idx.ntotal,
             "documents": len(self._dedupe_keys),
         }
+
+    def list_all(
+        self,
+        business_id: Optional[str] = None,
+        chunk_type: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        """Liệt kê record thô — không search/rerank, không đụng model."""
+        items = self._records
+        if business_id:
+            items = [r for r in items if r.get("business_id") == business_id]
+        if chunk_type:
+            items = [r for r in items if r.get("chunk_type") == chunk_type]
+        total = len(items)
+        return {"total": total, "items": items[offset : offset + limit]}

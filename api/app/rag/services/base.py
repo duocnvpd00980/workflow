@@ -58,3 +58,12 @@ class BaseRAG:
 
     def stats(self) -> dict:
         return self._store.stats()
+    
+    def list_all(
+        self,
+        business_id: Optional[str] = None,
+        chunk_type: Optional[str] = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> dict:
+        return self._store.list_all(business_id, chunk_type, limit, offset)
