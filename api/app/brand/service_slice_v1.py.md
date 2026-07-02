@@ -30,51 +30,17 @@ _VN_CHARS = re.compile(
     r'ÁÀẢÃẠẤẦẨẪẬẮẰẲẴẶÉÈẺẼẸẾỀỂỄỆÍÌỈĨỊÓÒỎÕỌỐỒỔỖỘỚỜỞỠỢÚÙỦŨỤỨỪỬỮỰÝỲỶỸỴ]'
 )
 
-# Các stopword phổ biến của tiếng Anh — nếu văn bản chứa nhiều từ này,
-# gần như chắc chắn câu văn được viết bằng tiếng Anh, bất kể có bao nhiêu
-# tên riêng tiếng Việt (brand, địa danh) chen vào.
-_EN_STOPWORDS = {
-    "the", "is", "are", "was", "were", "and", "or", "of", "in", "on",
-    "for", "with", "to", "this", "that", "these", "those", "likely",
-    "appears", "seems", "include", "includes", "including", "such",
-    "as", "customers", "users", "people", "individuals", "searching",
-    "particularly", "various", "information", "about",
-}
 
-
-def _is_vietnamese(text: str, min_ratio: float = 0.06, max_en_stopword_ratio: float = 0.06) -> bool:
-    """Heuristic check kết hợp 2 tín hiệu:
-    1) Tỷ lệ ký tự có dấu tiếng Việt trên tổng số ký tự chữ cái.
-    2) Tỷ lệ từ trùng stopword tiếng Anh trên tổng số từ.
-
-    Chỉ dựa vào (1) là không đủ, vì tên riêng brand/địa danh tiếng Việt
-    (vd: "Đà Nẵng", "Mộc Quán") có thể kéo tỷ lệ dấu lên dù toàn bộ câu
-    văn thực chất là tiếng Anh. Kết hợp thêm (2) để bắt đúng trường hợp
-    này: nếu văn bản có nhiều stopword tiếng Anh, coi là lệch ngôn ngữ
-    dù tỷ lệ dấu có vượt ngưỡng.
-    """
+def _is_vietnamese(text: str, min_ratio: float = 0.01) -> bool:
+    """Heuristic check: real Vietnamese prose should contain a noticeable
+    share of diacritic characters. Pure English text will have ~0."""
     if not text:
         return False
-
     letters = sum(1 for ch in text if ch.isalpha())
     if letters == 0:
         return False
-
     vn_hits = len(_VN_CHARS.findall(text))
-    vn_ratio = vn_hits / letters
-    if vn_ratio < min_ratio:
-        return False
-
-    words = re.findall(r"[a-zA-Z']+", text.lower())
-    if not words:
-        return True  # không có từ Latin nào để nghi ngờ -> coi là tiếng Việt
-
-    en_hits = sum(1 for w in words if w in _EN_STOPWORDS)
-    en_ratio = en_hits / len(words)
-    if en_ratio >= max_en_stopword_ratio:
-        return False
-
-    return True
+    return (vn_hits / letters) >= min_ratio
 
 
 async def _call_with_language_guard(prompt_builder, i, max_tokens, label, retries=1):
@@ -135,51 +101,6 @@ def _extract_locations_deterministic(intro_text: str, phones: list) -> list:
         "hotline": phones[0] if phones else ""
     }]
 
-def _resolve_business_name(data_result: dict, fallback_from_task: str = "") -> str:
-    """Suy luận business_name khi input gốc rỗng/rác (vd: 'string' do test API).
-    Ưu tiên: task input thật > <h1> từ trang Facebook (page_name) > <title> đã làm sạch > SERP title.
-    """
-    def _is_garbage(name: str) -> bool:
-        if not name or not name.strip():
-            return True
-        return name.strip().lower() in {"string", "test", "n/a", "unknown", "null"}
-
-    def _clean_page_title(title: str) -> str:
-        if not title:
-            return ""
-        title = re.split(r'\s*[\|\-–]\s*Facebook\s*$', title, flags=re.IGNORECASE)[0]
-        title = re.split(r'\s*[\|\-–]\s*(Da Nang|Ha Noi|Ho Chi Minh)\s*$', title, flags=re.IGNORECASE)[0]
-        return title.strip()
-
-    if not _is_garbage(fallback_from_task):
-        return fallback_from_task.strip()
-
-    page_info = data_result.get("fb_brand", {}).get("page_info", {})
-
-    # 1. Ưu tiên cao nhất: <h1> (page_name) — tên hiển thị thật, không đuôi
-    h1_name = page_info.get("page_name", "")
-    if not _is_garbage(h1_name):
-        logger.warning(f"[_resolve_business_name] Dùng page_name (H1): '{h1_name}'")
-        return h1_name
-
-    # 2. Tiếp theo: <title>, cần làm sạch đuôi "| Facebook", "| Da Nang"
-    cleaned = _clean_page_title(page_info.get("title", ""))
-    if not _is_garbage(cleaned):
-        logger.warning(f"[_resolve_business_name] Dùng page title đã làm sạch: '{cleaned}'")
-        return cleaned
-
-    # 3. Cuối cùng: SERP title
-    top_urls = data_result.get("serp_data", {}).get("top_urls", [])
-    if top_urls:
-        serp_title = _clean_page_title(top_urls[0].get("title", ""))
-        if not _is_garbage(serp_title):
-            logger.warning(f"[_resolve_business_name] Dùng SERP title: '{serp_title}'")
-            return serp_title
-
-    logger.error("[_resolve_business_name] Không tìm được business_name hợp lệ.")
-    return "Thương hiệu"
-
-    
 # ═══════════════════════════════════════════════════
 # CELL 1B: GENERIC LABEL PARSERS
 # Dùng để đọc section "LABEL:\n..." từ output thô của LLM, RỒI render lại
@@ -370,6 +291,9 @@ def prepare_kien_inputs(data):
 
         "k3": {
             "posts": posts[:10],
+            "minimal": m3,
+            "full": f3,
+            # ➕ BỔ SUNG ĐẦY ĐỦ: Gửi kèm để K3 phân tích khoảng trống nội dung (Content Gap)
             "keyword_cluster": serp.get("keyword_cluster", []),
             "competitor_pattern": serp.get("competitor_pattern", []),
             "content_angle": serp.get("content_angle", []),
@@ -482,19 +406,12 @@ EVIDENCE:
 
 END
 """
-
-
 def _pk2(i):
-    pt = "\n\n---\n".join(
-        f"ID:{p['id']}\n{_strip_invisible(p.get('content',''))[:500]}"
-        for p in i.get("posts", [])
-    )
-
     ct = "\n".join(
         f"- {c['author']}: {_strip_invisible(c.get('comment',''))[:200]}"
         for c in i.get("comments", [])
     )
-
+    
     # Biến đổi dict thành chuỗi văn bản cho LLM đọc
     tagged = i.get("suggestions_tagged", {})
     st_text = "\n".join(f"Cụm từ [{k.upper()}]: {', '.join(v)}" for k, v in tagged.items() if v)
@@ -507,9 +424,6 @@ MISSION
 Identify audience, customer intent, and search patterns.
 
 DATA
-BRAND POSTS:
-{pt}
-
 COMMENTS FROM FANPAGE:
 {ct}
 
@@ -517,27 +431,23 @@ SEARCH_SUGGESTIONS_BY_INTENT:
 {st_text}
 
 RULES
-- Analyze posts, fanpage comments, and target search phrases together.
+- Analyze both fanpage comments and target search phrases.
 - Link search phrases to actual customer needs.
 - No assumptions. No explanations.
 - Return exact schema only.
-- BẮT BUỘC: toàn bộ nội dung OUTPUT phải viết bằng tiếng Việt có dấu đầy đủ
-  (ă, â, đ, ê, ô, ơ, ư). Không viết bằng tiếng Anh, kể cả khi dữ liệu đầu
-  vào có chứa tiếng Anh.
 
 OUTPUT
 AUDIENCE:
-(một câu tiếng Việt, mô tả khách hàng mục tiêu kết hợp cả hành vi trên
-mạng xã hội và ý định tìm kiếm)
+(one sentence combining social audience and search intent)
 
 CUSTOMER_TOPICS:
-- Ví dụ: Địa điểm quán, thực đơn, giá cả
+- item
 
 CUSTOMER_SENTIMENT:
-- Ví dụ: Mong muốn tìm được lựa chọn hợp túi tiền và chất lượng tốt
+- item
 
 CUSTOMER_REQUESTS:
-- Ví dụ: Tìm địa chỉ, đặt bàn, xem đánh giá
+- item
 
 PAIN_POINTS:
 - item (Dựa trên search suggestions, ví dụ: tìm kiếm quán 'rẻ nhất', 'gần thanh khê', 'đánh giá michelin')
@@ -546,9 +456,6 @@ EVIDENCE:
 - item
 END
 """
-
-
-
 def _pk3(i):
     pt = "\n\n---\n".join(
         f"ID:{p['id']}\n{_strip_invisible(p.get('content',''))[:600]}"
@@ -606,18 +513,11 @@ EVIDENCE:
 END
 """
 
-
-
 def _pk4(i):
 
     pt = "\n\n---\n".join(
         f"ID:{p['id']}\n{_strip_invisible(p.get('content',''))[:500]}"
         for p in i.get("posts", [])
-    )
-
-    bc = "\n".join(
-        f"- {c['author']}: {_strip_invisible(c.get('comment',''))[:200]}"
-        for c in i.get("bc", [])
     )
 
     return f"""
@@ -634,13 +534,9 @@ DATA
 POSTS:
 {pt}
 
-CUSTOMER_QUESTIONS_ABOUT_BOOKING_MENU_PRICE:
-{bc}
-
 RULES
 
 - Exact extraction only.
-- Use customer questions to validate which contact actions actually work.
 - No assumptions.
 - No explanations.
 - Return exact schema only.
@@ -666,6 +562,7 @@ END
 """
 
 
+import re
 
 def _pk5(i: dict) -> dict:
     """
@@ -894,7 +791,7 @@ async def run_kiens(data):
     logger.info(
         f"[run_kiens] K1:{len(inp['k1']['posts'])} "
         f"K2:{len(inp['k2']['posts'])}+{len(inp['k2']['comments'])} "
-        f"K3:{len(inp['k3']['posts'])} "
+        f"K3:{len(inp['k3']['minimal'])}+{len(inp['k3']['full'])} "
         f"K4:{len(inp['k4']['posts'])}+{len(inp['k4']['bc'])} "
         f"K5:{len(inp['k5']['posts'])}"
     )
@@ -1206,28 +1103,30 @@ def aggregate(
     posts = posts or []
     now = datetime.now(timezone.utc).isoformat()
 
-    # ── K1: Brand Foundation (parse để lấy purpose/taglines dùng riêng) ──
+    # ── K1: Brand Foundation ────────────────────────────────────────
     k1_md, purpose, taglines = _build_k1_markdown(k1)
 
-    # ── K2: Customer Insights (parse để lấy audience dùng riêng) ────────
+    # ── K2: Customer Insights ───────────────────────────────────────
     k2_md, audience = _build_k2_markdown(k2)
 
-    # ── K3: Content Patterns — raw, không parse lại (không cần extract field riêng)
-    k3_md = _strip_invisible(k3 or "").strip()
+    # ── K3: Content Patterns ─────────────────────────────────────────
+    k3_md = _build_k3_markdown(k3)
 
-    # ── K4: Behavior Rules — raw, không parse lại ────────────────────────
-    k4_md = _strip_invisible(k4 or "").strip()
+    # ── K4: Behavior Rules ───────────────────────────────────────────
+    k4_md = _build_k4_markdown(k4)
 
-    # ── K5: Examples (verbatim post thật, không qua LLM) ─────────────────
+    # ── K5: Examples (verbatim post thật, không qua LLM) ─────────────
     k5_md = _build_k5_examples_markdown(posts)
 
-    # ── K6: Tone Analysis + 4 trục slider (parse để lấy sliders dùng riêng)
+    # ── K6: Tone Analysis + 4 trục slider ────────────────────────────
     k6_md, tone_base, sliders = _build_k6_markdown(k6)
 
-    # ── K7: Vocabulary Rules — raw, không parse lại ──────────────────────
-    k7_md = _strip_invisible(k7 or "").strip()
+    # ── K7: Vocabulary Rules ──────────────────────────────────────────
+    k7_md = _build_k7_markdown(k7)
 
-    # ── Business facts (JSON field riêng, không phải K-doc) ──────────────
+    # ── Business facts (JSON field riêng, không phải K-doc) ──────────
+    # business_facts = _parse_business_context(k5, k5_input)
+
     fb_business_facts = fb.get("business_facts")
     if fb_business_facts and not fb_business_facts.get("_needs_manual_review", False):
         business_facts = {
@@ -1242,10 +1141,10 @@ def aggregate(
     else:
         business_facts = _parse_business_context(k5, k5_input)  # fallback duy nhất khi fb không có business_facts
 
-    # ── Channels (dựa trên raw text K3 + K4, giữ logic cũ) ────────────────
+    # ── Channels (dựa trên raw text K3 + K4, giữ logic cũ) ────────────
     channels = _channels(k3, k4)
 
-    # ── desired_tone: tóm tắt ngắn từ TONE_BASE (K6) ───────────────────────
+    # ── desired_tone: tóm tắt ngắn từ TONE_BASE (K6) ──────────────────
     desired_tone = ", ".join(tone_base[:3]) if tone_base else "Chuyên nghiệp"
 
     result = {
@@ -1293,6 +1192,7 @@ def aggregate(
 
     return result
 
+
 # ═══════════════════════════════════════════════════
 # CELL 8: MAIN — Run from data → Brand fields (K1-K7 Markdown)
 # ═══════════════════════════════════════════════════
@@ -1302,15 +1202,11 @@ async def extract_brand_voice(research_record):
 
     result = research_record["result"]
     logger.info(f"[extract_brand_voice] result type={type(result)}")
-    raw_business_name = result.get("business_name") if isinstance(result, dict) else getattr(result, 'business_name', None)
 
     data = {
         "task": {
             "business_id": result.get("business_id") if isinstance(result, dict) else getattr(result, 'business_id', None),
-            "business_name": _resolve_business_name(
-                result if isinstance(result, dict) else {},
-                raw_business_name
-            ),
+            "business_name": result.get("business_name") if isinstance(result, dict) else getattr(result, 'business_name', None),
         },
         "result": {
             "serp_data": result.get("serp_data") if isinstance(result, dict) else getattr(result, 'serp_data', {}),

@@ -650,6 +650,8 @@ async def list_brand_voices(
         "items": items_result.scalars().all(),
         "total": count_result.scalar_one()
     }
+
+    
 @router.get("/{brand_id}/preview-prompt", response_model=Dict[str, Any])
 async def preview_brand_prompt(
     brand_id: str,

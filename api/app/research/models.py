@@ -55,6 +55,16 @@ FB_BRAND_SCHEMA = {
     "page_info": {"title": "", "followers": "", "following": ""},
     "intro": "",
     "og_image": "",
+    "business_facts": {
+        "locations": [{
+            "address": "",
+            "city": "",
+            "hotline": ""
+          }],
+        "hours": "",
+        "phones": [],
+        "emails": [],
+    },
     "phones": [],
     "emails": [],
     "domains": [],

@@ -6,7 +6,7 @@ import traceback
 from datetime import datetime
 from urllib.parse import quote
 from typing import Optional
-
+import  asyncio, re, logging
 import httpx
 from bs4 import BeautifulSoup
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,7 @@ from .models import (
     default_suggestions_tagged,
 )
 import nodriver as uc
+logger = logging.getLogger(__name__)
 
 HAS_NODRIVER = uc is not None
 UC_BROWSER = None
@@ -355,6 +356,20 @@ def _parse_serp(soup: BeautifulSoup, query: str) -> dict:
         ],
     }
 
+def _extract_intro_section(clean_text: str) -> str:
+    """
+    Trích xuất đúng khối "Intro" (giới thiệu + địa chỉ + liên hệ) của Fanpage,
+    neo vào mốc cấu trúc cố định của Facebook thay vì cắt cứng theo ký tự
+    (tránh vừa thiếu vừa lẫn nội dung post/comment không liên quan).
+    """
+    start_match = re.search(r'\b(?:Intro|Giới thiệu)\b', clean_text)
+    start = start_match.end() if start_match else 0
+
+    end_match = re.search(r'Shared with Public|Công khai', clean_text[start:])
+    end = start + end_match.start() if end_match else start + 1500  # fallback an toàn
+
+    section = clean_text[start:end].strip()
+    return section if section else clean_text[:1500].strip()
 
 
 async def lay_20_anh_tu_tab_photos(fb_tab):
@@ -511,6 +526,107 @@ def _clean_fb_text(text: str) -> str:
         return text
 
 
+# ── THÊM MỚI: 4 hàm dưới đây, đặt ngay tại đây ──────────────────────────
+
+PHONE_PATTERN = r'(?:\+84\s?)?(?:0\d{2,3}[\s.-]?\d{3}[\s.-]?\d{3,4})'
+
+def _guess_city(address: str) -> str:
+    city_map = {
+        "đà nẵng": "Đà Nẵng", "da nang": "Đà Nẵng",
+        "nha trang": "Nha Trang",
+        "hồ chí minh": "Hồ Chí Minh", "ho chi minh": "Hồ Chí Minh", "hcm": "Hồ Chí Minh",
+        "hà nội": "Hà Nội", "ha noi": "Hà Nội",
+    }
+    low = address.lower()
+    return next((v for k, v in city_map.items() if k in low), "")
+
+
+def _extract_locations_multi(intro_text: str, global_phones: list) -> list:
+    """Hỗ trợ cả 2 format: (A) đa chi nhánh có emoji 📍, (B) 1 chi nhánh neo 'Vietnam'."""
+    locations = []
+
+    if "📍" in intro_text:
+        blocks = re.findall(r"📍(.*?)(?=📍|\Z)", intro_text, re.DOTALL)
+        for block in blocks:
+            parts = re.split(r'Hotline[^:]*:', block, maxsplit=1, flags=re.IGNORECASE)
+            address_raw = parts[0].strip()
+            address_clean = re.sub(
+                r'^\s*(?:Cơ sở|Địa chỉ|CS)\s*\d*\s*:?\s*', '', address_raw, flags=re.IGNORECASE
+            ).strip().rstrip(' -–—')
+
+            if len(address_clean) < 8:
+                continue
+
+            hotline = ""
+            if len(parts) > 1:
+                phone_matches = re.findall(PHONE_PATTERN, parts[1])
+                hotline = " – ".join(re.sub(r'[\s.-]', '', p) for p in phone_matches)
+
+            locations.append({
+                "address": address_clean,
+                "city": _guess_city(address_clean),
+                "hotline": hotline or (global_phones[0] if global_phones and len(locations) == 0 else "")
+            })
+
+        if locations:
+            return locations
+
+    candidates = [
+        seg.strip() for seg in re.split(r'\n', intro_text)
+        if re.search(r'\bvietnam\b', seg, re.IGNORECASE)
+    ]
+    if candidates:
+        best = max(candidates, key=lambda l: l.count(','))
+        if best.count(',') >= 2:
+            address_clean = re.sub(r',\s*vietnam\s*$', '', best, flags=re.IGNORECASE).strip()
+            locations.append({
+                "address": address_clean,
+                "city": _guess_city(address_clean),
+                "hotline": global_phones[0] if global_phones else ""
+            })
+
+    return locations
+
+def _extract_hours(intro_text: str) -> str:
+    m = re.search(
+        r'(?:⏰|⏳)\s*(?:Giờ mở cửa|Giờ phục vụ|Opening hours)?:\s*(.+?)(?=📍|\n|\Z)',
+        intro_text, re.IGNORECASE
+    )
+    if not m:
+        return ""
+
+    hours = m.group(1).strip()
+
+    # ✅ FIX: nếu dòng ngay sau là ghi chú bổ sung dạng "(...)" (VD: giờ order
+    # cuối), nối tiếp vào — tránh mất thông tin quan trọng khi giờ mở cửa và
+    # ghi chú nằm trên 2 dòng riêng.
+    remainder = intro_text[m.end():]
+    note_match = re.match(r'\s*\n\s*(\([^\n]*\))', remainder)
+    if note_match:
+        hours += " " + note_match.group(1).strip()
+
+    return hours
+
+
+def build_business_facts(intro_text: str, phones: list, emails: list) -> dict:
+    locations = _extract_locations_multi(intro_text, phones)
+    hours = _extract_hours(intro_text)
+
+    if not locations:
+        logger.error(
+            f"[build_business_facts] KHÔNG trích xuất được địa chỉ nào — cần review thủ công. "
+            f"intro preview: {intro_text[:200]!r}"
+        )
+
+    return {
+        "locations": locations,
+        "hours": hours,
+        "phones": phones,
+        "emails": emails,
+        "_needs_manual_review": len(locations) == 0,
+    }
+
+
 def _extract_brand_info(html: str) -> dict:
     soup = BeautifulSoup(html, "html.parser")
     raw_text = soup.get_text("\n", strip=True)
@@ -521,8 +637,15 @@ def _extract_brand_info(html: str) -> dict:
     m = re.search(r'([\d.,]+\s*[KMB]?)\s+(?:followers|người theo dõi)', clean_text, re.IGNORECASE)
     if m: page_info["followers"] = m.group(1).strip()
 
-    intro_section = clean_text[:1500].strip()
-    phones = set(re.sub(r"[\s.-]", "", p) for p in re.findall(r'(?:\+84\s?)?(?:0\d{2,3}[\s.-]?\d{3}[\s.-]?\d{3,4})', clean_text))
+    h1_tag = soup.find("h1")
+    page_name = ""
+    if h1_tag:
+        page_name = h1_tag.get_text(strip=True)
+        page_name = page_name.replace("\xa0", " ").strip()  # bỏ &nbsp; còn sót
+    page_info["page_name"] = page_name
+
+    intro_section = _extract_intro_section(clean_text)
+    phones = set(re.sub(r"[\s.-]", "", p) for p in re.findall(PHONE_PATTERN, clean_text))
     emails = sorted(set(re.findall(r'[\w.-]+@[\w.-]+\.\w+', clean_text)))
     domains = sorted(set(d for d in re.findall(r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,6}\b', clean_text.lower()) if not d.endswith(("js", "css", "png", "jpg", "jpeg", "gif", "ico"))))
 
@@ -532,14 +655,19 @@ def _extract_brand_info(html: str) -> dict:
         og_image = og_tag.get("content", "")
 
     posts = [c.strip() for c in re.split(r'Shared with Public|Công khai', clean_text) if len(c.strip()) > 150][:10]
+
+    phones_sorted = sorted(list(phones))
+    business_facts = build_business_facts(intro_section, phones_sorted, emails)   # ← THÊM DÒNG NÀY
+
     return {
-        "page_info": page_info, 
+        "page_info": page_info,
         "intro": intro_section,
-        "phones": sorted(list(phones)), 
+        "phones": phones_sorted,
         "emails": emails,
-        "domains": domains, 
-        "og_image": og_image, 
-        "posts_from_text": posts
+        "domains": domains,
+        "og_image": og_image,
+        "posts_from_text": posts,
+        "business_facts": business_facts,   # ← THÊM KEY NÀY
     }
 
 def _extract_posts_comments(html: str) -> tuple:
@@ -782,9 +910,10 @@ async def node_facebook(state: ResearchState, seq: list, headless: bool):
 
         state.fb_data = {
             "brand": {
-                "page_info": brand["page_info"], "intro": brand["intro"], 
+                "page_info": brand["page_info"], "intro": brand["intro"],
                 "phones": brand["phones"], "emails": brand["emails"],
                 "domains": brand["domains"], "og_image": brand.get("og_image", ""),
+                "business_facts": brand["business_facts"],   # ← THÊM DÒNG NÀY
             },
             "photos": photo_path,
             "posts": final_posts,
@@ -792,6 +921,15 @@ async def node_facebook(state: ResearchState, seq: list, headless: bool):
             "comments": comments,
         }
 
+        if brand["business_facts"]["_needs_manual_review"]:
+            logger.warning(
+                f"[node_facebook] business_id={state.business_id} — KHÔNG tìm thấy địa chỉ "
+                f"trong intro, cần review thủ công."
+            )
+        state.add_event(seq[0] + 1, "facebook", {
+            "status": "warning",
+            "message": "Không trích xuất được địa chỉ — cần review thủ công.",
+        })
 
         print(f"  ✅ Posts: {len(state.fb_data['posts'])} | Comments: {len(state.fb_data['comments'])}")
 
