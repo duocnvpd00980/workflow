@@ -33,8 +33,9 @@ export interface BrandVoice {
     logo_url?: string
     updated_at?: string
   }
+
   business_facts?: {
-    locations?: string[]
+    locations?: { address?: string; city?: string; hotline?: string }[]
     hours?: string
     phones?: string[]
     emails?: string[]
@@ -71,24 +72,32 @@ function generateChartData(bv?: BrandVoice) {
     { subject: "Thực tế  (thông số, lợi ích )", value: bv.tone_enthusiastic_matter_of_fact ?? 50 },
   ]
 }
-
 function parseMarkdownList(markdownText: string | null, sectionTitle: string): string[] {
   if (!markdownText) return []
   const lines = markdownText.split("\n")
   const result: string[] = []
   let inSection = false
+  const target = sectionTitle.toUpperCase().replace(/_/g, " ").trim()
 
   for (const line of lines) {
-    if (line.trim().startsWith("#") || line.trim().startsWith("##")) {
-      if (line.toUpperCase().includes(sectionTitle.toUpperCase())) {
+    const trimmed = line.trim()
+    // Nhận diện header dạng cả "# HEADER" (markdown) lẫn "LABEL_NAME" / "LABEL:" (raw)
+    const isMarkdownHeader = trimmed.startsWith("#")
+    const isRawLabel = /^[A-ZÀ-Ỹ][A-ZÀ-Ỹ_ ]*:?\s*$/.test(trimmed) && !trimmed.startsWith("-")
+
+    if (isMarkdownHeader || isRawLabel) {
+      const headerText = trimmed.replace(/^#+\s*/, "").replace(/:$/, "").toUpperCase().replace(/_/g, " ").trim()
+      if (headerText.includes(target) || target.includes(headerText)) {
         inSection = true
         continue
       } else {
         inSection = false
+        continue
       }
     }
-    if (inSection && line.trim().startsWith("-")) {
-      const item = line.replace("-", "").trim()
+
+    if (inSection && trimmed.startsWith("-")) {
+      const item = trimmed.replace(/^-/, "").trim().replace(/^["']|["']$/g, "")
       if (item) result.push(item)
     }
   }
@@ -333,11 +342,15 @@ export default function BrandDetailPage() {
                   <span className="block font-bold text-[10px] text-muted-foreground uppercase tracking-wide">HỆ THỐNG CƠ SỞ</span>
                   <ul className="space-y-1 font-semibold list-none pl-0 mt-0.5">
                     {brandVoice.business_facts?.locations && brandVoice.business_facts.locations.length > 0 ? (
-                      brandVoice.business_facts.locations.map((loc, i) => (
-                        <li key={i} className="text-[11.5px] border-l-2 border-slate-200 dark:border-slate-800 pl-1.5 leading-tight">
-                          {loc}
-                        </li>
-                      ))
+                      brandVoice.business_facts.locations
+                        .filter((loc) => loc.address || loc.city || loc.hotline)
+                        .map((loc, i) => (
+                          <li key={i} className="text-[11.5px] border-l-2 border-slate-200 dark:border-slate-800 pl-1.5 leading-tight">
+                            {loc.address}
+                            {loc.city ? `, ${loc.city}` : ""}
+                            {loc.hotline ? ` — ${loc.hotline}` : ""}
+                          </li>
+                        ))
                     ) : (
                       <>
                         <li className="text-[11.5px] border-l-2 border-slate-200 pl-1.5 leading-tight">CS1: 26 Tô Hiến Thành, Sơn Trà, Đà Nẵng</li>
@@ -487,7 +500,6 @@ export default function BrandDetailPage() {
           </div>
         </div>
 
-        {/* ================= HIỂN THỊ CHI TIẾT ANCHOR MARKDOWN (K1 & K3) ================= */}
         {/* ================= HIỂN THỊ CHI TIẾT ANCHOR MARKDOWN (K1 & K3) - ĐÃ FIX SIZE CHỮ TO ================= */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
 
