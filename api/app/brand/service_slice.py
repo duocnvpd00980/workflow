@@ -179,7 +179,7 @@ def _resolve_business_name(data_result: dict, fallback_from_task: str = "") -> s
     logger.error("[_resolve_business_name] Không tìm được business_name hợp lệ.")
     return "Thương hiệu"
 
-    
+
 # ═══════════════════════════════════════════════════
 # CELL 1B: GENERIC LABEL PARSERS
 # Dùng để đọc section "LABEL:\n..." từ output thô của LLM, RỒI render lại
@@ -1248,9 +1248,11 @@ def aggregate(
     # ── desired_tone: tóm tắt ngắn từ TONE_BASE (K6) ───────────────────────
     desired_tone = ", ".join(tone_base[:3]) if tone_base else "Chuyên nghiệp"
 
+    fb_name = fb.get("page_info")
+
     result = {
         "business_id": bid,
-        "name": bname,
+        "name": fb_name.get("page_name", "") or "",
 
         # ── Structured fields (giữ lại) ───────────────────────────────
         "purpose": purpose or "Tăng trưởng kinh doanh và nhận diện thương hiệu",
